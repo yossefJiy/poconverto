@@ -6,8 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { z } from "zod";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { PhoneSignIn } from "@/components/auth/PhoneSignIn";
+import { Mail, Phone } from "lucide-react";
 
 const emailSchema = z.string().email("אימייל לא תקין");
 const passwordSchema = z.string().min(6, "הסיסמה חייבת להכיל לפחות 6 תווים");
@@ -19,6 +23,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
 
   useEffect(() => {
     // Check if user is already logged in
@@ -121,89 +126,129 @@ const Auth = () => {
           <CardTitle className="text-2xl font-bold">מערכת ניהול שיווק</CardTitle>
           <CardDescription>התחבר או הירשם כדי להמשיך</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">התחברות</TabsTrigger>
-              <TabsTrigger value="signup">הרשמה</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">אימייל</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    dir="ltr"
-                  />
-                  {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">סיסמה</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    dir="ltr"
-                  />
-                  {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "מתחבר..." : "התחברות"}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">שם מלא</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="ישראל ישראלי"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">אימייל</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    dir="ltr"
-                  />
-                  {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">סיסמה</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    dir="ltr"
-                  />
-                  {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "נרשם..." : "הרשמה"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="space-y-6">
+          {/* Social Login */}
+          <div className="space-y-3">
+            <GoogleSignInButton />
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">או</span>
+            </div>
+          </div>
+
+          {/* Auth Method Toggle */}
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant={authMethod === "email" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAuthMethod("email")}
+              className="flex items-center gap-2"
+            >
+              <Mail className="w-4 h-4" />
+              אימייל
+            </Button>
+            <Button
+              variant={authMethod === "phone" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAuthMethod("phone")}
+              className="flex items-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              טלפון
+            </Button>
+          </div>
+
+          {authMethod === "phone" ? (
+            <PhoneSignIn />
+          ) : (
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">התחברות</TabsTrigger>
+                <TabsTrigger value="signup">הרשמה</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">אימייל</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      dir="ltr"
+                    />
+                    {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">סיסמה</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      dir="ltr"
+                    />
+                    {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "מתחבר..." : "התחברות"}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">שם מלא</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="ישראל ישראלי"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">אימייל</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      dir="ltr"
+                    />
+                    {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">סיסמה</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      dir="ltr"
+                    />
+                    {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "נרשם..." : "הרשמה"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>

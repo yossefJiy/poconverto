@@ -9,9 +9,22 @@ import {
   Building2, 
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
@@ -25,6 +38,23 @@ const menuItems = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { user, signOut, role } = useAuth();
+
+  const userEmail = user?.email || "";
+  const userInitials = userEmail ? userEmail.substring(0, 2).toUpperCase() : "U";
+
+  const getRoleLabel = (role: string | null) => {
+    const labels: Record<string, string> = {
+      admin: "מנהל מערכת",
+      manager: "מנהל",
+      department_head: "ראש מחלקה",
+      team_lead: "ראש צוות",
+      team_member: "חבר צוות",
+      client: "לקוח",
+      demo: "משתמש דמו",
+    };
+    return role ? labels[role] || role : "משתמש";
+  };
 
   return (
     <aside 
@@ -85,19 +115,71 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Settings at bottom */}
-      <div className="absolute bottom-4 right-0 left-0 px-4">
-        <Link
-          to="/settings"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-            "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
-            location.pathname === "/settings" && "bg-primary/10 text-primary"
-          )}
-        >
-          <Settings className="w-5 h-5" />
-          {!collapsed && <span className="font-medium">הגדרות</span>}
-        </Link>
+      {/* User section at bottom */}
+      <div className="absolute bottom-0 right-0 left-0 border-t border-sidebar-border">
+        {/* Settings */}
+        <div className="px-4 py-2">
+          <Link
+            to="/settings"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
+              location.pathname === "/settings" && "bg-primary/10 text-primary"
+            )}
+          >
+            <Settings className="w-5 h-5" />
+            {!collapsed && <span className="font-medium">הגדרות</span>}
+          </Link>
+        </div>
+
+        {/* User Menu */}
+        <div className="px-4 py-3 border-t border-sidebar-border">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3 h-auto py-2",
+                  collapsed && "justify-center px-2"
+                )}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex flex-col items-start text-right overflow-hidden">
+                    <span className="text-sm font-medium truncate max-w-[140px]">
+                      {userEmail}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {getRoleLabel(role)}
+                    </span>
+                  </div>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
+                  <User className="w-4 h-4" />
+                  פרופיל
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={signOut}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 ml-2" />
+                התנתקות
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </aside>
   );
