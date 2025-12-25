@@ -77,10 +77,9 @@ const integrations: Integration[] = [
     name: "Google Analytics",
     description: "חיבור ל-GA4 לקבלת נתוני תנועה והמרות",
     icon: Globe,
-    connected: false,
+    connected: true,
     credentials: [
-      { label: "Property ID", value: "", type: "text" },
-      { label: "Service Account JSON", value: "", type: "password" },
+      { label: "Measurement ID", value: "G-T5NY030STK", type: "text" },
     ],
     helpUrl: "https://developers.google.com/analytics",
   },
