@@ -96,12 +96,30 @@ serve(async (req) => {
     const { propertyId, startDate, endDate, metrics, dimensions } = await req.json();
     
     // Get service account from secrets
-    const serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_SERVICE_ACCOUNT');
+    let serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_SERVICE_ACCOUNT');
     if (!serviceAccountJson) {
       throw new Error('GOOGLE_ANALYTICS_SERVICE_ACCOUNT is not configured');
     }
 
-    const serviceAccount = JSON.parse(serviceAccountJson);
+    // Handle potential escape issues in the JSON
+    // Sometimes the secret is stored with escaped newlines
+    serviceAccountJson = serviceAccountJson.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    
+    console.log("Raw secret length:", serviceAccountJson.length);
+    console.log("First 50 chars:", serviceAccountJson.substring(0, 50));
+    
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(serviceAccountJson);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      console.error("Attempting to fix JSON format...");
+      // Try removing outer quotes if present
+      if (serviceAccountJson.startsWith('"') && serviceAccountJson.endsWith('"')) {
+        serviceAccountJson = serviceAccountJson.slice(1, -1);
+      }
+      serviceAccount = JSON.parse(serviceAccountJson);
+    }
     console.log("Service account email:", serviceAccount.client_email);
     
     // Generate access token
