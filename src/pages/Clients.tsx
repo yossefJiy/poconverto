@@ -10,6 +10,7 @@ import {
   Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface Client {
   id: string;
@@ -26,7 +27,19 @@ interface Client {
 
 const clients: Client[] = [
   {
-    id: "1",
+    id: "td-tamar-drory",
+    name: "TD TAMAR DRORY",
+    industry: "אופנה",
+    logo: "TD",
+    monthlyBudget: 150000,
+    activeCampaigns: 4,
+    totalSpend: 560000,
+    performance: 145,
+    startDate: "ינואר 2024",
+    status: "active",
+  },
+  {
+    id: "2",
     name: "חברת אלפא",
     industry: "טכנולוגיה",
     logo: "α",
@@ -186,9 +199,12 @@ export default function Clients() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-3">
-                    <button className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium">
+                    <Link 
+                      to={client.id === "td-tamar-drory" ? "/client/td-tamar-drory" : "#"}
+                      className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium text-center"
+                    >
                       צפה בפרטים
-                    </button>
+                    </Link>
                     <button className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors">
                       <ExternalLink className="w-4 h-4" />
                     </button>

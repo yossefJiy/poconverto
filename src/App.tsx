@@ -10,6 +10,8 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Clients from "./pages/Clients";
 import Settings from "./pages/Settings";
+import ClientDashboard from "./pages/ClientDashboard";
+import ClientSettings from "./pages/ClientSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/team" element={<Team />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/client/td-tamar-drory" element={<ClientDashboard />} />
+          <Route path="/client-settings" element={<ClientSettings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
