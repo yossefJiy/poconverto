@@ -16,6 +16,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import ClientSettings from "./pages/ClientSettings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Backlog from "./pages/Backlog";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/client/td-tamar-drory" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
             <Route path="/client-settings" element={<ProtectedRoute><ClientSettings /></ProtectedRoute>} />
+            <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

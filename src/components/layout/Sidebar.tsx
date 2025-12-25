@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  User
+  User,
+  ListTodo
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: CheckSquare, label: "משימות", path: "/tasks" },
   { icon: Users, label: "צוות", path: "/team" },
   { icon: Building2, label: "לקוחות", path: "/clients" },
+  { icon: ListTodo, label: "Backlog", path: "/backlog" },
 ];
 
 export function Sidebar() {
