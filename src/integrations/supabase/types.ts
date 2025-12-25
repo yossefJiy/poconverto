@@ -391,6 +391,48 @@ export type Database = {
         }
         Relationships: []
       }
+      project_improvements: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          estimated_effort: string | null
+          id: string
+          importance: number
+          priority: string
+          sprint_number: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          estimated_effort?: string | null
+          id?: string
+          importance?: number
+          priority?: string
+          sprint_number?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          estimated_effort?: string | null
+          id?: string
+          importance?: number
+          priority?: string
+          sprint_number?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assignee: string | null
