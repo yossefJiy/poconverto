@@ -1,17 +1,26 @@
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const { showWarning, remainingTime, extendSession } = useSessionTimeout();
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <main className="mr-64 min-h-screen">
         {children}
       </main>
+      <SessionTimeoutDialog 
+        open={showWarning} 
+        remainingTime={remainingTime} 
+        onExtendSession={extendSession} 
+      />
     </div>
   );
 }
