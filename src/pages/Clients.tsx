@@ -7,98 +7,23 @@ import {
   Calendar,
   ExternalLink,
   MoreVertical,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Client {
   id: string;
   name: string;
-  industry: string;
-  logo: string;
-  monthlyBudget: number;
-  activeCampaigns: number;
-  totalSpend: number;
-  performance: number;
-  startDate: string;
-  status: "active" | "paused" | "churned";
+  industry: string | null;
+  logo_url: string | null;
+  description: string | null;
+  website: string | null;
+  created_at: string;
 }
-
-const clients: Client[] = [
-  {
-    id: "td-tamar-drory",
-    name: "TD TAMAR DRORY",
-    industry: "אופנה",
-    logo: "TD",
-    monthlyBudget: 150000,
-    activeCampaigns: 4,
-    totalSpend: 560000,
-    performance: 145,
-    startDate: "ינואר 2024",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "חברת אלפא",
-    industry: "טכנולוגיה",
-    logo: "α",
-    monthlyBudget: 50000,
-    activeCampaigns: 5,
-    totalSpend: 180000,
-    performance: 124,
-    startDate: "ינואר 2023",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "סטארטאפ בטא",
-    industry: "SaaS",
-    logo: "β",
-    monthlyBudget: 25000,
-    activeCampaigns: 3,
-    totalSpend: 95000,
-    performance: 112,
-    startDate: "מרץ 2023",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "חברת גמא",
-    industry: "קמעונאות",
-    logo: "γ",
-    monthlyBudget: 35000,
-    activeCampaigns: 2,
-    totalSpend: 120000,
-    performance: 98,
-    startDate: "יוני 2023",
-    status: "paused",
-  },
-  {
-    id: "4",
-    name: "חברת דלתא",
-    industry: "פיננסים",
-    logo: "δ",
-    monthlyBudget: 75000,
-    activeCampaigns: 6,
-    totalSpend: 280000,
-    performance: 145,
-    startDate: "ספטמבר 2022",
-    status: "active",
-  },
-  {
-    id: "5",
-    name: "חברת אפסילון",
-    industry: "בריאות",
-    logo: "ε",
-    monthlyBudget: 40000,
-    activeCampaigns: 4,
-    totalSpend: 150000,
-    performance: 108,
-    startDate: "נובמבר 2023",
-    status: "active",
-  },
-];
 
 const statusConfig = {
   active: { color: "text-success", bg: "bg-success/10", label: "פעיל" },
@@ -107,6 +32,60 @@ const statusConfig = {
 };
 
 export default function Clients() {
+  const { data: clients = [], isLoading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Client[];
+    },
+  });
+
+  const { data: taskCounts = {} } = useQuery({
+    queryKey: ["client-task-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("client_id, status");
+      if (error) throw error;
+      
+      const counts: Record<string, { total: number; completed: number }> = {};
+      data.forEach((task) => {
+        if (task.client_id) {
+          if (!counts[task.client_id]) {
+            counts[task.client_id] = { total: 0, completed: 0 };
+          }
+          counts[task.client_id].total++;
+          if (task.status === "completed") {
+            counts[task.client_id].completed++;
+          }
+        }
+      });
+      return counts;
+    },
+  });
+
+  const { data: campaignCounts = {} } = useQuery({
+    queryKey: ["client-campaign-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("client_id, status");
+      if (error) throw error;
+      
+      const counts: Record<string, number> = {};
+      data.forEach((campaign) => {
+        if (campaign.client_id && campaign.status === "active") {
+          counts[campaign.client_id] = (counts[campaign.client_id] || 0) + 1;
+        }
+      });
+      return counts;
+    },
+  });
+
   return (
     <MainLayout>
       <div className="p-8">
@@ -122,98 +101,126 @@ export default function Clients() {
           </button>
         </div>
 
-        {/* Clients Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {clients.map((client, index) => {
-            const status = statusConfig[client.status];
-            const performanceColor = client.performance >= 100 ? "text-success" : "text-destructive";
-            
-            return (
-              <div 
-                key={client.id}
-                className="glass rounded-xl card-shadow opacity-0 animate-slide-up glass-hover"
-                style={{ animationDelay: `${0.1 + index * 0.08}s`, animationFillMode: "forwards" }}
-              >
-                <div className="p-6">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
-                        {client.logo}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold">{client.name}</h3>
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-xs font-medium",
-                            status.bg, status.color
-                          )}>
-                            {status.label}
-                          </span>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="glass rounded-xl p-12 text-center">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">אין לקוחות עדיין</h3>
+            <p className="text-muted-foreground">הוסף לקוח חדש כדי להתחיל</p>
+          </div>
+        ) : (
+          /* Clients Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {clients.map((client, index) => {
+              const clientTasks = taskCounts[client.id] || { total: 0, completed: 0 };
+              const activeCampaigns = campaignCounts[client.id] || 0;
+              const performance = clientTasks.total > 0 
+                ? Math.round((clientTasks.completed / clientTasks.total) * 100) 
+                : 0;
+              const performanceColor = performance >= 50 ? "text-success" : "text-warning";
+              
+              return (
+                <div 
+                  key={client.id}
+                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up glass-hover"
+                  style={{ animationDelay: `${0.1 + index * 0.08}s`, animationFillMode: "forwards" }}
+                >
+                  <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
+                          {client.name.charAt(0)}
                         </div>
-                        <p className="text-sm text-muted-foreground">{client.industry}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <Calendar className="w-3 h-3" />
-                          לקוח מ{client.startDate}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold">{client.name}</h3>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-full text-xs font-medium",
+                              statusConfig.active.bg, statusConfig.active.color
+                            )}>
+                              {statusConfig.active.label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{client.industry || "לא צוין"}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="w-3 h-3" />
+                            לקוח מ{new Date(client.created_at).toLocaleDateString("he-IL", { month: "long", year: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+                      <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+                        <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                    </div>
+
+                    {/* Description */}
+                    {client.description && (
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{client.description}</p>
+                    )}
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                          <Target className="w-4 h-4" />
+                          <span className="text-xs">משימות</span>
+                        </div>
+                        <p className="text-xl font-bold">{clientTasks.total}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                          <Building2 className="w-4 h-4" />
+                          <span className="text-xs">קמפיינים פעילים</span>
+                        </div>
+                        <p className="text-xl font-bold">{activeCampaigns}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                          <TrendingUp className="w-4 h-4" />
+                          <span className="text-xs">הושלמו</span>
+                        </div>
+                        <p className="text-xl font-bold">{clientTasks.completed}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                          <DollarSign className="w-4 h-4" />
+                          <span className="text-xs">התקדמות</span>
+                        </div>
+                        <p className={cn("text-xl font-bold", performanceColor)}>
+                          {performance}%
                         </p>
                       </div>
                     </div>
-                    <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-                      <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <DollarSign className="w-4 h-4" />
-                        <span className="text-xs">תקציב חודשי</span>
-                      </div>
-                      <p className="text-xl font-bold">₪{client.monthlyBudget.toLocaleString()}</p>
+                    {/* Actions */}
+                    <div className="flex items-center gap-3">
+                      <Link 
+                        to={`/client/${client.id}`}
+                        className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium text-center"
+                      >
+                        צפה בפרטים
+                      </Link>
+                      {client.website && (
+                        <a 
+                          href={client.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Target className="w-4 h-4" />
-                        <span className="text-xs">קמפיינים פעילים</span>
-                      </div>
-                      <p className="text-xl font-bold">{client.activeCampaigns}</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Building2 className="w-4 h-4" />
-                        <span className="text-xs">סה״כ הוצאה</span>
-                      </div>
-                      <p className="text-xl font-bold">₪{client.totalSpend.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="text-xs">ביצוע מול יעד</span>
-                      </div>
-                      <p className={cn("text-xl font-bold", performanceColor)}>
-                        {client.performance}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-3">
-                    <Link 
-                      to={client.id === "td-tamar-drory" ? "/client/td-tamar-drory" : "#"}
-                      className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium text-center"
-                    >
-                      צפה בפרטים
-                    </Link>
-                    <button className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors">
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

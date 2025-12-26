@@ -14,6 +14,7 @@ import Clients from "./pages/Clients";
 import Settings from "./pages/Settings";
 import ClientDashboard from "./pages/ClientDashboard";
 import ClientSettings from "./pages/ClientSettings";
+import ClientProfile from "./pages/ClientProfile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Backlog from "./pages/Backlog";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/client/td-tamar-drory" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
+            <Route path="/client/:clientId" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
             <Route path="/client-settings" element={<ProtectedRoute><ClientSettings /></ProtectedRoute>} />
             <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
