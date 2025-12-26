@@ -43,6 +43,40 @@ const menuItems = [
   { icon: ListTodo, label: "Backlog", path: "/backlog" },
 ];
 
+function EditModeToggle({ collapsed }: { collapsed: boolean }) {
+  const { isEditMode, toggleEditMode } = useEditMode();
+  
+  return (
+    <div className={cn(
+      "px-4 py-2 border-t border-sidebar-border",
+      collapsed ? "flex justify-center" : ""
+    )}>
+      <div className={cn(
+        "flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/30",
+        collapsed ? "justify-center p-2" : "justify-between"
+      )}>
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            {isEditMode ? (
+              <Pencil className="w-4 h-4 text-warning" />
+            ) : (
+              <Eye className="w-4 h-4 text-muted-foreground" />
+            )}
+            <span className="text-sm font-medium">
+              {isEditMode ? "מצב עריכה" : "מצב עבודה"}
+            </span>
+          </div>
+        )}
+        <Switch
+          checked={isEditMode}
+          onCheckedChange={toggleEditMode}
+          className="data-[state=checked]:bg-warning"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
@@ -125,7 +159,7 @@ export function Sidebar() {
 
       {/* User section at bottom */}
       <div className="absolute bottom-0 right-0 left-0 border-t border-sidebar-border">
-        {/* Settings */}
+      {/* Settings */}
         <div className="px-4 py-2">
           <Link
             to="/settings"
@@ -139,6 +173,9 @@ export function Sidebar() {
             {!collapsed && <span className="font-medium">הגדרות</span>}
           </Link>
         </div>
+
+        {/* Edit Mode Toggle */}
+        <EditModeToggle collapsed={collapsed} />
 
         {/* User Menu */}
         <div className="px-4 py-3 border-t border-sidebar-border">
