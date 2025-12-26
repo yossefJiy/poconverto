@@ -12,7 +12,10 @@ import {
   ChevronRight,
   LogOut,
   User,
-  ListTodo
+  ListTodo,
+  Languages,
+  Pencil,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { useEditMode } from "@/hooks/useEditMode";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
@@ -34,6 +39,7 @@ const menuItems = [
   { icon: CheckSquare, label: "משימות", path: "/tasks" },
   { icon: Users, label: "צוות", path: "/team" },
   { icon: Building2, label: "לקוחות", path: "/clients" },
+  { icon: Languages, label: "תרגומים", path: "/translations" },
   { icon: ListTodo, label: "Backlog", path: "/backlog" },
 ];
 
