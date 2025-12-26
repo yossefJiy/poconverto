@@ -1,44 +1,71 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2,
-  TrendingUp,
-  DollarSign,
-  Target,
   Calendar,
-  ArrowRight,
   CheckCircle2,
   Circle,
   Clock,
-  User,
   Briefcase,
   Globe,
   FileText,
   BarChart3,
   Users,
-  ChevronLeft
+  ChevronLeft,
+  Plus,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { TaskItem } from "@/components/tasks/TaskItem";
+import { TaskEditDialog } from "@/components/tasks/TaskEditDialog";
+import { TeamMemberCard } from "@/components/team/TeamMemberCard";
+import { LanguageSwitcher, useTranslation } from "@/hooks/useTranslation";
+import { toast } from "sonner";
 
-const statusConfig = {
-  pending: { icon: Circle, color: "text-warning", bg: "bg-warning/10", label: "ממתין" },
-  "in-progress": { icon: Clock, color: "text-info", bg: "bg-info/10", label: "בתהליך" },
-  completed: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: "הושלם" },
-};
+interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  assignee: string | null;
+  department: string | null;
+  parent_task_id: string | null;
+  assigned_member_id: string | null;
+  reminder_date: string | null;
+  estimated_hours: number | null;
+  actual_hours: number | null;
+  completion_notes: string | null;
+  completed_at: string | null;
+  client_id: string | null;
+}
 
-const priorityConfig = {
-  low: { color: "bg-muted", label: "נמוכה" },
-  medium: { color: "bg-warning", label: "בינונית" },
-  high: { color: "bg-destructive", label: "גבוהה" },
-};
+interface TeamMember {
+  id: string;
+  name: string;
+  name_en: string | null;
+  name_hi: string | null;
+  departments: string[];
+  email: string | null;
+  is_active: boolean;
+}
 
 export default function ClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
+  const { t, language } = useTranslation();
+  const queryClient = useQueryClient();
+  
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [parentTaskIdForNew, setParentTaskIdForNew] = useState<string | null>(null);
 
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ["client", clientId],
@@ -63,9 +90,21 @@ export default function ClientProfile() {
         .eq("client_id", clientId)
         .order("due_date", { ascending: true });
       if (error) throw error;
-      return data;
+      return data as Task[];
     },
     enabled: !!clientId,
+  });
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["team-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data as TeamMember[];
+    },
   });
 
   const { data: campaigns = [] } = useQuery({
@@ -80,6 +119,92 @@ export default function ClientProfile() {
     },
     enabled: !!clientId,
   });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: async (taskData: Partial<Task> & { id?: string }) => {
+      const { id, ...rest } = taskData;
+      if (id) {
+        const { error } = await supabase
+          .from("tasks")
+          .update(rest)
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("tasks")
+          .insert([{ 
+            title: rest.title || 'משימה חדשה',
+            client_id: clientId,
+            ...rest 
+          }]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] });
+      toast.success(t('save'));
+      setIsDialogOpen(false);
+      setEditingTask(null);
+      setParentTaskIdForNew(null);
+    },
+    onError: (error) => {
+      toast.error("שגיאה בשמירה");
+      console.error(error);
+    },
+  });
+
+  const updateTeamMemberMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TeamMember> }) => {
+      const { error } = await supabase
+        .from("team_members")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success(t('save'));
+    },
+  });
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setParentTaskIdForNew(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleAddSubtask = (parentId: string) => {
+    setEditingTask(null);
+    setParentTaskIdForNew(parentId);
+    setIsDialogOpen(true);
+  };
+
+  const handleAddTask = () => {
+    setEditingTask(null);
+    setParentTaskIdForNew(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleStatusChange = async (taskId: string, status: string) => {
+    const updates: Partial<Task> = { 
+      status,
+      completed_at: status === 'completed' ? new Date().toISOString() : null
+    };
+    
+    await supabase
+      .from("tasks")
+      .update(updates)
+      .eq("id", taskId);
+    
+    queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] });
+  };
+
+  const handleSaveTask = (taskData: Partial<Task>) => {
+    updateTaskMutation.mutate({
+      ...taskData,
+      id: editingTask?.id,
+    });
+  };
 
   if (clientLoading) {
     return (
@@ -110,6 +235,9 @@ export default function ClientProfile() {
     );
   }
 
+  // Only root tasks (no parent)
+  const rootTasks = tasks.filter(t => !t.parent_task_id);
+  
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
   const inProgressTasks = tasks.filter((t) => t.status === "in-progress").length;
   const pendingTasks = tasks.filter((t) => t.status === "pending").length;
@@ -117,32 +245,35 @@ export default function ClientProfile() {
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   // Group tasks by assignee
-  const tasksByAssignee = tasks.reduce((acc, task) => {
-    const assignee = task.assignee || "לא מוקצה";
+  const tasksByAssignee = rootTasks.reduce((acc, task) => {
+    const assignee = task.assignee || t('not_assigned', 'לא מוקצה');
     if (!acc[assignee]) acc[assignee] = [];
     acc[assignee].push(task);
     return acc;
-  }, {} as Record<string, typeof tasks>);
+  }, {} as Record<string, Task[]>);
 
   // Group tasks by department
-  const tasksByDepartment = tasks.reduce((acc, task) => {
+  const tasksByDepartment = rootTasks.reduce((acc, task) => {
     const dept = task.department || "כללי";
     if (!acc[dept]) acc[dept] = [];
     acc[dept].push(task);
     return acc;
-  }, {} as Record<string, typeof tasks>);
+  }, {} as Record<string, Task[]>);
 
   return (
     <MainLayout>
       <div className="p-8">
-        {/* Back Link */}
-        <Link 
-          to="/clients" 
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          חזרה ללקוחות
-        </Link>
+        {/* Language Switcher */}
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            to="/clients" 
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {language === 'en' ? 'Back to Clients' : language === 'hi' ? 'ग्राहकों पर वापस जाएं' : 'חזרה ללקוחות'}
+          </Link>
+          <LanguageSwitcher />
+        </div>
 
         {/* Header */}
         <div className="flex items-start justify-between mb-8 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
@@ -162,12 +293,14 @@ export default function ClientProfile() {
                 {client.website && (
                   <a href={client.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary">
                     <Globe className="w-4 h-4" />
-                    אתר
+                    {language === 'en' ? 'Website' : language === 'hi' ? 'वेबसाइट' : 'אתר'}
                   </a>
                 )}
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {new Date(client.created_at).toLocaleDateString("he-IL")}
+                  {new Date(client.created_at).toLocaleDateString(
+                    language === 'he' ? 'he-IL' : language === 'hi' ? 'hi-IN' : 'en-US'
+                  )}
                 </span>
               </div>
             </div>
@@ -179,7 +312,7 @@ export default function ClientProfile() {
           <div className="glass rounded-xl p-6 mb-8 opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
             <h3 className="font-semibold mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              תיאור
+              {language === 'en' ? 'Description' : language === 'hi' ? 'विवरण' : 'תיאור'}
             </h3>
             <p className="text-muted-foreground">{client.description}</p>
           </div>
@@ -190,9 +323,9 @@ export default function ClientProfile() {
           <div className="glass rounded-xl p-6 opacity-0 animate-slide-up" style={{ animationDelay: "0.15s", animationFillMode: "forwards" }}>
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Target className="w-5 h-5 text-primary" />
+                <CheckCircle2 className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-muted-foreground text-sm">סה״כ משימות</span>
+              <span className="text-muted-foreground text-sm">{t('tasks')}</span>
             </div>
             <p className="text-3xl font-bold">{totalTasks}</p>
           </div>
@@ -202,7 +335,7 @@ export default function ClientProfile() {
               <div className="p-2 rounded-lg bg-success/10">
                 <CheckCircle2 className="w-5 h-5 text-success" />
               </div>
-              <span className="text-muted-foreground text-sm">הושלמו</span>
+              <span className="text-muted-foreground text-sm">{t('completed')}</span>
             </div>
             <p className="text-3xl font-bold text-success">{completedTasks}</p>
           </div>
@@ -212,7 +345,7 @@ export default function ClientProfile() {
               <div className="p-2 rounded-lg bg-info/10">
                 <Clock className="w-5 h-5 text-info" />
               </div>
-              <span className="text-muted-foreground text-sm">בתהליך</span>
+              <span className="text-muted-foreground text-sm">{t('in_progress')}</span>
             </div>
             <p className="text-3xl font-bold text-info">{inProgressTasks}</p>
           </div>
@@ -222,7 +355,7 @@ export default function ClientProfile() {
               <div className="p-2 rounded-lg bg-warning/10">
                 <Circle className="w-5 h-5 text-warning" />
               </div>
-              <span className="text-muted-foreground text-sm">ממתינות</span>
+              <span className="text-muted-foreground text-sm">{t('pending')}</span>
             </div>
             <p className="text-3xl font-bold text-warning">{pendingTasks}</p>
           </div>
@@ -233,7 +366,7 @@ export default function ClientProfile() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              התקדמות כללית
+              {language === 'en' ? 'Overall Progress' : language === 'hi' ? 'समग्र प्रगति' : 'התקדמות כללית'}
             </h3>
             <span className="text-lg font-bold">{Math.round(progressPercent)}%</span>
           </div>
@@ -243,70 +376,41 @@ export default function ClientProfile() {
         {/* Tabs */}
         <Tabs defaultValue="tasks" className="opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
           <TabsList className="mb-6">
-            <TabsTrigger value="tasks">משימות ({totalTasks})</TabsTrigger>
-            <TabsTrigger value="by-assignee">לפי עובד</TabsTrigger>
-            <TabsTrigger value="by-department">לפי מחלקה</TabsTrigger>
-            <TabsTrigger value="campaigns">קמפיינים ({campaigns.length})</TabsTrigger>
+            <TabsTrigger value="tasks">{t('tasks')} ({totalTasks})</TabsTrigger>
+            <TabsTrigger value="by-assignee">{language === 'en' ? 'By Assignee' : language === 'hi' ? 'सौंपे गए द्वारा' : 'לפי עובד'}</TabsTrigger>
+            <TabsTrigger value="by-department">{t('department')}</TabsTrigger>
+            <TabsTrigger value="team">{t('team_members')}</TabsTrigger>
+            <TabsTrigger value="campaigns">{language === 'en' ? 'Campaigns' : language === 'hi' ? 'अभियान' : 'קמפיינים'} ({campaigns.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
-            <div className="glass rounded-xl divide-y divide-border">
+            <div className="mb-4">
+              <Button onClick={handleAddTask}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('add_task')}
+              </Button>
+            </div>
+            <div className="glass rounded-xl overflow-hidden">
               {tasksLoading ? (
                 <div className="p-6">
                   <Skeleton className="h-20" />
                 </div>
-              ) : tasks.length === 0 ? (
+              ) : rootTasks.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  אין משימות ללקוח זה
+                  {language === 'en' ? 'No tasks for this client' : language === 'hi' ? 'इस ग्राहक के लिए कोई कार्य नहीं' : 'אין משימות ללקוח זה'}
                 </div>
               ) : (
-                tasks.map((task) => {
-                  const status = statusConfig[task.status as keyof typeof statusConfig] || statusConfig.pending;
-                  const priority = priorityConfig[task.priority as keyof typeof priorityConfig] || priorityConfig.medium;
-                  const StatusIcon = status.icon;
-
-                  return (
-                    <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
-                      <div className="flex items-start gap-4">
-                        <div className={cn("p-2 rounded-lg", status.bg)}>
-                          <StatusIcon className={cn("w-5 h-5", status.color)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{task.title}</h3>
-                            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", priority.color)} />
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                            {task.assignee && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {task.assignee}
-                              </span>
-                            )}
-                            {task.department && (
-                              <span className="flex items-center gap-1">
-                                <Briefcase className="w-3 h-3" />
-                                {task.department}
-                              </span>
-                            )}
-                            {task.due_date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(task.due_date).toLocaleDateString("he-IL")}
-                              </span>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{task.description}</p>
-                          )}
-                        </div>
-                        <span className={cn("px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap", status.bg, status.color)}>
-                          {status.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
+                rootTasks.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    allTasks={tasks}
+                    teamMembers={teamMembers}
+                    onEdit={handleEditTask}
+                    onAddSubtask={handleAddSubtask}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))
               )}
             </div>
           </TabsContent>
@@ -318,31 +422,25 @@ export default function ClientProfile() {
                   <div className="p-4 border-b border-border bg-muted/30">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold flex items-center gap-2">
-                        <Users className="w-4 h-4" />
+                        <User className="w-4 h-4" />
                         {assignee}
                       </h3>
                       <span className="text-sm text-muted-foreground">
-                        {assigneeTasks.filter(t => t.status === "completed").length}/{assigneeTasks.length} הושלמו
+                        {assigneeTasks.filter(t => t.status === "completed").length}/{assigneeTasks.length} {t('completed')}
                       </span>
                     </div>
                   </div>
-                  <div className="divide-y divide-border">
-                    {assigneeTasks.map((task) => {
-                      const status = statusConfig[task.status as keyof typeof statusConfig] || statusConfig.pending;
-                      const StatusIcon = status.icon;
-                      return (
-                        <div key={task.id} className="p-3 flex items-center gap-3">
-                          <StatusIcon className={cn("w-4 h-4", status.color)} />
-                          <span className="flex-1 truncate">{task.title}</span>
-                          {task.due_date && (
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(task.due_date).toLocaleDateString("he-IL")}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {assigneeTasks.map((task) => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      allTasks={tasks}
+                      teamMembers={teamMembers}
+                      onEdit={handleEditTask}
+                      onAddSubtask={handleAddSubtask}
+                      onStatusChange={handleStatusChange}
+                    />
+                  ))}
                 </div>
               ))}
             </div>
@@ -359,24 +457,35 @@ export default function ClientProfile() {
                         {dept}
                       </h3>
                       <span className="text-sm text-muted-foreground">
-                        {deptTasks.filter(t => t.status === "completed").length}/{deptTasks.length} הושלמו
+                        {deptTasks.filter(t => t.status === "completed").length}/{deptTasks.length} {t('completed')}
                       </span>
                     </div>
                   </div>
-                  <div className="divide-y divide-border">
-                    {deptTasks.map((task) => {
-                      const status = statusConfig[task.status as keyof typeof statusConfig] || statusConfig.pending;
-                      const StatusIcon = status.icon;
-                      return (
-                        <div key={task.id} className="p-3 flex items-center gap-3">
-                          <StatusIcon className={cn("w-4 h-4", status.color)} />
-                          <span className="flex-1 truncate">{task.title}</span>
-                          <span className="text-xs text-muted-foreground">{task.assignee}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {deptTasks.map((task) => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      allTasks={tasks}
+                      teamMembers={teamMembers}
+                      onEdit={handleEditTask}
+                      onAddSubtask={handleAddSubtask}
+                      onStatusChange={handleStatusChange}
+                    />
+                  ))}
                 </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teamMembers.map((member) => (
+                <TeamMemberCard
+                  key={member.id}
+                  member={member}
+                  onUpdate={(id, updates) => updateTeamMemberMutation.mutate({ id, updates })}
+                  isLoading={updateTeamMemberMutation.isPending}
+                />
               ))}
             </div>
           </TabsContent>
@@ -384,7 +493,7 @@ export default function ClientProfile() {
           <TabsContent value="campaigns">
             {campaigns.length === 0 ? (
               <div className="glass rounded-xl p-6 text-center text-muted-foreground">
-                אין קמפיינים ללקוח זה
+                {language === 'en' ? 'No campaigns for this client' : language === 'hi' ? 'इस ग्राहक के लिए कोई अभियान नहीं' : 'אין קמפיינים ללקוח זה'}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -397,7 +506,7 @@ export default function ClientProfile() {
                         "px-2 py-1 rounded-full",
                         campaign.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
                       )}>
-                        {campaign.status === "active" ? "פעיל" : campaign.status}
+                        {campaign.status === "active" ? (language === 'en' ? 'Active' : language === 'hi' ? 'सक्रिय' : 'פעיל') : campaign.status}
                       </span>
                       {campaign.budget && (
                         <span className="text-muted-foreground">₪{campaign.budget.toLocaleString()}</span>
@@ -409,6 +518,17 @@ export default function ClientProfile() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Task Edit Dialog */}
+        <TaskEditDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          task={editingTask}
+          parentTaskId={parentTaskIdForNew}
+          teamMembers={teamMembers}
+          onSave={handleSaveTask}
+          isLoading={updateTaskMutation.isPending}
+        />
       </div>
     </MainLayout>
   );

@@ -438,48 +438,79 @@ export type Database = {
       }
       tasks: {
         Row: {
+          actual_hours: number | null
+          assigned_member_id: string | null
           assignee: string | null
           campaign_id: string | null
           client_id: string | null
+          completed_at: string | null
+          completion_notes: string | null
           created_at: string
           department: string | null
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
+          parent_task_id: string | null
           priority: string
+          reminder_date: string | null
+          reminder_sent: boolean | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
+          actual_hours?: number | null
+          assigned_member_id?: string | null
           assignee?: string | null
           campaign_id?: string | null
           client_id?: string | null
+          completed_at?: string | null
+          completion_notes?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
+          parent_task_id?: string | null
           priority?: string
+          reminder_date?: string | null
+          reminder_sent?: boolean | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
+          actual_hours?: number | null
+          assigned_member_id?: string | null
           assignee?: string | null
           campaign_id?: string | null
           client_id?: string | null
+          completed_at?: string | null
+          completion_notes?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
+          parent_task_id?: string | null
           priority?: string
+          reminder_date?: string | null
+          reminder_sent?: boolean | null
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_member_id_fkey"
+            columns: ["assigned_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_campaign_id_fkey"
             columns: ["campaign_id"]
@@ -494,7 +525,86 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      team_members: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          departments: string[]
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_en: string | null
+          name_hi: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          departments?: string[]
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_en?: string | null
+          name_hi?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          departments?: string[]
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string | null
+          name_hi?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      translations: {
+        Row: {
+          context: string | null
+          created_at: string
+          en: string | null
+          he: string
+          hi: string | null
+          id: string
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          en?: string | null
+          he: string
+          hi?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          en?: string | null
+          he?: string
+          hi?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
