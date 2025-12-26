@@ -402,6 +402,7 @@ export type Database = {
           priority: string
           sprint_number: number | null
           status: string
+          steps: Json | null
           title: string
           updated_at: string
         }
@@ -415,6 +416,7 @@ export type Database = {
           priority?: string
           sprint_number?: number | null
           status?: string
+          steps?: Json | null
           title: string
           updated_at?: string
         }
@@ -428,6 +430,7 @@ export type Database = {
           priority?: string
           sprint_number?: number | null
           status?: string
+          steps?: Json | null
           title?: string
           updated_at?: string
         }
