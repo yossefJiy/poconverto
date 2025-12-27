@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import Backlog from "./pages/Backlog";
 import ClientDashboard from "./pages/ClientDashboard";
 import Clients from "./pages/Clients";
+import ApiDocs from "./pages/ApiDocs";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
                 <Route path="/translations" element={<ProtectedRoute><Translations /></ProtectedRoute>} />
                 <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
                 <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
+                <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
