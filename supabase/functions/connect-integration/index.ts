@@ -336,7 +336,7 @@ serve(async (req) => {
       if (!handler) {
         return new Response(
           JSON.stringify({ success: false, message: `פלטפורמה ${platform} לא נתמכת עדיין` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -368,14 +368,15 @@ serve(async (req) => {
           console.error('Database insert error:', insertError);
           return new Response(
             JSON.stringify({ success: false, message: 'שגיאה בשמירת החיבור במסד הנתונים' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
 
+      // Always return 200 so the client can handle success/failure properly
       return new Response(
         JSON.stringify(result),
-        { status: result.success ? 200 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
