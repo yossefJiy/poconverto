@@ -16,7 +16,8 @@ import {
   Link2,
   Bell,
   Palette,
-  ListTodo
+  ListTodo,
+  Plug
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,12 +29,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientSwitcher } from "./ClientSwitcher";
+import logoIcon from "@/assets/logo-icon.svg";
+import logoText from "@/assets/logo-text.svg";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
@@ -47,6 +47,7 @@ const settingsItems = [
   { icon: User, label: "פרופיל", path: "/settings", section: "profile" },
   { icon: Bell, label: "התראות", path: "/settings", section: "notifications" },
   { icon: Link2, label: "אינטגרציות", path: "/settings", section: "integrations" },
+  { icon: Plug, label: "חיבורים", path: "/integrations" },
   { icon: Shield, label: "אבטחה", path: "/settings", section: "security" },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance" },
   { icon: Languages, label: "תרגומים", path: "/translations" },
@@ -84,11 +85,12 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
-        {!collapsed && (
-          <h1 className="text-xl font-bold gradient-text animate-fade-in">
-            MarketFlow
-          </h1>
-        )}
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logoIcon} alt="Converto" className="h-6 w-auto" />
+          {!collapsed && (
+            <img src={logoText} alt="Converto" className="h-4 w-auto animate-fade-in" />
+          )}
+        </Link>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
