@@ -1,46 +1,51 @@
-import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { useClient } from "@/hooks/useClient";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Users, 
-  Target, 
-  TrendingUp, 
-  CheckSquare,
   Megaphone,
   DollarSign,
   Eye,
   MousePointer,
-  Loader2
+  TrendingUp,
+  CheckSquare,
+  Loader2,
+  Building2,
+  Globe,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
-import { AIContentDialog } from "@/components/ai/AIContentDialog";
-import { AIInsightsDialog } from "@/components/ai/AIInsightsDialog";
-import { ReportDialog } from "@/components/reports/ReportDialog";
-import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
-import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
 
-export default function Dashboard() {
-  const { selectedClient } = useClient();
+export default function ClientDashboard() {
+  const { clientId } = useParams<{ clientId: string }>();
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ["dashboard-stats", selectedClient?.id],
+  const { data: client, isLoading: isLoadingClient } = useQuery({
+    queryKey: ["public-client", clientId],
     queryFn: async () => {
-      // Get tasks
-      let tasksQuery = supabase.from("tasks").select("status");
-      if (selectedClient) {
-        tasksQuery = tasksQuery.eq("client_id", selectedClient.id);
-      }
-      const { data: tasks } = await tasksQuery;
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("id", clientId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientId,
+  });
 
-      // Get campaigns
-      let campaignsQuery = supabase.from("campaigns").select("status, budget, spent, impressions, clicks, conversions");
-      if (selectedClient) {
-        campaignsQuery = campaignsQuery.eq("client_id", selectedClient.id);
-      }
-      const { data: campaigns } = await campaignsQuery;
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["public-dashboard-stats", clientId],
+    queryFn: async () => {
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("status")
+        .eq("client_id", clientId);
+
+      const { data: campaigns } = await supabase
+        .from("campaigns")
+        .select("status, budget, spent, impressions, clicks, conversions")
+        .eq("client_id", clientId);
 
       const activeCampaigns = campaigns?.filter(c => c.status === "active").length || 0;
       const totalBudget = campaigns?.reduce((sum, c) => sum + (c.budget || 0), 0) || 0;
@@ -64,38 +69,48 @@ export default function Dashboard() {
         ctr: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0",
       };
     },
+    enabled: !!clientId,
   });
 
   const { data: recentTasks = [] } = useQuery({
-    queryKey: ["recent-tasks", selectedClient?.id],
+    queryKey: ["public-recent-tasks", clientId],
     queryFn: async () => {
-      let query = supabase
+      const { data } = await supabase
         .from("tasks")
         .select("*, team_members(name)")
+        .eq("client_id", clientId)
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (selectedClient) {
-        query = query.eq("client_id", selectedClient.id);
-      }
-      const { data } = await query;
+        .limit(10);
       return data || [];
     },
+    enabled: !!clientId,
   });
 
   const { data: recentCampaigns = [] } = useQuery({
-    queryKey: ["recent-campaigns", selectedClient?.id],
+    queryKey: ["public-recent-campaigns", clientId],
     queryFn: async () => {
-      let query = supabase
+      const { data } = await supabase
         .from("campaigns")
         .select("*")
+        .eq("client_id", clientId)
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (selectedClient) {
-        query = query.eq("client_id", selectedClient.id);
-      }
-      const { data } = await query;
+        .limit(10);
       return data || [];
     },
+    enabled: !!clientId,
+  });
+
+  const { data: goals = [] } = useQuery({
+    queryKey: ["public-goals", clientId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("goals")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!clientId,
   });
 
   const statusConfig: Record<string, { color: string; label: string }> = {
@@ -106,17 +121,54 @@ export default function Dashboard() {
     paused: { color: "bg-warning", label: "מושהה" },
   };
 
-  return (
-    <MainLayout>
-      <div className="p-8">
-        <div className="flex items-center justify-between mb-6">
-          <PageHeader 
-            title={selectedClient ? `דשבורד - ${selectedClient.name}` : "דשבורד כללי"}
-            description={selectedClient ? `סקירת ביצועים עבור ${selectedClient.name}` : "סקירה כללית של כל הפעילות"}
-          />
-          {selectedClient && <ShareDashboardDialog />}
-        </div>
+  const isLoading = isLoadingClient || isLoadingStats;
 
+  if (!clientId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">לא נמצא מזהה לקוח</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30" dir="rtl">
+      {/* Header */}
+      <header className="bg-card/80 backdrop-blur-xl border-b border-border sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {client?.logo_url ? (
+                <img src={client.logo_url} alt={client?.name} className="w-12 h-12 rounded-lg object-cover" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-primary" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-xl font-bold">{client?.name || "טוען..."}</h1>
+                {client?.industry && (
+                  <p className="text-sm text-muted-foreground">{client.industry}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              {client?.website && (
+                <a href={client.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
+                  <Globe className="w-4 h-4" />
+                  <span className="hidden sm:inline">אתר</span>
+                </a>
+              )}
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                <span>{format(new Date(), "dd/MM/yyyy", { locale: he })}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -153,7 +205,7 @@ export default function Dashboard() {
 
             {/* Budget & Performance */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
+              <div className="bg-card rounded-xl p-6 border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-primary" />
@@ -174,10 +226,10 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.35s", animationFillMode: "forwards" }}>
+              <div className="bg-card rounded-xl p-6 border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.35s", animationFillMode: "forwards" }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                    <MousePointer className="w-5 h-5 text-accent" />
+                    <MousePointer className="w-5 h-5 text-accent-foreground" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">קליקים</p>
@@ -190,7 +242,7 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
+              <div className="bg-card rounded-xl p-6 border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
                     <CheckSquare className="w-5 h-5 text-success" />
@@ -209,14 +261,42 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Goals */}
+            {goals.length > 0 && (
+              <div className="mb-8 opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+                <h2 className="text-lg font-bold mb-4">יעדים</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {goals.map((goal: any) => (
+                    <div key={goal.id} className="bg-card rounded-xl p-4 border border-border shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{goal.name}</h3>
+                        <span className="text-xs text-muted-foreground">{goal.period}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="text-2xl font-bold">{goal.current_value || 0}</span>
+                        <span className="text-muted-foreground">/ {goal.target_value}</span>
+                        {goal.unit && <span className="text-sm text-muted-foreground">{goal.unit}</span>}
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${Math.min((goal.current_value / goal.target_value) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Tasks */}
-              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+              <div className="bg-card rounded-xl border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
                 <div className="p-4 border-b border-border">
                   <h3 className="font-bold">משימות אחרונות</h3>
                 </div>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border max-h-96 overflow-y-auto">
                   {recentTasks.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">אין משימות</div>
                   ) : (
@@ -227,6 +307,7 @@ export default function Dashboard() {
                             <p className="font-medium">{task.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {task.team_members?.name || task.assignee || "לא משויך"}
+                              {task.due_date && ` • ${format(new Date(task.due_date), "dd/MM/yyyy")}`}
                             </p>
                           </div>
                           <span className={cn(
@@ -244,17 +325,17 @@ export default function Dashboard() {
               </div>
 
               {/* Recent Campaigns */}
-              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
+              <div className="bg-card rounded-xl border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.55s", animationFillMode: "forwards" }}>
                 <div className="p-4 border-b border-border">
-                  <h3 className="font-bold">קמפיינים אחרונים</h3>
+                  <h3 className="font-bold">קמפיינים</h3>
                 </div>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border max-h-96 overflow-y-auto">
                   {recentCampaigns.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">אין קמפיינים</div>
                   ) : (
                     recentCampaigns.map((campaign: any) => (
                       <div key={campaign.id} className="p-4 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-2">
                           <div>
                             <p className="font-medium">{campaign.name}</p>
                             <p className="text-xs text-muted-foreground">{campaign.platform}</p>
@@ -267,6 +348,20 @@ export default function Dashboard() {
                             {statusConfig[campaign.status]?.label || campaign.status}
                           </span>
                         </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                          <div>
+                            <span className="block text-foreground font-medium">{formatNumber(campaign.impressions || 0)}</span>
+                            <span>חשיפות</span>
+                          </div>
+                          <div>
+                            <span className="block text-foreground font-medium">{formatNumber(campaign.clicks || 0)}</span>
+                            <span>קליקים</span>
+                          </div>
+                          <div>
+                            <span className="block text-foreground font-medium">{campaign.conversions || 0}</span>
+                            <span>המרות</span>
+                          </div>
+                        </div>
                       </div>
                     ))
                   )}
@@ -275,15 +370,20 @@ export default function Dashboard() {
             </div>
           </>
         )}
-      </div>
-    </MainLayout>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border mt-12 py-6 text-center text-sm text-muted-foreground">
+        <p>דוח זה נוצר אוטומטית • {format(new Date(), "dd/MM/yyyy HH:mm", { locale: he })}</p>
+      </footer>
+    </div>
   );
 }
 
 function MetricCard({ title, value, icon, delay }: { title: string; value: string | number; icon: React.ReactNode; delay: number }) {
   return (
     <div 
-      className="glass rounded-xl p-5 card-shadow opacity-0 animate-slide-up"
+      className="bg-card rounded-xl p-5 border border-border shadow-sm opacity-0 animate-slide-up"
       style={{ animationDelay: `${delay}s`, animationFillMode: "forwards" }}
     >
       <div className="flex items-center justify-between mb-3">
