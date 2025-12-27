@@ -11,7 +11,8 @@ import {
   Edit2,
   Plus,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ interface TaskItemProps {
   onEdit: (task: Task) => void;
   onAddSubtask: (parentId: string) => void;
   onStatusChange: (taskId: string, status: string) => void;
+  onDelete: (task: Task) => void;
   level?: number;
 }
 
@@ -75,6 +77,7 @@ export function TaskItem({
   onEdit, 
   onAddSubtask, 
   onStatusChange,
+  onDelete,
   level = 0 
 }: TaskItemProps) {
   const { t, language } = useTranslation();
@@ -115,7 +118,6 @@ export function TaskItem({
 
   // Calculate subtasks completion
   const completedSubtasks = subtasks.filter(st => st.status === 'completed').length;
-  const subtasksProgress = hasSubtasks ? (completedSubtasks / subtasks.length) * 100 : 0;
 
   return (
     <div className={cn("border-b border-border last:border-b-0", level > 0 && "mr-6 border-r-2 border-primary/20")}>
@@ -262,6 +264,15 @@ export function TaskItem({
             >
               <Edit2 className="w-4 h-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={() => onDelete(task)}
+              title={t('delete')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Status Badge */}
@@ -283,6 +294,7 @@ export function TaskItem({
               onEdit={onEdit}
               onAddSubtask={onAddSubtask}
               onStatusChange={onStatusChange}
+              onDelete={onDelete}
               level={level + 1}
             />
           ))}
