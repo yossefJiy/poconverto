@@ -44,6 +44,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
 
 const platformConfig: Record<string, { color: string; name: string }> = {
   google: { color: "bg-[#4285F4]", name: "Google Ads" },
@@ -64,10 +75,14 @@ export default function Campaigns() {
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newCampaign, setNewCampaign] = useState({
     name: "",
     platform: "facebook",
     budget: "",
+    start_date: "",
+    end_date: "",
     description: "",
   });
 
@@ -92,6 +107,8 @@ export default function Campaigns() {
         name: campaign.name,
         platform: campaign.platform,
         budget: parseFloat(campaign.budget) || 0,
+        start_date: campaign.start_date || null,
+        end_date: campaign.end_date || null,
         description: campaign.description,
         status: "draft",
       });
@@ -101,7 +118,7 @@ export default function Campaigns() {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast.success("הקמפיין נוצר בהצלחה");
       setShowDialog(false);
-      setNewCampaign({ name: "", platform: "facebook", budget: "", description: "" });
+      setNewCampaign({ name: "", platform: "facebook", budget: "", start_date: "", end_date: "", description: "" });
     },
     onError: () => toast.error("שגיאה ביצירת קמפיין"),
   });
@@ -125,6 +142,7 @@ export default function Campaigns() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast.success("הקמפיין נמחק");
+      setDeleteId(null);
     },
   });
 
@@ -171,6 +189,24 @@ export default function Campaigns() {
                     value={newCampaign.budget}
                     onChange={(e) => setNewCampaign({ ...newCampaign, budget: e.target.value })}
                   />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">תאריך התחלה</label>
+                      <Input
+                        type="date"
+                        value={newCampaign.start_date}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, start_date: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">תאריך סיום</label>
+                      <Input
+                        type="date"
+                        value={newCampaign.end_date}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, end_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <Textarea
                     placeholder="תיאור"
                     value={newCampaign.description}
@@ -325,6 +361,10 @@ export default function Campaigns() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingCampaign(campaign)}>
+                            <Edit2 className="w-4 h-4 ml-2" />
+                            ערוך
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "active" })}>
                             <Play className="w-4 h-4 ml-2" />
                             הפעל
@@ -334,7 +374,7 @@ export default function Campaigns() {
                             השהה
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => deleteMutation.mutate(campaign.id)}
+                            onClick={() => setDeleteId(campaign.id)}
                             className="text-destructive"
                           >
                             <Trash2 className="w-4 h-4 ml-2" />
@@ -349,6 +389,36 @@ export default function Campaigns() {
             })}
           </div>
         )}
+
+        {/* Edit Dialog */}
+        {editingCampaign && (
+          <CampaignEditDialog 
+            campaign={editingCampaign}
+            open={!!editingCampaign}
+            onOpenChange={(open) => !open && setEditingCampaign(null)}
+          />
+        )}
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>האם אתה בטוח?</AlertDialogTitle>
+              <AlertDialogDescription>
+                פעולה זו תמחק את הקמפיין לצמיתות.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                מחק
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
