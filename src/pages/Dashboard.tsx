@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { AIContentDialog } from "@/components/ai/AIContentDialog";
+import { AIInsightsDialog } from "@/components/ai/AIInsightsDialog";
+import { ReportDialog } from "@/components/reports/ReportDialog";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
