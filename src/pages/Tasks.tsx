@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { useClient } from "@/hooks/useClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   CheckCircle2, 
   Circle, 
@@ -9,143 +13,128 @@ import {
   Filter,
   Plus,
   Calendar,
-  Paperclip,
-  MessageSquare,
   MoreVertical,
-  ChevronDown
+  Loader2,
+  CheckSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  client: string;
-  assignee: string;
-  department: "design" | "content" | "ads" | "strategy" | "development";
-  status: "pending" | "in-progress" | "review" | "completed";
-  priority: "low" | "medium" | "high" | "urgent";
-  dueDate: string;
-  assets: number;
-  comments: number;
-}
-
-const tasks: Task[] = [
-  {
-    id: "1",
-    title: "עיצוב באנר לקמפיין קיץ",
-    description: "עיצוב 5 גרסאות באנר בגדלים שונים לפייסבוק ואינסטגרם",
-    client: "חברת אלפא",
-    assignee: "יעל כהן",
-    department: "design",
-    status: "in-progress",
-    priority: "high",
-    dueDate: "היום",
-    assets: 3,
-    comments: 5,
-  },
-  {
-    id: "2",
-    title: "כתיבת תוכן לפוסט אינסטגרם",
-    description: "סדרת 10 פוסטים לחודש יולי עם קריאה לפעולה",
-    client: "סטארטאפ בטא",
-    assignee: "דני לוי",
-    department: "content",
-    status: "pending",
-    priority: "medium",
-    dueDate: "מחר",
-    assets: 0,
-    comments: 2,
-  },
-  {
-    id: "3",
-    title: "אופטימיזציה לקמפיין גוגל",
-    description: "שיפור CTR ו-Quality Score למילות מפתח עיקריות",
-    client: "חברת גמא",
-    assignee: "מיכל אברהם",
-    department: "ads",
-    status: "completed",
-    priority: "high",
-    dueDate: "אתמול",
-    assets: 2,
-    comments: 8,
-  },
-  {
-    id: "4",
-    title: "דו״ח ביצועים חודשי",
-    description: "הכנת דו״ח מקיף עם ניתוח והמלצות לשיפור",
-    client: "חברת דלתא",
-    assignee: "רון שמיר",
-    department: "strategy",
-    status: "review",
-    priority: "low",
-    dueDate: "עוד 3 ימים",
-    assets: 5,
-    comments: 1,
-  },
-  {
-    id: "5",
-    title: "בניית דף נחיתה",
-    description: "עיצוב ופיתוח דף נחיתה להשקת מוצר חדש",
-    client: "חברת אלפא",
-    assignee: "נועה גולן",
-    department: "development",
-    status: "in-progress",
-    priority: "urgent",
-    dueDate: "היום",
-    assets: 7,
-    comments: 12,
-  },
-  {
-    id: "6",
-    title: "סקריפט לסרטון תדמית",
-    description: "כתיבת סקריפט לסרטון 2 דקות",
-    client: "סטארטאפ בטא",
-    assignee: "דני לוי",
-    department: "content",
-    status: "pending",
-    priority: "medium",
-    dueDate: "עוד 5 ימים",
-    assets: 1,
-    comments: 3,
-  },
-];
-
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   pending: { icon: Circle, color: "text-warning", bg: "bg-warning/10", label: "ממתין" },
   "in-progress": { icon: Clock, color: "text-info", bg: "bg-info/10", label: "בתהליך" },
   review: { icon: Clock, color: "text-purple-400", bg: "bg-purple-400/10", label: "בבדיקה" },
   completed: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: "הושלם" },
 };
 
-const priorityConfig = {
-  low: { color: "bg-muted", text: "text-muted-foreground", label: "נמוכה" },
-  medium: { color: "bg-warning", text: "text-warning", label: "בינונית" },
-  high: { color: "bg-destructive", text: "text-destructive", label: "גבוהה" },
-  urgent: { color: "bg-destructive animate-pulse-glow", text: "text-destructive", label: "דחוף" },
+const priorityConfig: Record<string, { color: string; label: string }> = {
+  low: { color: "bg-muted", label: "נמוכה" },
+  medium: { color: "bg-warning", label: "בינונית" },
+  high: { color: "bg-destructive", label: "גבוהה" },
+  urgent: { color: "bg-destructive animate-pulse", label: "דחוף" },
 };
-
-const departmentConfig = {
-  design: { color: "bg-pink-500/10 text-pink-400", label: "עיצוב" },
-  content: { color: "bg-blue-500/10 text-blue-400", label: "תוכן" },
-  ads: { color: "bg-green-500/10 text-green-400", label: "פרסום" },
-  strategy: { color: "bg-purple-500/10 text-purple-400", label: "אסטרטגיה" },
-  development: { color: "bg-orange-500/10 text-orange-400", label: "פיתוח" },
-};
-
-type FilterType = "all" | "client" | "assignee" | "department";
 
 export default function Tasks() {
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [selectedValue, setSelectedValue] = useState<string>("");
+  const { selectedClient } = useClient();
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<"all" | "assignee" | "department">("all");
+  const [selectedValue, setSelectedValue] = useState("");
+  const [showDialog, setShowDialog] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    assignee: "",
+  });
 
-  const clients = [...new Set(tasks.map(t => t.client))];
-  const assignees = [...new Set(tasks.map(t => t.assignee))];
-  const departments = Object.keys(departmentConfig) as Array<keyof typeof departmentConfig>;
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ["tasks", selectedClient?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from("tasks")
+        .select("*, team_members(name)")
+        .order("created_at", { ascending: false });
+      if (selectedClient) {
+        query = query.eq("client_id", selectedClient.id);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["team-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (task: typeof newTask) => {
+      const { error } = await supabase.from("tasks").insert({
+        client_id: selectedClient?.id || null,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        assignee: task.assignee,
+        status: "pending",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("המשימה נוצרה בהצלחה");
+      setShowDialog(false);
+      setNewTask({ title: "", description: "", priority: "medium", assignee: "" });
+    },
+    onError: () => toast.error("שגיאה ביצירת משימה"),
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("tasks").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("הסטטוס עודכן");
+    },
+  });
+
+  const assignees = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
+  const departments = [...new Set(tasks.map(t => t.department).filter(Boolean))];
 
   const filteredTasks = tasks.filter(task => {
     if (filter === "all" || !selectedValue) return true;
-    if (filter === "client") return task.client === selectedValue;
     if (filter === "assignee") return task.assignee === selectedValue;
     if (filter === "department") return task.department === selectedValue;
     return true;
@@ -154,17 +143,70 @@ export default function Tasks() {
   return (
     <MainLayout>
       <div className="p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
-          <div>
-            <h1 className="text-3xl font-bold mb-2">ניהול משימות</h1>
-            <p className="text-muted-foreground">לפי עובד, לקוח ומחלקה</p>
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors glow">
-            <Plus className="w-4 h-4" />
-            <span>משימה חדשה</span>
-          </button>
-        </div>
+        <PageHeader 
+          title={selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"}
+          description="לפי עובד, לקוח ומחלקה"
+          actions={
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogTrigger asChild>
+                <Button className="glow">
+                  <Plus className="w-4 h-4 ml-2" />
+                  משימה חדשה
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>משימה חדשה</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <Input
+                    placeholder="כותרת המשימה"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  />
+                  <Textarea
+                    placeholder="תיאור"
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  />
+                  <Select
+                    value={newTask.priority}
+                    onValueChange={(v) => setNewTask({ ...newTask, priority: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="עדיפות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(priorityConfig).map(([key, { label }]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={newTask.assignee}
+                    onValueChange={(v) => setNewTask({ ...newTask, assignee: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="משויך ל..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.name}>{member.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createMutation.mutate(newTask)}
+                    disabled={!newTask.title || createMutation.isPending}
+                  >
+                    {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "צור משימה"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          }
+        />
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-8 opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
@@ -177,16 +219,6 @@ export default function Tasks() {
               )}
             >
               הכל
-            </button>
-            <button
-              onClick={() => setFilter("client")}
-              className={cn(
-                "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
-                filter === "client" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              )}
-            >
-              <Building2 className="w-4 h-4" />
-              לקוח
             </button>
             <button
               onClick={() => setFilter("assignee")}
@@ -211,92 +243,101 @@ export default function Tasks() {
           </div>
 
           {filter !== "all" && (
-            <select
-              value={selectedValue}
-              onChange={(e) => setSelectedValue(e.target.value)}
-              className="bg-secondary border-none rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary"
-            >
-              <option value="">בחר {filter === "client" ? "לקוח" : filter === "assignee" ? "עובד" : "מחלקה"}</option>
-              {filter === "client" && clients.map(c => <option key={c} value={c}>{c}</option>)}
-              {filter === "assignee" && assignees.map(a => <option key={a} value={a}>{a}</option>)}
-              {filter === "department" && departments.map(d => <option key={d} value={d}>{departmentConfig[d].label}</option>)}
-            </select>
+            <Select value={selectedValue} onValueChange={setSelectedValue}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder={`בחר ${filter === "assignee" ? "עובד" : "מחלקה"}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {filter === "assignee" && assignees.map(a => <SelectItem key={a} value={a!}>{a}</SelectItem>)}
+                {filter === "department" && departments.map(d => <SelectItem key={d} value={d!}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
           )}
         </div>
 
-        {/* Tasks Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTasks.map((task, index) => {
-            const status = statusConfig[task.status];
-            const priority = priorityConfig[task.priority];
-            const department = departmentConfig[task.department];
-            const StatusIcon = status.icon;
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="glass rounded-xl p-12 text-center">
+            <CheckSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">אין משימות</h3>
+            <p className="text-muted-foreground">צור משימה חדשה כדי להתחיל</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTasks.map((task, index) => {
+              const status = statusConfig[task.status] || statusConfig.pending;
+              const priority = priorityConfig[task.priority] || priorityConfig.medium;
+              const StatusIcon = status.icon;
 
-            return (
-              <div 
-                key={task.id}
-                className="glass rounded-xl card-shadow opacity-0 animate-slide-up glass-hover group"
-                style={{ animationDelay: `${0.15 + index * 0.05}s`, animationFillMode: "forwards" }}
-              >
-                <div className="p-5">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("w-2 h-2 rounded-full", priority.color)} />
-                      <span className={cn("px-2 py-0.5 rounded-full text-xs", department.color)}>
-                        {department.label}
+              return (
+                <div 
+                  key={task.id}
+                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up group"
+                  style={{ animationDelay: `${0.15 + index * 0.05}s`, animationFillMode: "forwards" }}
+                >
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("w-2 h-2 rounded-full", priority.color)} />
+                        <span className="text-xs text-muted-foreground">{priority.label}</span>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {Object.entries(statusConfig).map(([key, { label }]) => (
+                            <DropdownMenuItem 
+                              key={key}
+                              onClick={() => updateStatusMutation.mutate({ id: task.id, status: key })}
+                            >
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <h3 className="font-bold mb-2 line-clamp-2">{task.title}</h3>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{task.description}</p>
+                    )}
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                      {task.assignee && (
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {task.assignee}
+                        </span>
+                      )}
+                      {task.due_date && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(task.due_date).toLocaleDateString("he-IL")}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <span className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                        status.bg, status.color
+                      )}>
+                        <StatusIcon className="w-3 h-3" />
+                        {status.label}
                       </span>
                     </div>
-                    <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-all">
-                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </div>
-
-                  {/* Title & Description */}
-                  <h3 className="font-bold mb-2 line-clamp-2">{task.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{task.description}</p>
-
-                  {/* Client & Assignee */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                    <span className="flex items-center gap-1">
-                      <Building2 className="w-3 h-3" />
-                      {task.client}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {task.assignee}
-                    </span>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-border">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <span className="flex items-center gap-1 text-xs">
-                        <Paperclip className="w-3 h-3" />
-                        {task.assets}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs">
-                        <MessageSquare className="w-3 h-3" />
-                        {task.comments}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs">
-                        <Calendar className="w-3 h-3" />
-                        {task.dueDate}
-                      </span>
-                    </div>
-                    <span className={cn(
-                      "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                      status.bg, status.color
-                    )}>
-                      <StatusIcon className="w-3 h-3" />
-                      {status.label}
-                    </span>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

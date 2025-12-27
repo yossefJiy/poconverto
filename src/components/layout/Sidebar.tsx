@@ -6,16 +6,17 @@ import {
   Megaphone, 
   CheckSquare, 
   Users, 
-  Building2, 
   Settings,
   ChevronLeft,
   ChevronRight,
   LogOut,
   User,
-  ListTodo,
   Languages,
-  Pencil,
-  Eye
+  Shield,
+  Link2,
+  Bell,
+  Palette,
+  ListTodo
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,10 +28,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
-import { useEditMode } from "@/hooks/useEditMode";
+import { ClientSwitcher } from "./ClientSwitcher";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
@@ -38,44 +41,17 @@ const menuItems = [
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks" },
   { icon: Users, label: "צוות", path: "/team" },
-  { icon: Building2, label: "לקוחות", path: "/clients" },
+];
+
+const settingsItems = [
+  { icon: User, label: "פרופיל", path: "/settings", section: "profile" },
+  { icon: Bell, label: "התראות", path: "/settings", section: "notifications" },
+  { icon: Link2, label: "אינטגרציות", path: "/settings", section: "integrations" },
+  { icon: Shield, label: "אבטחה", path: "/settings", section: "security" },
+  { icon: Palette, label: "מראה", path: "/settings", section: "appearance" },
   { icon: Languages, label: "תרגומים", path: "/translations" },
   { icon: ListTodo, label: "Backlog", path: "/backlog" },
 ];
-
-function EditModeToggle({ collapsed }: { collapsed: boolean }) {
-  const { isEditMode, toggleEditMode } = useEditMode();
-  
-  return (
-    <div className={cn(
-      "px-4 py-2 border-t border-sidebar-border",
-      collapsed ? "flex justify-center" : ""
-    )}>
-      <div className={cn(
-        "flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/30",
-        collapsed ? "justify-center p-2" : "justify-between"
-      )}>
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            {isEditMode ? (
-              <Pencil className="w-4 h-4 text-warning" />
-            ) : (
-              <Eye className="w-4 h-4 text-muted-foreground" />
-            )}
-            <span className="text-sm font-medium">
-              {isEditMode ? "מצב עריכה" : "מצב עבודה"}
-            </span>
-          </div>
-        )}
-        <Switch
-          checked={isEditMode}
-          onCheckedChange={toggleEditMode}
-          className="data-[state=checked]:bg-warning"
-        />
-      </div>
-    </div>
-  );
-}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -101,13 +77,13 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "fixed right-0 top-0 h-screen bg-sidebar border-l border-sidebar-border transition-all duration-300 z-50",
+        "fixed right-0 top-0 h-screen bg-sidebar border-l border-sidebar-border transition-all duration-300 z-50 flex flex-col",
         collapsed ? "w-20" : "w-64"
       )}
       style={{ background: "var(--gradient-sidebar)" }}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
         {!collapsed && (
           <h1 className="text-xl font-bold gradient-text animate-fade-in">
             MarketFlow
@@ -125,8 +101,13 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Client Switcher */}
+      <div className="p-3 border-b border-sidebar-border shrink-0">
+        <ClientSwitcher collapsed={collapsed} />
+      </div>
+
       {/* Navigation */}
-      <nav className="p-4 space-y-2">
+      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
         {menuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
@@ -134,51 +115,66 @@ export function Sidebar() {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
                 "opacity-0 animate-slide-right",
                 isActive 
-                  ? "bg-primary/10 text-primary glow" 
+                  ? "bg-primary/10 text-primary" 
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
               style={{ animationDelay: `${index * 0.05}s`, animationFillMode: "forwards" }}
             >
               <item.icon className={cn(
-                "w-5 h-5 transition-transform duration-200",
+                "w-5 h-5 transition-transform duration-200 shrink-0",
                 isActive && "scale-110"
               )} />
               {!collapsed && (
                 <span className="font-medium">{item.label}</span>
               )}
               {isActive && (
-                <div className="absolute right-0 w-1 h-8 bg-primary rounded-l-full" />
+                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
               )}
             </Link>
           );
         })}
       </nav>
 
-      {/* User section at bottom */}
-      <div className="absolute bottom-0 right-0 left-0 border-t border-sidebar-border">
-      {/* Settings */}
-        <div className="px-4 py-2">
-          <Link
-            to="/settings"
-            className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
-              location.pathname === "/settings" && "bg-primary/10 text-primary"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            {!collapsed && <span className="font-medium">הגדרות</span>}
-          </Link>
+      {/* Bottom Section */}
+      <div className="border-t border-sidebar-border shrink-0">
+        {/* Settings Dropdown */}
+        <div className="p-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3 h-10",
+                  collapsed && "justify-center px-2",
+                  location.pathname === "/settings" || location.pathname === "/translations" || location.pathname === "/backlog"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                )}
+              >
+                <Settings className="w-5 h-5 shrink-0" />
+                {!collapsed && <span className="font-medium">הגדרות</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-56">
+              <DropdownMenuLabel>הגדרות ומערכת</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {settingsItems.map((item) => (
+                <DropdownMenuItem key={item.label} asChild>
+                  <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Edit Mode Toggle */}
-        <EditModeToggle collapsed={collapsed} />
-
         {/* User Menu */}
-        <div className="px-4 py-3 border-t border-sidebar-border">
+        <div className="p-3 pt-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -188,7 +184,7 @@ export function Sidebar() {
                   collapsed && "justify-center px-2"
                 )}
               >
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 shrink-0">
                   <AvatarFallback className="bg-primary/20 text-primary text-sm">
                     {userInitials}
                   </AvatarFallback>
@@ -205,7 +201,7 @@ export function Sidebar() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" side="top" className="w-56">
               <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
