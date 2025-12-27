@@ -12,11 +12,20 @@ import {
   Globe,
   ShoppingBag,
   BarChart3,
-  Megaphone
+  Megaphone,
+  Mail,
+  Copy,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface Integration {
   id: string;
@@ -87,8 +96,70 @@ const integrations: Integration[] = [
 
 export default function ClientSettings() {
   const { toast } = useToast();
+  const { clientId } = useParams();
   const [activeIntegration, setActiveIntegration] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Record<string, Record<string, string>>>({});
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  const { data: client } = useQuery({
+    queryKey: ['client', clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientId,
+  });
+
+  const dashboardUrl = `${window.location.origin}/client-dashboard/${clientId}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(dashboardUrl);
+    toast({
+      title: "הקישור הועתק",
+      description: "הקישור לדשבורד הלקוח הועתק ללוח",
+    });
+  };
+
+  const handleSendInvitation = async () => {
+    if (!inviteEmail || !client) return;
+
+    setIsSendingInvite(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-client-invitation', {
+        body: {
+          email: inviteEmail,
+          clientName: client.name,
+          dashboardUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "ההזמנה נשלחה",
+        description: `נשלחה הזמנה ל-${inviteEmail}`,
+      });
+      setInviteEmail("");
+      setInviteDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error sending invitation:', error);
+      toast({
+        title: "שגיאה בשליחת ההזמנה",
+        description: error.message || "נסה שוב מאוחר יותר",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
 
   const handleSave = (integrationId: string) => {
     toast({
@@ -103,7 +174,6 @@ export default function ClientSettings() {
       title: "מתחבר...",
       description: "מנסה להתחבר למערכת החיצונית",
     });
-    // Simulate connection
     setTimeout(() => {
       toast({
         title: "החיבור הצליח!",
@@ -118,20 +188,101 @@ export default function ClientSettings() {
         {/* Header */}
         <div className="mb-8 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
           <Link 
-            to="/client/td-tamar-drory"
+            to={clientId ? `/client/${clientId}` : "/clients"}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <ArrowRight className="w-4 h-4" />
-            חזרה לדשבורד
+            חזרה
           </Link>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
-              TD
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
+                {client?.name?.slice(0, 2) || 'CL'}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">הגדרות לקוח</h1>
+                <p className="text-muted-foreground">{client?.name || 'טוען...'}</p>
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Client Access Section */}
+        <div className="mb-8 glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.05s", animationFillMode: "forwards" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                <UserPlus className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">גישה ללקוח</h2>
+                <p className="text-sm text-muted-foreground">שתף גישה לדשבורד עם הלקוח</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Dashboard Link */}
             <div>
-              <h1 className="text-2xl font-bold">הגדרות לקוח</h1>
-              <p className="text-muted-foreground">TD TAMAR DRORY</p>
+              <Label className="text-sm font-medium mb-2 block">קישור לדשבורד</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={dashboardUrl} 
+                  readOnly 
+                  className="bg-secondary"
+                />
+                <Button variant="outline" onClick={handleCopyLink}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
+
+            {/* Send Invitation */}
+            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full gap-2">
+                  <Mail className="w-4 h-4" />
+                  שלח הזמנה במייל
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>שלח הזמנה ללקוח</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">כתובת אימייל</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="client@example.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    הלקוח יקבל מייל עם קישור לדשבורד שלו
+                  </p>
+                  <Button 
+                    onClick={handleSendInvitation} 
+                    disabled={!inviteEmail || isSendingInvite}
+                    className="w-full gap-2"
+                  >
+                    {isSendingInvite ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        שולח...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        שלח הזמנה
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -199,7 +350,6 @@ export default function ClientSettings() {
                 </div>
               </div>
 
-              {/* Expanded Credentials Form */}
               {activeIntegration === integration.id && (
                 <div className="px-6 pb-6 border-t border-border pt-4 animate-fade-in">
                   <div className="space-y-4">
