@@ -310,7 +310,14 @@ export default function Integrations() {
           <PageHeader title="חיבורים" description="בחר לקוח כדי לנהל חיבורי נתונים" />
           <div className="glass rounded-xl p-12 text-center">
             <Plug className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">בחר לקוח</h3>
+            <h3 className="text-lg font-semibold mb-2">בחר לקוח כדי להתחיל</h3>
+            <p className="text-muted-foreground mb-4">
+              כדי לחבר פלטפורמות, יש לבחור לקוח מהתפריט בסרגל הצד השמאלי, או ליצור לקוח חדש
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <ArrowRight className="w-5 h-5 text-primary animate-pulse" />
+              <span className="text-primary font-medium">בחר לקוח מהתפריט בצד שמאל</span>
+            </div>
           </div>
         </div>
       </MainLayout>
