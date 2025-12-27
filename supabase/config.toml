@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-client-invitation]
 verify_jwt = false
+
+[functions.sync-integrations]
+verify_jwt = false
