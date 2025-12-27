@@ -37,6 +37,7 @@ import logoText from "@/assets/logo-text.svg";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
+  { icon: Users, label: "לקוחות", path: "/clients" },
   { icon: Target, label: "שיווק", path: "/marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks" },

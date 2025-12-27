@@ -1,4 +1,4 @@
-import { Building2, ChevronDown, Check, X } from "lucide-react";
+import { Building2, ChevronDown, Check, X, Plus } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 
 interface ClientSwitcherProps {
   collapsed?: boolean;
@@ -105,6 +106,17 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
             </DropdownMenuItem>
           ))
         )}
+        <DropdownMenuSeparator />
+        <div className="p-1">
+          <CreateClientDialog 
+            trigger={
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-primary">
+                <Plus className="w-4 h-4" />
+                לקוח חדש
+              </Button>
+            }
+          />
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
