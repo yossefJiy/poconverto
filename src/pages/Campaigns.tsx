@@ -1,4 +1,9 @@
+import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { useClient } from "@/hooks/useClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Play, 
   Pause, 
@@ -7,119 +12,40 @@ import {
   MousePointer,
   DollarSign,
   Calendar,
-  Filter,
   Plus,
-  MoreVertical
+  MoreVertical,
+  Loader2,
+  Megaphone,
+  Edit2,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface Campaign {
-  id: string;
-  name: string;
-  client: string;
-  platform: "google" | "facebook" | "instagram" | "linkedin" | "tiktok";
-  status: "active" | "paused" | "ended" | "draft";
-  startDate: string;
-  endDate: string;
-  budget: number;
-  spent: number;
-  impressions: number;
-  clicks: number;
-  conversions: number;
-  ctr: number;
-  cpc: number;
-  story: string;
-}
-
-const campaigns: Campaign[] = [
-  {
-    id: "1",
-    name: "קמפיין מודעות קיץ 2024",
-    client: "חברת אלפא",
-    platform: "facebook",
-    status: "active",
-    startDate: "01/06/2024",
-    endDate: "31/08/2024",
-    budget: 25000,
-    spent: 12500,
-    impressions: 450000,
-    clicks: 8500,
-    conversions: 340,
-    ctr: 1.89,
-    cpc: 1.47,
-    story: "הקמפיין נועד להגביר את המודעות למותג לקראת עונת הקיץ. התמקדנו בקהל צעיר 25-35.",
-  },
-  {
-    id: "2",
-    name: "חיפוש ממומן - מילות מפתח",
-    client: "סטארטאפ בטא",
-    platform: "google",
-    status: "active",
-    startDate: "15/05/2024",
-    endDate: "15/08/2024",
-    budget: 15000,
-    spent: 8200,
-    impressions: 125000,
-    clicks: 4200,
-    conversions: 180,
-    ctr: 3.36,
-    cpc: 1.95,
-    story: "קמפיין ממוקד להובלת תנועה איכותית לדף הנחיתה החדש. שיפור CTR ב-40% מהקמפיין הקודם.",
-  },
-  {
-    id: "3",
-    name: "קמפיין אינסטגרם סטוריז",
-    client: "חברת גמא",
-    platform: "instagram",
-    status: "paused",
-    startDate: "01/07/2024",
-    endDate: "30/09/2024",
-    budget: 10000,
-    spent: 5600,
-    impressions: 280000,
-    clicks: 6100,
-    conversions: 95,
-    ctr: 2.18,
-    cpc: 0.92,
-    story: "הושהה זמנית לצורך אופטימיזציה של הקריאייטיב. שיעור המרה נמוך מהצפי.",
-  },
-  {
-    id: "4",
-    name: "קמפיין לינקדאין B2B",
-    client: "חברת דלתא",
-    platform: "linkedin",
-    status: "active",
-    startDate: "10/06/2024",
-    endDate: "10/09/2024",
-    budget: 20000,
-    spent: 9800,
-    impressions: 85000,
-    clicks: 2100,
-    conversions: 45,
-    ctr: 2.47,
-    cpc: 4.67,
-    story: "קמפיין לגיוס לידים B2B. מיקוד במנהלי שיווק ומנכ״לים. תוצאות מעולות.",
-  },
-  {
-    id: "5",
-    name: "השקת מוצר חדש",
-    client: "חברת אלפא",
-    platform: "tiktok",
-    status: "draft",
-    startDate: "01/09/2024",
-    endDate: "30/11/2024",
-    budget: 30000,
-    spent: 0,
-    impressions: 0,
-    clicks: 0,
-    conversions: 0,
-    ctr: 0,
-    cpc: 0,
-    story: "קמפיין מתוכנן להשקת המוצר החדש. ממתין לאישור קריאייטיב.",
-  },
-];
-
-const platformConfig = {
+const platformConfig: Record<string, { color: string; name: string }> = {
   google: { color: "bg-[#4285F4]", name: "Google Ads" },
   facebook: { color: "bg-[#1877F2]", name: "Facebook" },
   instagram: { color: "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]", name: "Instagram" },
@@ -127,7 +53,7 @@ const platformConfig = {
   tiktok: { color: "bg-[#000000]", name: "TikTok" },
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   active: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל" },
   paused: { icon: Pause, color: "text-warning", bg: "bg-warning/10", label: "מושהה" },
   ended: { icon: null, color: "text-muted-foreground", bg: "bg-muted", label: "הסתיים" },
@@ -135,151 +61,294 @@ const statusConfig = {
 };
 
 export default function Campaigns() {
+  const { selectedClient } = useClient();
+  const queryClient = useQueryClient();
+  const [showDialog, setShowDialog] = useState(false);
+  const [newCampaign, setNewCampaign] = useState({
+    name: "",
+    platform: "facebook",
+    budget: "",
+    description: "",
+  });
+
+  const { data: campaigns = [], isLoading } = useQuery({
+    queryKey: ["campaigns", selectedClient?.id],
+    queryFn: async () => {
+      let query = supabase.from("campaigns").select("*").order("created_at", { ascending: false });
+      if (selectedClient) {
+        query = query.eq("client_id", selectedClient.id);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (campaign: typeof newCampaign) => {
+      if (!selectedClient) throw new Error("בחר לקוח");
+      const { error } = await supabase.from("campaigns").insert({
+        client_id: selectedClient.id,
+        name: campaign.name,
+        platform: campaign.platform,
+        budget: parseFloat(campaign.budget) || 0,
+        description: campaign.description,
+        status: "draft",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success("הקמפיין נוצר בהצלחה");
+      setShowDialog(false);
+      setNewCampaign({ name: "", platform: "facebook", budget: "", description: "" });
+    },
+    onError: () => toast.error("שגיאה ביצירת קמפיין"),
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("campaigns").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success("הסטטוס עודכן");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("campaigns").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success("הקמפיין נמחק");
+    },
+  });
+
   return (
     <MainLayout>
       <div className="p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
-          <div>
-            <h1 className="text-3xl font-bold mb-2">ניהול קמפיינים</h1>
-            <p className="text-muted-foreground">נתונים בזמן אמת וסיפור הקמפיין</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors">
-              <Filter className="w-4 h-4" />
-              <span>סינון</span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors glow">
-              <Plus className="w-4 h-4" />
-              <span>קמפיין חדש</span>
-            </button>
-          </div>
-        </div>
+        <PageHeader 
+          title={selectedClient ? `קמפיינים - ${selectedClient.name}` : "ניהול קמפיינים"}
+          description="נתונים בזמן אמת ומעקב ביצועים"
+          actions={
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogTrigger asChild>
+                <Button className="glow" disabled={!selectedClient}>
+                  <Plus className="w-4 h-4 ml-2" />
+                  קמפיין חדש
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>קמפיין חדש</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <Input
+                    placeholder="שם הקמפיין"
+                    value={newCampaign.name}
+                    onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+                  />
+                  <Select
+                    value={newCampaign.platform}
+                    onValueChange={(v) => setNewCampaign({ ...newCampaign, platform: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="פלטפורמה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(platformConfig).map(([key, { name }]) => (
+                        <SelectItem key={key} value={key}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    placeholder="תקציב (₪)"
+                    value={newCampaign.budget}
+                    onChange={(e) => setNewCampaign({ ...newCampaign, budget: e.target.value })}
+                  />
+                  <Textarea
+                    placeholder="תיאור"
+                    value={newCampaign.description}
+                    onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
+                  />
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createMutation.mutate(newCampaign)}
+                    disabled={!newCampaign.name || createMutation.isPending}
+                  >
+                    {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "צור קמפיין"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          }
+        />
 
-        {/* Campaigns List */}
-        <div className="space-y-4">
-          {campaigns.map((campaign, index) => {
-            const status = statusConfig[campaign.status];
-            const platform = platformConfig[campaign.platform];
-            const budgetUsed = (campaign.spent / campaign.budget) * 100;
-            const StatusIcon = status.icon;
+        {!selectedClient && (
+          <div className="glass rounded-xl p-12 text-center mb-8">
+            <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">בחר לקוח</h3>
+            <p className="text-muted-foreground">בחר לקוח מהתפריט הצדדי כדי לנהל קמפיינים</p>
+          </div>
+        )}
 
-            return (
-              <div 
-                key={campaign.id}
-                className="glass rounded-xl card-shadow opacity-0 animate-slide-up glass-hover overflow-hidden"
-                style={{ animationDelay: `${0.1 + index * 0.1}s`, animationFillMode: "forwards" }}
-              >
-                <div className="p-6">
-                  <div className="flex items-start gap-4">
-                    {/* Platform Badge */}
-                    <div className={cn("w-12 h-12 rounded-xl flex-shrink-0", platform.color)} />
-                    
-                    {/* Main Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold truncate">{campaign.name}</h3>
-                        <span className={cn(
-                          "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium",
-                          status.bg, status.color
-                        )}>
-                          {StatusIcon && <StatusIcon className="w-3 h-3" />}
-                          {status.label}
-                        </span>
-                      </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : campaigns.length === 0 && selectedClient ? (
+          <div className="glass rounded-xl p-12 text-center">
+            <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">אין קמפיינים עדיין</h3>
+            <p className="text-muted-foreground">צור קמפיין חדש כדי להתחיל</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {campaigns.map((campaign, index) => {
+              const status = statusConfig[campaign.status] || statusConfig.draft;
+              const platform = platformConfig[campaign.platform] || { color: "bg-muted", name: campaign.platform };
+              const budgetUsed = campaign.budget > 0 ? ((campaign.spent || 0) / campaign.budget) * 100 : 0;
+              const StatusIcon = status.icon;
+
+              return (
+                <div 
+                  key={campaign.id}
+                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden"
+                  style={{ animationDelay: `${0.1 + index * 0.1}s`, animationFillMode: "forwards" }}
+                >
+                  <div className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className={cn("w-12 h-12 rounded-xl flex-shrink-0", platform.color)} />
                       
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                        <span>{campaign.client}</span>
-                        <span>•</span>
-                        <span>{platform.name}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {campaign.startDate} - {campaign.endDate}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-bold truncate">{campaign.name}</h3>
+                          <span className={cn(
+                            "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium",
+                            status.bg, status.color
+                          )}>
+                            {StatusIcon && <StatusIcon className="w-3 h-3" />}
+                            {status.label}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                          <span>{platform.name}</span>
+                          {campaign.start_date && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(campaign.start_date).toLocaleDateString("he-IL")}
+                                {campaign.end_date && ` - ${new Date(campaign.end_date).toLocaleDateString("he-IL")}`}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <DollarSign className="w-4 h-4" />
+                              <span className="text-xs">הוצאה</span>
+                            </div>
+                            <p className="font-bold">₪{(campaign.spent || 0).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">מתוך ₪{(campaign.budget || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <Eye className="w-4 h-4" />
+                              <span className="text-xs">חשיפות</span>
+                            </div>
+                            <p className="font-bold">{((campaign.impressions || 0) / 1000).toFixed(0)}K</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <MousePointer className="w-4 h-4" />
+                              <span className="text-xs">קליקים</span>
+                            </div>
+                            <p className="font-bold">{(campaign.clicks || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <TrendingUp className="w-4 h-4" />
+                              <span className="text-xs">המרות</span>
+                            </div>
+                            <p className="font-bold">{campaign.conversions || 0}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <span className="text-xs text-muted-foreground">CTR</span>
+                            <p className="font-bold">
+                              {campaign.impressions ? ((campaign.clicks || 0) / campaign.impressions * 100).toFixed(2) : 0}%
+                            </p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <span className="text-xs text-muted-foreground">CPC</span>
+                            <p className="font-bold">
+                              ₪{campaign.clicks ? ((campaign.spent || 0) / campaign.clicks).toFixed(2) : 0}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="text-muted-foreground">ניצול תקציב</span>
+                            <span className="font-medium">{budgetUsed.toFixed(0)}%</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                budgetUsed > 90 ? "bg-destructive" : budgetUsed > 70 ? "bg-warning" : "bg-primary"
+                              )}
+                              style={{ width: `${Math.min(budgetUsed, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {campaign.description && (
+                          <div className="bg-muted/20 rounded-lg p-4 border-r-4 border-primary">
+                            <p className="text-sm text-muted-foreground">{campaign.description}</p>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Metrics Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <DollarSign className="w-4 h-4" />
-                            <span className="text-xs">הוצאה</span>
-                          </div>
-                          <p className="font-bold">₪{campaign.spent.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">מתוך ₪{campaign.budget.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Eye className="w-4 h-4" />
-                            <span className="text-xs">חשיפות</span>
-                          </div>
-                          <p className="font-bold">{(campaign.impressions / 1000).toFixed(0)}K</p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <MousePointer className="w-4 h-4" />
-                            <span className="text-xs">קליקים</span>
-                          </div>
-                          <p className="font-bold">{campaign.clicks.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <TrendingUp className="w-4 h-4" />
-                            <span className="text-xs">המרות</span>
-                          </div>
-                          <p className="font-bold">{campaign.conversions}</p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <span className="text-xs">CTR</span>
-                          </div>
-                          <p className="font-bold">{campaign.ctr}%</p>
-                        </div>
-                        <div className="bg-muted/30 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <span className="text-xs">CPC</span>
-                          </div>
-                          <p className="font-bold">₪{campaign.cpc}</p>
-                        </div>
-                      </div>
-
-                      {/* Budget Progress */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">ניצול תקציב</span>
-                          <span className="font-medium">{budgetUsed.toFixed(0)}%</span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              budgetUsed > 90 ? "bg-destructive" : budgetUsed > 70 ? "bg-warning" : "bg-primary"
-                            )}
-                            style={{ width: `${Math.min(budgetUsed, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Story */}
-                      <div className="bg-muted/20 rounded-lg p-4 border-r-4 border-primary">
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">סיפור הקמפיין: </span>
-                          {campaign.story}
-                        </p>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "active" })}>
+                            <Play className="w-4 h-4 ml-2" />
+                            הפעל
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "paused" })}>
+                            <Pause className="w-4 h-4 ml-2" />
+                            השהה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => deleteMutation.mutate(campaign.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 ml-2" />
+                            מחק
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-
-                    {/* Actions */}
-                    <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-                      <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                    </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </MainLayout>
   );
