@@ -14,6 +14,7 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Translations from "./pages/Translations";
+import Integrations from "./pages/Integrations";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Backlog from "./pages/Backlog";
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/translations" element={<ProtectedRoute><Translations /></ProtectedRoute>} />
+                <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
                 <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
