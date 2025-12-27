@@ -12,11 +12,11 @@ import {
   Loader2,
   ExternalLink,
   Clock,
-  Settings2,
-  Zap,
-  ShoppingBag,
-  TrendingUp,
-  BarChart3
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  Info,
+  Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,59 +28,34 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+
+const NOTIFY_EMAIL = "yossef@jiy.co.il";
 
 const platformOptions = [
-  { 
-    id: "google_ads", 
-    name: "Google Ads", 
-    logo: "G", 
-    color: "bg-[#4285F4]",
-    description: "סנכרון קמפיינים ונתוני ביצועים מ-Google Ads",
-    fields: [
-      { key: "customer_id", label: "Customer ID", placeholder: "123-456-7890" },
-    ]
-  },
-  { 
-    id: "facebook_ads", 
-    name: "Facebook Ads", 
-    logo: "f", 
-    color: "bg-[#1877F2]",
-    description: "קבלת נתוני קמפיינים מ-Facebook Business",
-    fields: [
-      { key: "ad_account_id", label: "Ad Account ID", placeholder: "act_123456789" },
-    ]
-  },
-  { 
-    id: "instagram", 
-    name: "Instagram", 
-    logo: "📷", 
-    color: "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]",
-    description: "מעקב אחר ביצועי תוכן ומודעות באינסטגרם",
-    fields: [
-      { key: "business_account_id", label: "Business Account ID", placeholder: "17841400..." },
-    ]
-  },
   { 
     id: "shopify", 
     name: "Shopify", 
     logo: "🛍️", 
     color: "bg-[#96BF48]",
     description: "סנכרון נתוני מכירות, מוצרים והזמנות",
-    fields: [
-      { key: "store_url", label: "Store URL", placeholder: "mystore.myshopify.com" },
-    ]
+    credentialKey: "store_url",
+    placeholder: "mystore.myshopify.com",
+    steps: [
+      { title: "היכנס לחשבון Shopify שלך", description: "פתח את הדשבורד של החנות" },
+      { title: "העתק את כתובת החנות", description: "הכתובת נמצאת בשורת הכתובת: yourstore.myshopify.com" },
+      { title: "הדבק את הכתובת למטה", description: "ודא שהכתובת מכילה .myshopify.com" },
+    ],
+    helpUrl: "https://help.shopify.com/en/manual/your-account/account-settings",
+    features: ["הזמנות בזמן אמת", "מלאי מוצרים", "נתוני לקוחות", "דוחות מכירות"],
   },
   { 
     id: "google_analytics", 
@@ -88,9 +63,63 @@ const platformOptions = [
     logo: "📊", 
     color: "bg-[#F9AB00]",
     description: "נתוני תנועה והתנהגות גולשים",
-    fields: [
-      { key: "property_id", label: "Property ID", placeholder: "G-XXXXXXXXXX" },
-    ]
+    credentialKey: "property_id",
+    placeholder: "G-XXXXXXXXXX",
+    steps: [
+      { title: "היכנס ל-Google Analytics", description: "עבור ל-analytics.google.com" },
+      { title: "בחר את ה-Property הרצוי", description: "לחץ על Admin > Property Settings" },
+      { title: "העתק את Property ID", description: "המזהה מתחיל ב-G- ומכיל 10 תווים" },
+    ],
+    helpUrl: "https://support.google.com/analytics/answer/9539598",
+    features: ["סשנים וצפיות", "מקורות תנועה", "המרות", "התנהגות גולשים"],
+  },
+  { 
+    id: "google_ads", 
+    name: "Google Ads", 
+    logo: "G", 
+    color: "bg-[#4285F4]",
+    description: "סנכרון קמפיינים ונתוני ביצועים",
+    credentialKey: "customer_id",
+    placeholder: "123-456-7890",
+    steps: [
+      { title: "היכנס ל-Google Ads", description: "עבור ל-ads.google.com" },
+      { title: "מצא את Customer ID", description: "המספר מופיע בפינה הימנית העליונה" },
+      { title: "העתק בפורמט הנכון", description: "הפורמט: XXX-XXX-XXXX" },
+    ],
+    helpUrl: "https://support.google.com/google-ads/answer/1704344",
+    features: ["קמפיינים", "מילות מפתח", "המרות", "עלויות"],
+  },
+  { 
+    id: "facebook_ads", 
+    name: "Facebook Ads", 
+    logo: "f", 
+    color: "bg-[#1877F2]",
+    description: "קבלת נתוני קמפיינים מ-Facebook Business",
+    credentialKey: "ad_account_id",
+    placeholder: "act_123456789",
+    steps: [
+      { title: "היכנס ל-Business Manager", description: "עבור ל-business.facebook.com" },
+      { title: "לחץ על Business Settings", description: "בחר Accounts > Ad Accounts" },
+      { title: "העתק את Ad Account ID", description: "המזהה מתחיל ב-act_" },
+    ],
+    helpUrl: "https://www.facebook.com/business/help/1492627900875762",
+    features: ["קמפיינים", "קבוצות מודעות", "Insights", "המרות"],
+  },
+  { 
+    id: "instagram", 
+    name: "Instagram", 
+    logo: "📷", 
+    color: "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]",
+    description: "מעקב אחר ביצועי תוכן ומודעות",
+    credentialKey: "ad_account_id",
+    placeholder: "17841400...",
+    steps: [
+      { title: "ודא שיש לך Business Account", description: "הגדרות > חשבון > עבור לחשבון עסקי" },
+      { title: "חבר לדף פייסבוק", description: "חובה לחיבור ל-Facebook Business" },
+      { title: "העתק Business Account ID", description: "ניתן למצוא ב-Graph API Explorer" },
+    ],
+    helpUrl: "https://help.instagram.com/502981923235522",
+    features: ["פוסטים", "סטוריז", "Reels", "Insights"],
   },
   { 
     id: "linkedin", 
@@ -98,9 +127,15 @@ const platformOptions = [
     logo: "in", 
     color: "bg-[#0A66C2]",
     description: "קמפיינים ונתוני מודעות מ-LinkedIn",
-    fields: [
-      { key: "ad_account_id", label: "Ad Account ID", placeholder: "123456789" },
-    ]
+    credentialKey: "ad_account_id",
+    placeholder: "123456789",
+    steps: [
+      { title: "היכנס ל-Campaign Manager", description: "עבור ל-linkedin.com/campaignmanager" },
+      { title: "בחר את החשבון הפרסומי", description: "לחץ על שם החשבון בראש העמוד" },
+      { title: "העתק את Account ID", description: "המספר מופיע ב-URL" },
+    ],
+    helpUrl: "https://www.linkedin.com/help/lms/answer/a424270",
+    features: ["קמפיינים", "קריאייטיבים", "אנליטיקס"],
   },
   { 
     id: "tiktok", 
@@ -108,9 +143,15 @@ const platformOptions = [
     logo: "♪", 
     color: "bg-[#000000]",
     description: "מעקב אחר ביצועי מודעות בטיקטוק",
-    fields: [
-      { key: "advertiser_id", label: "Advertiser ID", placeholder: "1234567890" },
-    ]
+    credentialKey: "advertiser_id",
+    placeholder: "1234567890",
+    steps: [
+      { title: "היכנס ל-TikTok Ads Manager", description: "עבור ל-ads.tiktok.com" },
+      { title: "לחץ על Assets", description: "בחר Account Settings" },
+      { title: "העתק Advertiser ID", description: "המספר מופיע בראש העמוד" },
+    ],
+    helpUrl: "https://ads.tiktok.com/help/article?aid=9663",
+    features: ["קמפיינים", "מודעות", "דוחות ביצועים"],
   },
 ];
 
@@ -119,11 +160,10 @@ export default function Integrations() {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<typeof platformOptions[0] | null>(null);
-  const [newIntegration, setNewIntegration] = useState({
-    platform: "",
-    external_account_id: "",
-    settings: {} as Record<string, string>,
-  });
+  const [currentStep, setCurrentStep] = useState(0);
+  const [credential, setCredential] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [connectionMessage, setConnectionMessage] = useState("");
 
   const { data: integrations = [], isLoading } = useQuery({
     queryKey: ["integrations", selectedClient?.id],
@@ -140,100 +180,128 @@ export default function Integrations() {
     enabled: !!selectedClient,
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (integration: typeof newIntegration) => {
-      if (!selectedClient) throw new Error("בחר לקוח");
-      const { error } = await supabase.from("integrations").insert({
-        client_id: selectedClient.id,
-        platform: integration.platform,
-        external_account_id: integration.external_account_id,
-        settings: integration.settings,
-        is_connected: true,
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
+      
+      const { data, error } = await supabase.functions.invoke('connect-integration', {
+        body: {
+          action: "connect",
+          platform: selectedPlatform.id,
+          client_id: selectedClient.id,
+          credentials: { [selectedPlatform.credentialKey]: credential },
+          notify_email: NOTIFY_EMAIL,
+        }
       });
+      
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      toast.success("החיבור נוצר בהצלחה");
-      setShowDialog(false);
-      setSelectedPlatform(null);
-      setNewIntegration({ platform: "", external_account_id: "", settings: {} });
+    onSuccess: (data) => {
+      if (data.success) {
+        setConnectionStatus("success");
+        setConnectionMessage(data.message);
+        queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        toast.success(data.message);
+      } else {
+        setConnectionStatus("error");
+        setConnectionMessage(data.message);
+        toast.error(data.message);
+      }
     },
-    onError: () => toast.error("שגיאה ביצירת חיבור"),
+    onError: (error: any) => {
+      setConnectionStatus("error");
+      setConnectionMessage(error.message || "שגיאה בחיבור");
+      toast.error("שגיאה בחיבור לפלטפורמה");
+    },
   });
 
-  const toggleConnectionMutation = useMutation({
-    mutationFn: async ({ id, is_connected }: { id: string; is_connected: boolean }) => {
-      const { error } = await supabase
-        .from("integrations")
-        .update({ is_connected, updated_at: new Date().toISOString() })
-        .eq("id", id);
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
+      
+      const { data, error } = await supabase.functions.invoke('connect-integration', {
+        body: {
+          action: "test",
+          platform: selectedPlatform.id,
+          client_id: selectedClient.id,
+          credentials: { [selectedPlatform.credentialKey]: credential },
+          notify_email: NOTIFY_EMAIL,
+        }
+      });
+      
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      toast.success("הסטטוס עודכן");
+    onSuccess: (data) => {
+      if (data.success) {
+        setConnectionStatus("success");
+        setConnectionMessage(data.message);
+      } else {
+        setConnectionStatus("error");
+        setConnectionMessage(data.message);
+      }
+    },
+    onError: () => {
+      setConnectionStatus("error");
+      setConnectionMessage("שגיאה בבדיקת החיבור");
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: async (integrationId: string) => {
-      const { data, error } = await supabase.functions.invoke('sync-integrations', {
-        body: { integration_id: integrationId }
+      const { data, error } = await supabase.functions.invoke('connect-integration', {
+        body: { action: "sync", integration_id: integrationId }
       });
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      toast.success(`סונכרנו ${data?.results?.[0]?.campaigns_synced || 0} קמפיינים`);
-    },
-    onError: (error) => {
-      console.error('Sync error:', error);
-      toast.error("שגיאה בסנכרון");
-    },
-  });
-
-  const syncAllMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedClient) throw new Error("בחר לקוח");
-      const { data, error } = await supabase.functions.invoke('sync-integrations', {
-        body: { client_id: selectedClient.id }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      toast.success(`סונכרנו ${data?.synced || 0} חיבורים`);
+      toast.success("הסנכרון הושלם בהצלחה");
     },
     onError: () => toast.error("שגיאה בסנכרון"),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("integrations")
-        .delete()
-        .eq("id", id);
+  const disconnectMutation = useMutation({
+    mutationFn: async (integrationId: string) => {
+      const { error } = await supabase.from("integrations").delete().eq("id", integrationId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      toast.success("החיבור נמחק");
+      toast.success("החיבור הוסר");
     },
   });
 
-  const handlePlatformSelect = (platformId: string) => {
-    const platform = platformOptions.find(p => p.id === platformId);
-    setSelectedPlatform(platform || null);
-    setNewIntegration({ ...newIntegration, platform: platformId, settings: {} });
+  const handlePlatformSelect = (platform: typeof platformOptions[0]) => {
+    setSelectedPlatform(platform);
+    setCurrentStep(0);
+    setCredential("");
+    setConnectionStatus("idle");
+    setConnectionMessage("");
+  };
+
+  const handleConnect = () => {
+    setConnectionStatus("testing");
+    connectMutation.mutate();
+  };
+
+  const handleTest = () => {
+    setConnectionStatus("testing");
+    testMutation.mutate();
+  };
+
+  const resetDialog = () => {
+    setShowDialog(false);
+    setSelectedPlatform(null);
+    setCurrentStep(0);
+    setCredential("");
+    setConnectionStatus("idle");
+    setConnectionMessage("");
   };
 
   const connectedCount = integrations.filter(i => i.is_connected).length;
-  const totalCount = integrations.length;
 
   if (!selectedClient) {
     return (
@@ -243,7 +311,6 @@ export default function Integrations() {
           <div className="glass rounded-xl p-12 text-center">
             <Plug className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">בחר לקוח</h3>
-            <p className="text-muted-foreground">בחר לקוח מהתפריט הצדדי כדי לנהל חיבורים לפלטפורמות פרסום</p>
           </div>
         </div>
       </MainLayout>
@@ -255,156 +322,25 @@ export default function Integrations() {
       <div className="p-8">
         <PageHeader 
           title={`חיבורים - ${selectedClient.name}`}
-          description="נהל חיבורים לפלטפורמות פרסום לקבלת נתונים בזמן אמת"
+          description="נהל חיבורים לפלטפורמות לקבלת נתונים בזמן אמת"
           actions={
-            <div className="flex gap-2">
-              {integrations.length > 0 && (
-                <Button 
-                  variant="outline"
-                  onClick={() => syncAllMutation.mutate()}
-                  disabled={syncAllMutation.isPending || connectedCount === 0}
-                >
-                  {syncAllMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin ml-2" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 ml-2" />
-                  )}
-                  סנכרן הכל
-                </Button>
-              )}
-              <Dialog open={showDialog} onOpenChange={(open) => {
-                setShowDialog(open);
-                if (!open) {
-                  setSelectedPlatform(null);
-                  setNewIntegration({ platform: "", external_account_id: "", settings: {} });
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button className="glow">
-                    <Plug className="w-4 h-4 ml-2" />
-                    חיבור חדש
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>חיבור פלטפורמה חדשה</DialogTitle>
-                    <DialogDescription>
-                      בחר פלטפורמה והזן את פרטי החיבור
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  {!selectedPlatform ? (
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                      {platformOptions.map((platform) => {
-                        const isConnected = integrations.some(i => i.platform === platform.id);
-                        return (
-                          <button
-                            key={platform.id}
-                            onClick={() => handlePlatformSelect(platform.id)}
-                            className={cn(
-                              "p-4 rounded-xl border-2 border-border hover:border-primary transition-all text-right",
-                              isConnected && "opacity-50"
-                            )}
-                            disabled={isConnected}
-                          >
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className={cn(
-                                "w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold",
-                                platform.color
-                              )}>
-                                {platform.logo}
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium">{platform.name}</p>
-                                {isConnected && (
-                                  <Badge variant="secondary" className="text-xs">מחובר</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{platform.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="space-y-4 mt-4">
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                        <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold",
-                          selectedPlatform.color
-                        )}>
-                          {selectedPlatform.logo}
-                        </div>
-                        <div>
-                          <p className="font-medium">{selectedPlatform.name}</p>
-                          <p className="text-xs text-muted-foreground">{selectedPlatform.description}</p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="mr-auto"
-                          onClick={() => setSelectedPlatform(null)}
-                        >
-                          שנה
-                        </Button>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <Label>מזהה חשבון</Label>
-                          <Input
-                            placeholder="Account ID"
-                            value={newIntegration.external_account_id}
-                            onChange={(e) => setNewIntegration({ 
-                              ...newIntegration, 
-                              external_account_id: e.target.value 
-                            })}
-                            className="mt-1"
-                          />
-                        </div>
-
-                        {selectedPlatform.fields.map((field) => (
-                          <div key={field.key}>
-                            <Label>{field.label}</Label>
-                            <Input
-                              placeholder={field.placeholder}
-                              value={newIntegration.settings[field.key] || ""}
-                              onChange={(e) => setNewIntegration({
-                                ...newIntegration,
-                                settings: {
-                                  ...newIntegration.settings,
-                                  [field.key]: e.target.value
-                                }
-                              })}
-                              className="mt-1"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <Button 
-                        className="w-full" 
-                        onClick={() => createMutation.mutate(newIntegration)}
-                        disabled={!newIntegration.external_account_id || createMutation.isPending}
-                      >
-                        {createMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Plug className="w-4 h-4 ml-2" />
-                            התחבר ל-{selectedPlatform.name}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </div>
+            <Button className="glow" onClick={() => setShowDialog(true)}>
+              <Plug className="w-4 h-4 ml-2" />
+              חיבור חדש
+            </Button>
           }
         />
 
-        {/* Stats Bar */}
+        {/* Notification info */}
+        <Alert className="mb-6">
+          <Mail className="h-4 w-4" />
+          <AlertTitle>התראות אוטומטיות</AlertTitle>
+          <AlertDescription>
+            במקרה של כשלון חיבור, תישלח הודעה אוטומטית ל-{NOTIFY_EMAIL} עם פירוט הבעיה והצעדים לתיקון.
+          </AlertDescription>
+        </Alert>
+
+        {/* Stats */}
         {integrations.length > 0 && (
           <div className="glass rounded-xl p-4 mb-6 flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -412,21 +348,11 @@ export default function Integrations() {
                 <Plug className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">סה״כ חיבורים</p>
-                <p className="font-bold">{totalCount}</p>
+                <p className="text-sm text-muted-foreground">חיבורים פעילים</p>
+                <p className="font-bold">{connectedCount}/{integrations.length}</p>
               </div>
             </div>
-            <div className="flex-1">
-              <div className="flex justify-between text-sm mb-1">
-                <span>פעילים</span>
-                <span>{connectedCount}/{totalCount}</span>
-              </div>
-              <Progress value={(connectedCount / totalCount) * 100} className="h-2" />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span>סנכרון אוטומטי כל 15 דקות</span>
-            </div>
+            <Progress value={(connectedCount / integrations.length) * 100} className="flex-1 h-2" />
           </div>
         )}
 
@@ -446,124 +372,49 @@ export default function Integrations() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integrations.map((integration, index) => {
+            {integrations.map((integration) => {
               const platform = platformOptions.find(p => p.id === integration.platform);
-              const settings = integration.settings as Record<string, any> || {};
-              const lastSyncData = settings.last_sync_data;
-              
               return (
-                <div 
-                  key={integration.id}
-                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden"
-                  style={{ animationDelay: `${0.1 + index * 0.08}s`, animationFillMode: "forwards" }}
-                >
+                <div key={integration.id} className="glass rounded-xl overflow-hidden card-shadow group">
                   <div className={cn("h-2", platform?.color || "bg-muted")} />
                   <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white",
-                        platform?.color || "bg-muted"
-                      )}>
-                        {platform?.logo || "?"}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold">{platform?.name || integration.platform}</h3>
-                        {integration.external_account_id && (
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl font-bold", platform?.color)}>
+                          {platform?.logo}
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{platform?.name}</h3>
                           <p className="text-sm text-muted-foreground">{integration.external_account_id}</p>
-                        )}
+                        </div>
                       </div>
-                      <div className={cn(
-                        "w-3 h-3 rounded-full",
-                        integration.is_connected ? "bg-success animate-pulse" : "bg-destructive"
-                      )} />
+                      <Badge variant={integration.is_connected ? "default" : "secondary"}>
+                        {integration.is_connected ? "מחובר" : "מנותק"}
+                      </Badge>
                     </div>
 
-                    {/* Last sync data preview */}
-                    {lastSyncData && (
-                      <div className="grid grid-cols-2 gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
-                        {integration.platform === 'shopify' && (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <ShoppingBag className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{lastSyncData.orders_count} הזמנות</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">₪{lastSyncData.total_revenue?.toLocaleString()}</span>
-                            </div>
-                          </>
-                        )}
-                        {integration.platform === 'google_analytics' && (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{lastSyncData.sessions?.toLocaleString()} sessions</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{lastSyncData.bounce_rate}% bounce</span>
-                            </div>
-                          </>
-                        )}
+                    {platform?.features && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {platform.features.slice(0, 3).map((f) => (
+                          <span key={f} className="text-xs px-2 py-1 bg-muted rounded-full">{f}</span>
+                        ))}
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                      <Clock className="w-4 h-4" />
-                      {integration.last_sync_at ? (
-                        <span>סונכרן: {new Date(integration.last_sync_at).toLocaleString("he-IL")}</span>
-                      ) : (
-                        <span>טרם סונכרן</span>
-                      )}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {integration.last_sync_at ? new Date(integration.last_sync_at).toLocaleString("he-IL") : "לא סונכרן"}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => syncMutation.mutate(integration.id)}
-                        disabled={syncMutation.isPending || !integration.is_connected}
-                        className="flex-1"
-                      >
-                        {syncMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <RefreshCw className="w-4 h-4 ml-1" />
-                            סנכרן
-                          </>
-                        )}
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => syncMutation.mutate(integration.id)} disabled={syncMutation.isPending}>
+                        {syncMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 ml-1" />}
+                        סנכרן
                       </Button>
-                      <Button
-                        variant={integration.is_connected ? "secondary" : "default"}
-                        size="sm"
-                        onClick={() => toggleConnectionMutation.mutate({ 
-                          id: integration.id, 
-                          is_connected: !integration.is_connected 
-                        })}
-                      >
-                        {integration.is_connected ? (
-                          <>
-                            <X className="w-4 h-4 ml-1" />
-                            נתק
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-4 h-4 ml-1" />
-                            חבר
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('האם למחוק את החיבור?')) {
-                            deleteMutation.mutate(integration.id);
-                          }
-                        }}
-                      >
-                        <X className="w-4 h-4 text-destructive" />
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => disconnectMutation.mutate(integration.id)}>
+                        <X className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -572,44 +423,146 @@ export default function Integrations() {
             })}
           </div>
         )}
-
-        {/* Info Section */}
-        <div className="mt-8 glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
-          <h3 className="font-bold mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
-            איך הסנכרון עובד?
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                <Plug className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-medium">1. חבר פלטפורמה</p>
-                <p className="text-sm text-muted-foreground">הזן את מזהה החשבון מכל פלטפורמה</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center text-success shrink-0">
-                <RefreshCw className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-medium">2. סנכרון אוטומטי</p>
-                <p className="text-sm text-muted-foreground">הנתונים מתעדכנים כל 15 דקות</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-lg bg-info/20 flex items-center justify-center text-info shrink-0">
-                <ExternalLink className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-medium">3. נתונים בדשבורד</p>
-                <p className="text-sm text-muted-foreground">צפה בכל הנתונים במקום אחד</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Connection Dialog */}
+      <Dialog open={showDialog} onOpenChange={resetDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedPlatform ? `חיבור ${selectedPlatform.name}` : "בחר פלטפורמה לחיבור"}</DialogTitle>
+            <DialogDescription>
+              {selectedPlatform ? selectedPlatform.description : "בחר את הפלטפורמה שברצונך לחבר"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!selectedPlatform ? (
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {platformOptions.map((platform) => {
+                const isConnected = integrations.some(i => i.platform === platform.id);
+                return (
+                  <button
+                    key={platform.id}
+                    onClick={() => handlePlatformSelect(platform)}
+                    disabled={isConnected}
+                    className={cn(
+                      "p-4 rounded-xl border-2 border-border hover:border-primary transition-all text-right",
+                      isConnected && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center text-white text-lg font-bold", platform.color)}>
+                        {platform.logo}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold">{platform.name}</p>
+                        {isConnected && <Badge variant="secondary">מחובר</Badge>}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{platform.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-6 mt-4">
+              {/* Steps */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" />
+                  שלבי החיבור:
+                </h4>
+                {selectedPlatform.steps.map((step, index) => (
+                  <div key={index} className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg transition-colors",
+                    currentStep === index ? "bg-primary/10 border border-primary" : "bg-muted/50"
+                  )}>
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                      currentStep > index ? "bg-success text-white" : currentStep === index ? "bg-primary text-white" : "bg-muted-foreground/30"
+                    )}>
+                      {currentStep > index ? <Check className="w-3 h-3" /> : index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium">{step.title}</p>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Input */}
+              <div className="space-y-2">
+                <Label>הזן את המזהה:</Label>
+                <Input
+                  value={credential}
+                  onChange={(e) => {
+                    setCredential(e.target.value);
+                    setCurrentStep(2);
+                    setConnectionStatus("idle");
+                  }}
+                  placeholder={selectedPlatform.placeholder}
+                  dir="ltr"
+                  className="text-left"
+                />
+              </div>
+
+              {/* Features */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-2">לאחר החיבור תקבל גישה ל:</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedPlatform.features.map((f) => (
+                    <Badge key={f} variant="outline">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status */}
+              {connectionStatus !== "idle" && (
+                <Alert variant={connectionStatus === "success" ? "default" : connectionStatus === "error" ? "destructive" : "default"}>
+                  {connectionStatus === "testing" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {connectionStatus === "success" && <CheckCircle2 className="h-4 w-4 text-success" />}
+                  {connectionStatus === "error" && <AlertTriangle className="h-4 w-4" />}
+                  <AlertTitle>
+                    {connectionStatus === "testing" && "בודק חיבור..."}
+                    {connectionStatus === "success" && "החיבור הצליח!"}
+                    {connectionStatus === "error" && "החיבור נכשל"}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {connectionMessage}
+                    {connectionStatus === "error" && (
+                      <p className="mt-2 text-sm">נשלח מייל הסבר ל-{NOTIFY_EMAIL}</p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setSelectedPlatform(null)} className="flex-1">
+                  חזור
+                </Button>
+                <Button variant="outline" onClick={handleTest} disabled={!credential || connectionStatus === "testing"}>
+                  בדוק חיבור
+                </Button>
+                <Button onClick={handleConnect} disabled={!credential || connectionStatus === "testing"} className="flex-1 glow">
+                  {connectionStatus === "testing" ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                    <>
+                      התחבר
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Help link */}
+              <a href={selectedPlatform.helpUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline justify-center">
+                <ExternalLink className="w-3 h-3" />
+                מדריך מפורט ל-{selectedPlatform.name}
+              </a>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
