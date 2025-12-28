@@ -58,6 +58,7 @@ const settingsItems = [
 const adminSettingsItems = [
   { icon: Languages, label: "תרגומים", path: "/translations" },
   { icon: ListTodo, label: "Backlog", path: "/backlog" },
+  { icon: Shield, label: "לוגים אבטחה", path: "/security-logs" },
 ];
 
 export function Sidebar() {
