@@ -160,6 +160,7 @@ export type Database = {
           linkedin_url: string | null
           logo_url: string | null
           name: string
+          shopify_email: string | null
           tiktok_url: string | null
           twitter_url: string | null
           updated_at: string
@@ -175,6 +176,7 @@ export type Database = {
           linkedin_url?: string | null
           logo_url?: string | null
           name: string
+          shopify_email?: string | null
           tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -190,6 +192,7 @@ export type Database = {
           linkedin_url?: string | null
           logo_url?: string | null
           name?: string
+          shopify_email?: string | null
           tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string
