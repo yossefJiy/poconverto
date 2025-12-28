@@ -13,7 +13,12 @@ import {
   CheckSquare,
   List,
   LayoutGrid,
-  Trash2
+  Trash2,
+  CheckCircle2,
+  Circle,
+  Clock,
+  Calendar,
+  Edit2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,9 +40,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TaskEditDialog } from "@/components/tasks/TaskEditDialog";
-import { TaskItem } from "@/components/tasks/TaskItem";
-import { useTranslation } from "@/hooks/useTranslation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface Task {
   id: string;
@@ -48,18 +61,28 @@ interface Task {
   due_date: string | null;
   assignee: string | null;
   department: string | null;
-  parent_task_id: string | null;
-  assigned_member_id: string | null;
-  reminder_date: string | null;
-  estimated_hours: number | null;
-  actual_hours: number | null;
-  completion_notes: string | null;
-  completed_at: string | null;
   client_id: string | null;
 }
 
+interface TeamMember {
+  id: string;
+  name: string;
+  departments: string[];
+}
+
+const statusConfig: Record<string, { color: string; bg: string; label: string; icon: typeof Circle }> = {
+  pending: { color: "text-warning", bg: "bg-warning/10", label: "ממתין", icon: Circle },
+  "in-progress": { color: "text-info", bg: "bg-info/10", label: "בתהליך", icon: Clock },
+  completed: { color: "text-success", bg: "bg-success/10", label: "הושלם", icon: CheckCircle2 },
+};
+
+const priorityConfig: Record<string, { color: string; label: string }> = {
+  low: { color: "bg-muted", label: "נמוכה" },
+  medium: { color: "bg-warning", label: "בינונית" },
+  high: { color: "bg-destructive", label: "גבוהה" },
+};
+
 export default function Tasks() {
-  const { t } = useTranslation();
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
   
@@ -67,20 +90,26 @@ export default function Tasks() {
   const [selectedValue, setSelectedValue] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   
-  // Dialog states
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [parentTaskId, setParentTaskId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
-  // Fetch tasks with team member relations
+  // Form state
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formStatus, setFormStatus] = useState("pending");
+  const [formPriority, setFormPriority] = useState("medium");
+  const [formDueDate, setFormDueDate] = useState("");
+  const [formAssignee, setFormAssignee] = useState("");
+  const [formDepartment, setFormDepartment] = useState("");
+
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", selectedClient?.id],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, team_members(id, name, name_en, name_hi, departments)")
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (selectedClient) {
@@ -89,190 +118,132 @@ export default function Tasks() {
       
       const { data, error } = await query;
       if (error) throw error;
-      
-      // Map the team_members relation to assigned_member
-      return data.map((task: any) => ({
-        ...task,
-        assigned_member: task.team_members,
-      }));
+      return data as Task[];
     },
   });
 
-  // Fetch active team members
   const { data: teamMembers = [] } = useQuery({
-    queryKey: ["team-members-active"],
+    queryKey: ["team-active"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("team_members")
+        .from("team")
         .select("*")
         .eq("is_active", true);
       if (error) throw error;
-      return data;
+      return data as TeamMember[];
     },
   });
 
-  // Create task mutation
-  const createMutation = useMutation({
-    mutationFn: async (task: Partial<Task>) => {
-      const { error } = await supabase.from("tasks").insert({
-        client_id: selectedClient?.id || null,
-        title: task.title!,
-        description: task.description,
-        priority: task.priority || "medium",
-        status: task.status || "pending",
-        assignee: task.assignee,
-        assigned_member_id: task.assigned_member_id,
-        department: task.department,
-        due_date: task.due_date,
-        reminder_date: task.reminder_date,
-        estimated_hours: task.estimated_hours,
-        parent_task_id: task.parent_task_id,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success(t("task_created"));
-      setEditDialogOpen(false);
-      setSelectedTask(null);
-      setParentTaskId(null);
-    },
-    onError: () => toast.error(t("error_creating_task")),
-  });
-
-  // Update task mutation
-  const updateMutation = useMutation({
-    mutationFn: async (task: Partial<Task> & { id: string }) => {
-      const updateData: any = {
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        status: task.status,
-        assignee: task.assignee,
-        assigned_member_id: task.assigned_member_id,
-        department: task.department,
-        due_date: task.due_date,
-        reminder_date: task.reminder_date,
-        estimated_hours: task.estimated_hours,
-        actual_hours: task.actual_hours,
-        completion_notes: task.completion_notes,
-      };
-      
-      // Set completed_at when status changes to completed
-      if (task.status === "completed") {
-        updateData.completed_at = new Date().toISOString();
+  const saveMutation = useMutation({
+    mutationFn: async (task: Partial<Task> & { id?: string }) => {
+      if (task.id) {
+        const { error } = await supabase
+          .from("tasks")
+          .update({
+            title: task.title,
+            description: task.description,
+            status: task.status,
+            priority: task.priority,
+            due_date: task.due_date || null,
+            assignee: task.assignee,
+            department: task.department,
+          })
+          .eq("id", task.id);
+        if (error) throw error;
       } else {
-        updateData.completed_at = null;
+        const { error } = await supabase.from("tasks").insert({
+          client_id: selectedClient?.id || null,
+          title: task.title!,
+          description: task.description,
+          priority: task.priority || "medium",
+          status: task.status || "pending",
+          assignee: task.assignee,
+          department: task.department,
+          due_date: task.due_date || null,
+        });
+        if (error) throw error;
       }
-      
-      const { error } = await supabase
-        .from("tasks")
-        .update(updateData)
-        .eq("id", task.id);
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success(t("task_updated"));
-      setEditDialogOpen(false);
-      setSelectedTask(null);
+      toast.success("המשימה נשמרה");
+      closeDialog();
     },
-    onError: () => toast.error(t("error_updating_task")),
+    onError: () => toast.error("שגיאה בשמירת משימה"),
   });
 
-  // Update status mutation (quick toggle)
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updateData: any = { status };
-      if (status === "completed") {
-        updateData.completed_at = new Date().toISOString();
-      } else {
-        updateData.completed_at = null;
-      }
-      
-      const { error } = await supabase
-        .from("tasks")
-        .update(updateData)
-        .eq("id", id);
+      const { error } = await supabase.from("tasks").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success(t("status_updated"));
+      toast.success("הסטטוס עודכן");
     },
   });
 
-  // Delete task mutation
   const deleteMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      // First delete all subtasks
-      const subtaskIds = tasks
-        .filter(t => t.parent_task_id === taskId)
-        .map(t => t.id);
-      
-      if (subtaskIds.length > 0) {
-        const { error: subtaskError } = await supabase
-          .from("tasks")
-          .delete()
-          .in("id", subtaskIds);
-        if (subtaskError) throw subtaskError;
-      }
-      
-      // Then delete the main task
-      const { error } = await supabase
-        .from("tasks")
-        .delete()
-        .eq("id", taskId);
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success(t("task_deleted"));
+      toast.success("המשימה נמחקה");
       setDeleteDialogOpen(false);
       setTaskToDelete(null);
     },
-    onError: () => toast.error(t("error_deleting_task")),
+    onError: () => toast.error("שגיאה במחיקת משימה"),
   });
 
-  // Handle save (create or update)
-  const handleSave = (taskData: Partial<Task>) => {
-    if (selectedTask?.id) {
-      updateMutation.mutate({ ...taskData, id: selectedTask.id });
-    } else {
-      createMutation.mutate(taskData);
+  const openDialog = (task?: Task) => {
+    setSelectedTask(task || null);
+    setFormTitle(task?.title || "");
+    setFormDescription(task?.description || "");
+    setFormStatus(task?.status || "pending");
+    setFormPriority(task?.priority || "medium");
+    setFormDueDate(task?.due_date || "");
+    setFormAssignee(task?.assignee || "");
+    setFormDepartment(task?.department || "");
+    setEditDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setEditDialogOpen(false);
+    setSelectedTask(null);
+    setFormTitle("");
+    setFormDescription("");
+    setFormStatus("pending");
+    setFormPriority("medium");
+    setFormDueDate("");
+    setFormAssignee("");
+    setFormDepartment("");
+  };
+
+  const handleSave = () => {
+    if (!formTitle.trim()) {
+      toast.error("נא להזין כותרת");
+      return;
     }
+    saveMutation.mutate({
+      id: selectedTask?.id,
+      title: formTitle,
+      description: formDescription,
+      status: formStatus,
+      priority: formPriority,
+      due_date: formDueDate || null,
+      assignee: formAssignee || null,
+      department: formDepartment || null,
+    });
   };
 
-  // Open edit dialog for new task
-  const handleNewTask = () => {
-    setSelectedTask(null);
-    setParentTaskId(null);
-    setEditDialogOpen(true);
-  };
-
-  // Open edit dialog for existing task
-  const handleEditTask = (task: Task) => {
-    setSelectedTask(task);
-    setParentTaskId(null);
-    setEditDialogOpen(true);
-  };
-
-  // Open edit dialog for new subtask
-  const handleAddSubtask = (parentId: string) => {
-    setSelectedTask(null);
-    setParentTaskId(parentId);
-    setEditDialogOpen(true);
-  };
-
-  // Open delete confirmation
-  const handleDeleteTask = (task: Task) => {
-    setTaskToDelete(task);
-    setDeleteDialogOpen(true);
-  };
-
-  // Filter logic
+  // Get unique values for filters
   const assignees = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
-  const departments = [...new Set(tasks.map(t => t.department).filter(Boolean))];
+  const departments = [...new Set([
+    ...tasks.map(t => t.department).filter(Boolean),
+    ...teamMembers.flatMap(m => m.departments)
+  ])];
 
   const filteredTasks = tasks.filter(task => {
     if (filter === "all" || !selectedValue) return true;
@@ -281,62 +252,59 @@ export default function Tasks() {
     return true;
   });
 
-  // Get only root tasks (no parent) for list view
-  const rootTasks = filteredTasks.filter(t => !t.parent_task_id);
-
   return (
     <MainLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <PageHeader 
-          title={selectedClient ? `${t("tasks")} - ${selectedClient.name}` : t("task_management")}
-          description={t("by_employee_client_department")}
+          title={selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"}
+          description="לפי עובד, לקוח ומחלקה"
           actions={
-            <Button className="glow" onClick={handleNewTask}>
+            <Button className="glow" onClick={() => openDialog()}>
               <Plus className="w-4 h-4 ml-2" />
-              {t("new_task")}
+              משימה חדשה
             </Button>
           }
         />
 
         {/* Filters & View Toggle */}
-        <div className="flex items-center justify-between gap-4 mb-8 opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-secondary rounded-lg p-1">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
               <button
                 onClick={() => { setFilter("all"); setSelectedValue(""); }}
                 className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                   filter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 )}
               >
-                {t("all")}
+                הכל
               </button>
               <button
                 onClick={() => setFilter("assignee")}
                 className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
                   filter === "assignee" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 )}
               >
-                <User className="w-4 h-4" />
-                {t("employee")}
+                <User className="w-3 h-3" />
+                עובד
               </button>
               <button
                 onClick={() => setFilter("department")}
                 className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
                   filter === "department" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 )}
               >
-                <Building2 className="w-4 h-4" />
-                {t("department")}
+                <Building2 className="w-3 h-3" />
+                מחלקה
               </button>
             </div>
 
             {filter !== "all" && (
               <Select value={selectedValue} onValueChange={setSelectedValue}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder={`${t("select")} ${filter === "assignee" ? t("employee") : t("department")}`} />
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder={filter === "assignee" ? "בחר עובד" : "בחר מחלקה"} />
                 </SelectTrigger>
                 <SelectContent>
                   {filter === "assignee" && assignees.map(a => <SelectItem key={a} value={a!}>{a}</SelectItem>)}
@@ -346,23 +314,16 @@ export default function Tasks() {
             )}
           </div>
 
-          {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
             <button
               onClick={() => setViewMode("list")}
-              className={cn(
-                "p-2 rounded-md transition-colors",
-                viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              )}
+              className={cn("p-2 rounded-md transition-colors", viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={cn(
-                "p-2 rounded-md transition-colors",
-                viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              )}
+              className={cn("p-2 rounded-md transition-colors", viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -375,196 +336,238 @@ export default function Tasks() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center">
+          <div className="glass rounded-xl p-8 md:p-12 text-center">
             <CheckSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">{t("no_tasks")}</h3>
-            <p className="text-muted-foreground">{t("create_first_task")}</p>
+            <h3 className="text-lg font-semibold mb-2">אין משימות</h3>
+            <p className="text-muted-foreground mb-4">צור את המשימה הראשונה</p>
+            <Button onClick={() => openDialog()}>
+              <Plus className="w-4 h-4 ml-2" />
+              משימה חדשה
+            </Button>
           </div>
         ) : viewMode === "list" ? (
-          /* List View with Hierarchy */
-          <div className="glass rounded-xl overflow-hidden opacity-0 animate-slide-up" style={{ animationDelay: "0.15s", animationFillMode: "forwards" }}>
-            {rootTasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                allTasks={filteredTasks}
-                teamMembers={teamMembers}
-                onEdit={handleEditTask}
-                onAddSubtask={handleAddSubtask}
-                onStatusChange={(id, status) => updateStatusMutation.mutate({ id, status })}
-                onDelete={handleDeleteTask}
-              />
-            ))}
+          <div className="glass rounded-xl overflow-hidden">
+            {filteredTasks.map((task) => {
+              const status = statusConfig[task.status] || statusConfig.pending;
+              const priority = priorityConfig[task.priority] || priorityConfig.medium;
+              const StatusIcon = status.icon;
+              
+              return (
+                <div key={task.id} className="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group">
+                  <div className="flex items-start gap-3">
+                    <button
+                      onClick={() => {
+                        const nextStatus = task.status === "pending" ? "in-progress" : task.status === "in-progress" ? "completed" : "pending";
+                        updateStatusMutation.mutate({ id: task.id, status: nextStatus });
+                      }}
+                      className={cn("p-2 rounded-lg transition-colors hover:opacity-80 flex-shrink-0", status.bg)}
+                    >
+                      <StatusIcon className={cn("w-5 h-5", status.color)} />
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className={cn("font-medium", task.status === "completed" && "line-through text-muted-foreground")}>
+                          {task.title}
+                        </h3>
+                        <span className={cn("w-2 h-2 rounded-full flex-shrink-0", priority.color)} title={priority.label} />
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                        {task.assignee && (
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {task.assignee}
+                          </span>
+                        )}
+                        {task.department && (
+                          <span className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            {task.department}
+                          </span>
+                        )}
+                        {task.due_date && (
+                          <span className={cn(
+                            "flex items-center gap-1",
+                            new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive"
+                          )}>
+                            <Calendar className="w-3 h-3" />
+                            {new Date(task.due_date).toLocaleDateString("he-IL")}
+                          </span>
+                        )}
+                      </div>
+
+                      {task.description && (
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-1">{task.description}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(task)}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setTaskToDelete(task); setDeleteDialogOpen(true); }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <Badge variant="outline" className={cn("whitespace-nowrap flex-shrink-0", status.bg, status.color)}>
+                      {status.label}
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          /* Grid View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTasks.map((task, index) => (
-              <TaskGridCard
-                key={task.id}
-                task={task}
-                index={index}
-                onEdit={handleEditTask}
-                onDelete={handleDeleteTask}
-                onStatusChange={(id, status) => updateStatusMutation.mutate({ id, status })}
-              />
-            ))}
+            {filteredTasks.map((task, index) => {
+              const status = statusConfig[task.status] || statusConfig.pending;
+              const priority = priorityConfig[task.priority] || priorityConfig.medium;
+              
+              return (
+                <div 
+                  key={task.id}
+                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up group"
+                  style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: "forwards" }}
+                >
+                  <div className="p-4 md:p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("w-2 h-2 rounded-full", priority.color)} />
+                        <span className="text-xs text-muted-foreground">{priority.label}</span>
+                      </div>
+                      <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(task)}>
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setTaskToDelete(task); setDeleteDialogOpen(true); }}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <h3 className={cn("font-medium mb-2", task.status === "completed" && "line-through text-muted-foreground")}>
+                      {task.title}
+                    </h3>
+
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {task.assignee && <span>{task.assignee}</span>}
+                        {task.due_date && (
+                          <span className={cn(new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive")}>
+                            {new Date(task.due_date).toLocaleDateString("he-IL")}
+                          </span>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={cn("text-xs", status.bg, status.color)}>
+                        {status.label}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Edit/Create Dialog */}
-      <TaskEditDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        task={selectedTask}
-        parentTaskId={parentTaskId}
-        teamMembers={teamMembers}
-        onSave={handleSave}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedTask ? "עריכת משימה" : "משימה חדשה"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>כותרת</Label>
+              <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="כותרת המשימה" />
+            </div>
+            <div className="space-y-2">
+              <Label>תיאור</Label>
+              <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="תיאור המשימה" rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>סטטוס</Label>
+                <Select value={formStatus} onValueChange={setFormStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">ממתין</SelectItem>
+                    <SelectItem value="in-progress">בתהליך</SelectItem>
+                    <SelectItem value="completed">הושלם</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>עדיפות</Label>
+                <Select value={formPriority} onValueChange={setFormPriority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">נמוכה</SelectItem>
+                    <SelectItem value="medium">בינונית</SelectItem>
+                    <SelectItem value="high">גבוהה</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>אחראי</Label>
+                <Select value={formAssignee || "none"} onValueChange={(v) => setFormAssignee(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="בחר אחראי" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {teamMembers.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>מחלקה</Label>
+                <Select value={formDepartment || "none"} onValueChange={(v) => setFormDepartment(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="בחר מחלקה" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {departments.map((d) => <SelectItem key={d} value={d!}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>תאריך יעד</Label>
+              <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={closeDialog}>ביטול</Button>
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                שמור
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("delete_task")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("delete_task_confirm")} "{taskToDelete?.title}"?
-              {tasks.some(t => t.parent_task_id === taskToDelete?.id) && (
-                <span className="block mt-2 text-destructive">
-                  {t("subtasks_will_be_deleted")}
-                </span>
-              )}
-            </AlertDialogDescription>
+            <AlertDialogTitle>מחיקת משימה</AlertDialogTitle>
+            <AlertDialogDescription>האם למחוק את "{taskToDelete?.title}"?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => taskToDelete && deleteMutation.mutate(taskToDelete.id)}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {t("delete")}
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => taskToDelete && deleteMutation.mutate(taskToDelete.id)} className="bg-destructive hover:bg-destructive/90">
+              {deleteMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              מחק
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </MainLayout>
-  );
-}
-
-// Grid Card Component
-function TaskGridCard({ 
-  task, 
-  index, 
-  onEdit, 
-  onDelete,
-  onStatusChange 
-}: { 
-  task: Task; 
-  index: number;
-  onEdit: (task: Task) => void;
-  onDelete: (task: Task) => void;
-  onStatusChange: (id: string, status: string) => void;
-}) {
-  const { t } = useTranslation();
-  
-  const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
-    pending: { color: "text-warning", bg: "bg-warning/10", label: t("pending") },
-    "in-progress": { color: "text-info", bg: "bg-info/10", label: t("in_progress") },
-    review: { color: "text-purple-400", bg: "bg-purple-400/10", label: t("review") },
-    completed: { color: "text-success", bg: "bg-success/10", label: t("completed") },
-  };
-  
-  const priorityConfig: Record<string, { color: string; label: string }> = {
-    low: { color: "bg-muted", label: t("low") },
-    medium: { color: "bg-warning", label: t("medium") },
-    high: { color: "bg-destructive", label: t("high") },
-    urgent: { color: "bg-destructive animate-pulse", label: t("urgent") },
-  };
-
-  const status = statusConfig[task.status] || statusConfig.pending;
-  const priority = priorityConfig[task.priority] || priorityConfig.medium;
-
-  return (
-    <div 
-      className="glass rounded-xl card-shadow opacity-0 animate-slide-up group"
-      style={{ animationDelay: `${0.15 + index * 0.05}s`, animationFillMode: "forwards" }}
-    >
-      <div className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className={cn("w-2 h-2 rounded-full", priority.color)} />
-            <span className="text-xs text-muted-foreground">{priority.label}</span>
-          </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6"
-              onClick={() => onEdit(task)}
-            >
-              <Filter className="w-3 h-3" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-destructive"
-              onClick={() => onDelete(task)}
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
-          </div>
-        </div>
-
-        <h3 className={cn(
-          "font-bold mb-2 line-clamp-2",
-          task.status === "completed" && "line-through text-muted-foreground"
-        )}>
-          {task.title}
-        </h3>
-        
-        {task.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{task.description}</p>
-        )}
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-          {task.assignee && (
-            <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {task.assignee}
-            </span>
-          )}
-          {task.due_date && (
-            <span className={cn(
-              "flex items-center gap-1",
-              new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive"
-            )}>
-              {new Date(task.due_date).toLocaleDateString("he-IL")}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          <button
-            onClick={() => {
-              const nextStatus = task.status === "pending" ? "in-progress" 
-                : task.status === "in-progress" ? "completed" 
-                : "pending";
-              onStatusChange(task.id, nextStatus);
-            }}
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors hover:opacity-80",
-              status.bg, status.color
-            )}
-          >
-            {status.label}
-          </button>
-          {task.parent_task_id && (
-            <span className="text-xs text-muted-foreground">{t("subtask")}</span>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
