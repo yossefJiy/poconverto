@@ -62,6 +62,8 @@ interface ClientForm {
   tiktok_url: string;
   linkedin_url: string;
   twitter_url: string;
+  avg_profit_margin: number;
+  jiy_commission_percent: number;
 }
 
 const emptyForm: ClientForm = {
@@ -75,6 +77,8 @@ const emptyForm: ClientForm = {
   tiktok_url: "",
   linkedin_url: "",
   twitter_url: "",
+  avg_profit_margin: 0,
+  jiy_commission_percent: 0,
 };
 
 export default function ClientProfile() {
@@ -155,6 +159,8 @@ export default function ClientProfile() {
         tiktok_url: data.tiktok_url || null,
         linkedin_url: data.linkedin_url || null,
         twitter_url: data.twitter_url || null,
+        avg_profit_margin: data.avg_profit_margin || 0,
+        jiy_commission_percent: data.jiy_commission_percent || 0,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -180,6 +186,8 @@ export default function ClientProfile() {
         tiktok_url: (clientData as any).tiktok_url || "",
         linkedin_url: (clientData as any).linkedin_url || "",
         twitter_url: (clientData as any).twitter_url || "",
+        avg_profit_margin: (clientData as any).avg_profit_margin || 0,
+        jiy_commission_percent: (clientData as any).jiy_commission_percent || 0,
       });
       setShowEditDialog(true);
     }
@@ -600,6 +608,37 @@ export default function ClientProfile() {
                     value={form.tiktok_url}
                     onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })}
                     dir="ltr"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Profitability Settings */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">הגדרות רווחיות</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">אחוז רווחיות ממוצע (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={form.avg_profit_margin || ""}
+                    onChange={(e) => setForm({ ...form, avg_profit_margin: parseFloat(e.target.value) || 0 })}
+                    min={0}
+                    max={100}
+                    step={0.1}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">אחוז עמלה JIY (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={form.jiy_commission_percent || ""}
+                    onChange={(e) => setForm({ ...form, jiy_commission_percent: parseFloat(e.target.value) || 0 })}
+                    min={0}
+                    max={100}
+                    step={0.1}
                   />
                 </div>
               </div>

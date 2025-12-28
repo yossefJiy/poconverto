@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useShopifyAnalytics } from "@/hooks/useShopifyData";
+import { useShopifyComparison } from "@/hooks/useShopifyComparison";
 import { Progress } from "@/components/ui/progress";
 import {
   Collapsible,
@@ -43,6 +44,8 @@ interface ShopifyAnalyticsProps {
   globalDateFrom: string;
   globalDateTo: string;
   onRefresh?: () => void;
+  clientProfitMargin?: number;
+  clientJiyCommission?: number;
 }
 
 function formatNumber(num: number): string {
@@ -59,6 +62,8 @@ export function ShopifyAnalytics({
   globalDateFrom,
   globalDateTo,
   onRefresh,
+  clientProfitMargin = 0,
+  clientJiyCommission = 0,
 }: ShopifyAnalyticsProps) {
   const [useLocalFilter, setUseLocalFilter] = useState(false);
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
@@ -131,6 +136,8 @@ export function ShopifyAnalytics({
     refetch 
   } = useShopifyAnalytics(dateFrom, dateTo);
 
+  // Fetch comparison data for previous period
+  const { data: comparisonData, isLoading: isLoadingComparison } = useShopifyComparison(dateFrom, dateTo);
   const handleRefresh = () => {
     refetch();
     onRefresh?.();
@@ -212,6 +219,19 @@ export function ShopifyAnalytics({
 
   const trafficSources = analyticsData?.trafficSources || [];
   const topProducts = analyticsData?.topProducts || [];
+  const salesBreakdown = analyticsData?.salesBreakdown || {
+    grossSales: 0,
+    discounts: 0,
+    returns: 0,
+    netSales: 0,
+    shipping: 0,
+    taxes: 0,
+    totalSales: summary.totalRevenue,
+  };
+
+  // Calculate profitability
+  const grossProfit = salesBreakdown.grossSales * (clientProfitMargin / 100);
+  const jiyCommission = salesBreakdown.totalSales * (clientJiyCommission / 100);
 
   // Only show real data - no estimates
   const hasRealSessionData = summary.isRealSessionData && summary.sessions !== null;
@@ -405,6 +425,78 @@ export function ShopifyAnalytics({
                 <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
                   {orderStatus.refunded} הוחזרו
                 </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Previous Period Comparison */}
+        {!isLoading && comparisonData && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <h4 className="text-sm font-medium mb-3">השוואה לתקופה קודמת</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">הזמנות</p>
+                <p className="text-lg font-bold">{formatNumber(comparisonData.current.totalOrders)}</p>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">לפני: {formatNumber(comparisonData.previous.totalOrders)}</span>
+                  <span className={cn(
+                    "text-xs font-medium px-1 rounded",
+                    comparisonData.changes.orders >= 0 ? "text-green-500" : "text-red-500"
+                  )}>
+                    {comparisonData.changes.orders >= 0 ? "+" : ""}{comparisonData.changes.orders.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">מכירות</p>
+                <p className="text-lg font-bold">{formatCurrency(comparisonData.current.totalRevenue)}</p>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">לפני: {formatCurrency(comparisonData.previous.totalRevenue)}</span>
+                  <span className={cn(
+                    "text-xs font-medium px-1 rounded",
+                    comparisonData.changes.revenue >= 0 ? "text-green-500" : "text-red-500"
+                  )}>
+                    {comparisonData.changes.revenue >= 0 ? "+" : ""}{comparisonData.changes.revenue.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Gross/Net Sales Breakdown with Profitability */}
+        {!isLoading && salesBreakdown.grossSales > 0 && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <h4 className="text-sm font-medium mb-3">פירוט מכירות ורווחיות</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-xs text-muted-foreground">Gross Sales</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(salesBreakdown.grossSales)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <p className="text-xs text-muted-foreground">הנחות</p>
+                <p className="text-lg font-bold text-red-500">-{formatCurrency(salesBreakdown.discounts)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-xs text-muted-foreground">Net Sales</p>
+                <p className="text-lg font-bold text-blue-600">{formatCurrency(salesBreakdown.netSales)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <p className="text-xs text-muted-foreground">סה״כ מכירות</p>
+                <p className="text-lg font-bold text-purple-600">{formatCurrency(salesBreakdown.totalSales)}</p>
+              </div>
+              {clientProfitMargin > 0 && (
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-xs text-muted-foreground">רווח גולמי ({clientProfitMargin}%)</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(grossProfit)}</p>
+                </div>
+              )}
+              {clientJiyCommission > 0 && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-muted-foreground">עמלת JIY ({clientJiyCommission}%)</p>
+                  <p className="text-lg font-bold text-amber-600">{formatCurrency(jiyCommission)}</p>
+                </div>
               )}
             </div>
           </div>
