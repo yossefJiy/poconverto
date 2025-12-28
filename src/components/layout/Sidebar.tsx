@@ -47,12 +47,13 @@ const menuItems = [
 ];
 
 const settingsItems = [
-  { icon: User, label: "פרופיל", path: "/settings", section: "profile" },
-  { icon: Bell, label: "התראות", path: "/settings", section: "notifications" },
-  { icon: Link2, label: "אינטגרציות", path: "/settings", section: "integrations" },
-  { icon: Plug, label: "חיבורים", path: "/integrations" },
-  { icon: Shield, label: "אבטחה", path: "/settings", section: "security" },
-  { icon: Palette, label: "מראה", path: "/settings", section: "appearance" },
+  { icon: User, label: "פרופיל", path: "/settings", section: "profile", adminOnly: false },
+  { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
+  { icon: Plug, label: "חיבורים", path: "/integrations", adminOnly: false },
+  { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
+];
+
+const adminSettingsItems = [
   { icon: Languages, label: "תרגומים", path: "/translations" },
   { icon: ListTodo, label: "Backlog", path: "/backlog" },
 ];
@@ -164,7 +165,7 @@ export function Sidebar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="w-56">
-              <DropdownMenuLabel>הגדרות ומערכת</DropdownMenuLabel>
+              <DropdownMenuLabel>הגדרות</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {settingsItems.map((item) => (
                 <DropdownMenuItem key={item.label} asChild>
@@ -174,6 +175,20 @@ export function Sidebar() {
                   </Link>
                 </DropdownMenuItem>
               ))}
+              {(role === "admin" || role === "manager") && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>ניהול מערכת</DropdownMenuLabel>
+                  {adminSettingsItems.map((item) => (
+                    <DropdownMenuItem key={item.label} asChild>
+                      <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
