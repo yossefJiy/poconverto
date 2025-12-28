@@ -70,22 +70,35 @@ export function ShopifyAnalytics({
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let start: Date;
-    const end = today;
+    let end: Date = today;
     
     switch (localDateFilter) {
+      case "today":
+        start = today;
+        break;
+      case "yesterday":
+        start = new Date(today);
+        start.setDate(start.getDate() - 1);
+        end = start;
+        break;
       case "mtd":
         start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "7":
+        start = new Date(today);
+        start.setDate(start.getDate() - 7);
+        break;
+      case "30":
+        start = new Date(today);
+        start.setDate(start.getDate() - 30);
+        break;
+      case "90":
+        start = new Date(today);
+        start.setDate(start.getDate() - 90);
         break;
       case "ytd":
         start = new Date(now.getFullYear(), 0, 1);
         break;
-      case "y1":
-      case "y2":
-      case "y3": {
-        const yearsBack = parseInt(localDateFilter.replace('y', ''));
-        start = new Date(now.getFullYear() - yearsBack, now.getMonth(), 1);
-        break;
-      }
       default:
         start = new Date(now.getFullYear(), now.getMonth(), 1);
     }
@@ -154,12 +167,7 @@ export function ShopifyAnalytics({
   const trafficSources = analyticsData?.trafficSources || [];
   const topProducts = analyticsData?.topProducts || [];
 
-  // Calculate CTR (mock - would come from real data)
-  const ctr = summary.estimatedSessions > 0 
-    ? ((summary.totalOrders / summary.estimatedSessions) * 100).toFixed(2) 
-    : "0";
-
-  // Main dashboard metrics - always visible
+  // Main dashboard metrics - always visible (removed sessions and CTR as they're not real from Admin API)
   const mainMetrics = [
     {
       label: "סה״כ מכירות",
@@ -174,22 +182,22 @@ export function ShopifyAnalytics({
       color: "bg-purple-500/20 text-purple-500",
     },
     {
-      label: "CTR",
-      value: ctr + "%",
-      icon: <MousePointer className="w-5 h-5" />,
+      label: "ממוצע להזמנה",
+      value: formatCurrency(summary.avgOrderValue),
+      icon: <DollarSign className="w-5 h-5" />,
       color: "bg-blue-500/20 text-blue-500",
-    },
-    {
-      label: "סשנים",
-      value: formatNumber(summary.estimatedSessions),
-      icon: <Eye className="w-5 h-5" />,
-      color: "bg-cyan-500/20 text-cyan-500",
     },
     {
       label: "פריטים שנמכרו",
       value: formatNumber(summary.totalItemsSold),
       icon: <Package className="w-5 h-5" />,
       color: "bg-orange-500/20 text-orange-500",
+    },
+    {
+      label: "לקוחות ייחודיים",
+      value: formatNumber(summary.uniqueCustomers),
+      icon: <Users className="w-5 h-5" />,
+      color: "bg-cyan-500/20 text-cyan-500",
     },
   ];
 
@@ -222,11 +230,13 @@ export function ShopifyAnalytics({
                 <SelectValue placeholder="שנה תאריכים" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="mtd">מתחילת החודש (MTD)</SelectItem>
-                <SelectItem value="ytd">מתחילת השנה (YTD)</SelectItem>
-                <SelectItem value="y1">12 חודשים אחרונים</SelectItem>
-                <SelectItem value="y2">24 חודשים אחרונים</SelectItem>
-                <SelectItem value="y3">36 חודשים אחרונים</SelectItem>
+                <SelectItem value="today">היום</SelectItem>
+                <SelectItem value="yesterday">אתמול</SelectItem>
+                <SelectItem value="mtd">מתחילת החודש</SelectItem>
+                <SelectItem value="7">7 ימים אחרונים</SelectItem>
+                <SelectItem value="30">30 ימים אחרונים</SelectItem>
+                <SelectItem value="90">90 ימים אחרונים</SelectItem>
+                <SelectItem value="ytd">מתחילת השנה</SelectItem>
               </SelectContent>
             </Select>
 
