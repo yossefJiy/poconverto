@@ -38,6 +38,21 @@ interface DailyData {
   avgDuration: number;
 }
 
+interface EcommerceData {
+  addToCarts: number;
+  checkouts: number;
+  purchases: number;
+  purchaseRevenue: number;
+  transactions: number;
+  sessions: number;
+  conversionRates: {
+    addToCartRate: string;
+    checkoutRate: string;
+    purchaseRate: string;
+    overallConversionRate: string;
+  };
+}
+
 interface AnalyticsData {
   sessions: number;
   users: number;
@@ -49,6 +64,7 @@ interface AnalyticsData {
   devices: DeviceData[];
   countries: CountryData[];
   dailyData: DailyData[];
+  ecommerce?: EcommerceData;
 }
 
 interface PlatformData {
@@ -102,6 +118,7 @@ function parseGAResponse(gaData: any): AnalyticsData {
     devices: [],
     countries: [],
     dailyData: [],
+    ecommerce: undefined,
   };
 
   if (!gaData || gaData.error) {
@@ -220,6 +237,26 @@ function parseGAResponse(gaData: any): AnalyticsData {
     }
   }
 
+  // Parse ecommerce data if available
+  let ecommerce: EcommerceData | undefined;
+  if (gaData.ecommerce) {
+    ecommerce = {
+      addToCarts: gaData.ecommerce.totals?.addToCarts || 0,
+      checkouts: gaData.ecommerce.totals?.checkouts || 0,
+      purchases: gaData.ecommerce.totals?.purchases || 0,
+      purchaseRevenue: gaData.ecommerce.totals?.purchaseRevenue || 0,
+      transactions: gaData.ecommerce.totals?.transactions || 0,
+      sessions: gaData.ecommerce.totals?.sessions || 0,
+      conversionRates: {
+        addToCartRate: gaData.ecommerce.conversionRates?.addToCartRate || '0.00',
+        checkoutRate: gaData.ecommerce.conversionRates?.checkoutRate || '0.00',
+        purchaseRate: gaData.ecommerce.conversionRates?.purchaseRate || '0.00',
+        overallConversionRate: gaData.ecommerce.conversionRates?.overallConversionRate || '0.00',
+      },
+    };
+    console.log('[GA] Parsed ecommerce data:', ecommerce);
+  }
+
   return {
     sessions: totalSessions,
     users: totalUsers,
@@ -231,6 +268,7 @@ function parseGAResponse(gaData: any): AnalyticsData {
     devices,
     countries,
     dailyData,
+    ecommerce,
   };
 }
 
@@ -395,6 +433,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       devices: [],
       countries: [],
       dailyData: [],
+      ecommerce: undefined,
     },
     platformsData: platformsData || [],
     aggregatedAdsData,

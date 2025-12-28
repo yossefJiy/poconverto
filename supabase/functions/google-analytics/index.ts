@@ -251,28 +251,120 @@ serve(async (req) => {
       [{ metric: { metricName: "sessions" }, desc: true }]
     );
 
+    // 6. E-commerce events (add_to_cart, begin_checkout, purchase)
+    const ecommercePromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [
+        { name: "eventCount" },
+        { name: "eventValue" },
+        { name: "sessions" }
+      ],
+      [{ name: "eventName" }],
+      [{ metric: { metricName: "eventCount" }, desc: true }]
+    );
+
+    // 7. E-commerce conversion funnel (sessions with specific events)
+    const ecommerceFunnelPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [
+        { name: "sessions" },
+        { name: "addToCarts" },
+        { name: "checkouts" },
+        { name: "ecommercePurchases" },
+        { name: "purchaseRevenue" },
+        { name: "transactions" }
+      ],
+      [{ name: "date" }]
+    );
+
     // Wait for all reports
-    const [dailyMetrics, trafficSources, topPages, devices, countries] = await Promise.all([
+    const [dailyMetrics, trafficSources, topPages, devices, countries, ecommerce, ecommerceFunnel] = await Promise.all([
       dailyMetricsPromise,
       trafficSourcesPromise,
       topPagesPromise,
       devicesPromise,
-      countriesPromise
+      countriesPromise,
+      ecommercePromise,
+      ecommerceFunnelPromise
     ]);
 
     // Check for errors in any report
-    for (const [name, data] of Object.entries({ dailyMetrics, trafficSources, topPages, devices, countries })) {
+    for (const [name, data] of Object.entries({ dailyMetrics, trafficSources, topPages, devices, countries, ecommerce, ecommerceFunnel })) {
       if ((data as any).error) {
         console.error(`${name} error:`, (data as any).error);
       }
     }
+
+    // Parse ecommerce events
+    const ecommerceEvents: Record<string, { count: number; value: number }> = {};
+    if (ecommerce.rows) {
+      for (const row of ecommerce.rows) {
+        const eventName = row.dimensionValues?.[0]?.value || '';
+        const count = parseInt(row.metricValues?.[0]?.value || '0');
+        const value = parseFloat(row.metricValues?.[1]?.value || '0');
+        ecommerceEvents[eventName] = { count, value };
+      }
+    }
+
+    // Parse ecommerce funnel totals
+    let ecommerceTotals = {
+      addToCarts: 0,
+      checkouts: 0,
+      purchases: 0,
+      purchaseRevenue: 0,
+      transactions: 0,
+      sessions: 0
+    };
+    
+    if (ecommerceFunnel.rows) {
+      for (const row of ecommerceFunnel.rows) {
+        ecommerceTotals.sessions += parseInt(row.metricValues?.[0]?.value || '0');
+        ecommerceTotals.addToCarts += parseInt(row.metricValues?.[1]?.value || '0');
+        ecommerceTotals.checkouts += parseInt(row.metricValues?.[2]?.value || '0');
+        ecommerceTotals.purchases += parseInt(row.metricValues?.[3]?.value || '0');
+        ecommerceTotals.purchaseRevenue += parseFloat(row.metricValues?.[4]?.value || '0');
+        ecommerceTotals.transactions += parseInt(row.metricValues?.[5]?.value || '0');
+      }
+    }
+
+    // Calculate conversion rates
+    const conversionRates = {
+      addToCartRate: ecommerceTotals.sessions > 0 
+        ? ((ecommerceTotals.addToCarts / ecommerceTotals.sessions) * 100).toFixed(2) 
+        : '0.00',
+      checkoutRate: ecommerceTotals.addToCarts > 0 
+        ? ((ecommerceTotals.checkouts / ecommerceTotals.addToCarts) * 100).toFixed(2) 
+        : '0.00',
+      purchaseRate: ecommerceTotals.checkouts > 0 
+        ? ((ecommerceTotals.purchases / ecommerceTotals.checkouts) * 100).toFixed(2) 
+        : '0.00',
+      overallConversionRate: ecommerceTotals.sessions > 0 
+        ? ((ecommerceTotals.purchases / ecommerceTotals.sessions) * 100).toFixed(2) 
+        : '0.00'
+    };
+
+    console.log('[GA] Ecommerce totals:', ecommerceTotals);
+    console.log('[GA] Conversion rates:', conversionRates);
 
     const response = {
       dailyMetrics,
       trafficSources,
       topPages,
       devices,
-      countries
+      countries,
+      ecommerce: {
+        events: ecommerceEvents,
+        totals: ecommerceTotals,
+        conversionRates,
+        rawData: ecommerce,
+        funnelData: ecommerceFunnel
+      }
     };
 
     console.log("GA data fetched successfully:", {
@@ -280,7 +372,9 @@ serve(async (req) => {
       trafficRows: trafficSources.rows?.length || 0,
       topPagesRows: topPages.rows?.length || 0,
       devicesRows: devices.rows?.length || 0,
-      countriesRows: countries.rows?.length || 0
+      countriesRows: countries.rows?.length || 0,
+      ecommerceEvents: Object.keys(ecommerceEvents).length,
+      ecommerceTotals
     });
 
     return new Response(JSON.stringify(response), {
