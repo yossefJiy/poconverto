@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.send-2fa-code]
 verify_jwt = false
+
+[functions.sync-analytics-background]
+verify_jwt = false
