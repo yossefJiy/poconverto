@@ -158,6 +158,7 @@ export type Database = {
           industry: string | null
           instagram_url: string | null
           is_ecommerce: boolean | null
+          is_lead_gen: boolean | null
           linkedin_url: string | null
           logo_url: string | null
           name: string
@@ -175,6 +176,7 @@ export type Database = {
           industry?: string | null
           instagram_url?: string | null
           is_ecommerce?: boolean | null
+          is_lead_gen?: boolean | null
           linkedin_url?: string | null
           logo_url?: string | null
           name: string
@@ -192,6 +194,7 @@ export type Database = {
           industry?: string | null
           instagram_url?: string | null
           is_ecommerce?: boolean | null
+          is_lead_gen?: boolean | null
           linkedin_url?: string | null
           logo_url?: string | null
           name?: string
