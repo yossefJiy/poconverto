@@ -101,27 +101,27 @@ export default function ClientProfile() {
   });
 
   // Fetch client stats
-  const { data: stats = { campaigns: 0, tasks: 0, activeCampaigns: 0, goals: 0 } } = useQuery({
+  const { data: stats = { campaigns: 0, tasks: 0, activeCampaigns: 0, marketingData: 0 } } = useQuery({
     queryKey: ["client-profile-stats", selectedClient?.id],
     queryFn: async () => {
-      if (!selectedClient) return { campaigns: 0, tasks: 0, activeCampaigns: 0, goals: 0 };
+      if (!selectedClient) return { campaigns: 0, tasks: 0, activeCampaigns: 0, marketingData: 0 };
       
-      const [campaignsRes, tasksRes, goalsRes] = await Promise.all([
+      const [campaignsRes, tasksRes, marketingRes] = await Promise.all([
         supabase.from("campaigns").select("status").eq("client_id", selectedClient.id),
         supabase.from("tasks").select("status").eq("client_id", selectedClient.id),
-        supabase.from("goals").select("id").eq("client_id", selectedClient.id),
+        supabase.from("marketing_data").select("id").eq("client_id", selectedClient.id),
       ]);
 
       const campaigns = campaignsRes.data || [];
       const tasks = tasksRes.data || [];
-      const goals = goalsRes.data || [];
+      const marketingData = marketingRes.data || [];
 
       return {
         campaigns: campaigns.length,
         activeCampaigns: campaigns.filter(c => c.status === "active").length,
         tasks: tasks.length,
         pendingTasks: tasks.filter(t => t.status === "pending").length,
-        goals: goals.length,
+        marketingData: marketingData.length,
       };
     },
     enabled: !!selectedClient,
@@ -371,8 +371,8 @@ export default function ClientProfile() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">יעדים</p>
-                  <p className="text-3xl font-bold">{stats.goals}</p>
+                  <p className="text-sm text-muted-foreground">נתוני שיווק</p>
+                  <p className="text-3xl font-bold">{stats.marketingData}</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
                   <Users className="w-6 h-6 text-success" />
