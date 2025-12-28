@@ -238,8 +238,9 @@ export default function Analytics() {
             {/* Shopify Analytics - First */}
             {(hasShopify || selectedClient.is_ecommerce) && (
               <ShopifyAnalytics
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
+                // Use date-only strings to avoid timezone shifts when talking to Shopify
+                globalDateFrom={dateRange.startDate}
+                globalDateTo={dateRange.endDate}
                 onRefresh={handleRefreshAll}
               />
             )}
