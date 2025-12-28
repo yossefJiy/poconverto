@@ -101,6 +101,9 @@ interface GoogleAdsCardProps {
   globalDateTo: string;
   onRefresh?: () => void;
   integration?: GoogleAdsIntegration;
+  allIntegrations?: GoogleAdsIntegration[];
+  selectedIntegrationId?: string | null;
+  onIntegrationChange?: (id: string | null) => void;
 }
 
 function formatNumber(num: number): string {
@@ -154,6 +157,9 @@ export function GoogleAdsCard({
   globalDateTo,
   onRefresh,
   integration,
+  allIntegrations = [],
+  selectedIntegrationId,
+  onIntegrationChange,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useLocalFilter, setUseLocalFilter] = useState(false);
@@ -162,6 +168,8 @@ export function GoogleAdsCard({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GoogleAdsData | null>(null);
+
+  const hasMultipleAccounts = allIntegrations.length > 1;
 
   const fetchGoogleAdsData = async () => {
     setIsLoading(true);
@@ -360,7 +368,26 @@ export function GoogleAdsCard({
             </div>
           </CollapsibleTrigger>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Account Selector - Only show when multiple accounts */}
+            {hasMultipleAccounts && onIntegrationChange && (
+              <Select 
+                value={selectedIntegrationId || ""} 
+                onValueChange={(val) => onIntegrationChange(val || null)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="בחר חשבון" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allIntegrations.map((int) => (
+                    <SelectItem key={int.id} value={int.id}>
+                      {int.settings?.customer_id || "חשבון לא מזוהה"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
             {useLocalFilter && (
               <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
                 חזור לסינון גלובלי
