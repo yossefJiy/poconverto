@@ -294,10 +294,10 @@ export function ShopifyAnalytics({
   ];
 
   return (
-    <div className="space-y-6">
+    <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
       {/* Alert for missing session data */}
       {!isLoading && !hasRealSessionData && (
-        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+        <Alert className="border-yellow-500/50 bg-yellow-500/10 mb-6">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
           <AlertTitle className="text-yellow-600">נדרשת פעולה נוספת</AlertTitle>
           <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -321,17 +321,19 @@ export function ShopifyAnalytics({
       {/* Main Analytics Card */}
       <div className="glass rounded-xl p-6 card-shadow">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <ShoppingCart className="w-4 h-4 text-purple-500" />
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <ShoppingCart className="w-4 h-4 text-purple-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">נתוני Shopify</h3>
+                <p className="text-sm text-muted-foreground">
+                  {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-lg">נתוני Shopify</h3>
-              <p className="text-sm text-muted-foreground">
-                {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-              </p>
-            </div>
-          </div>
+          </CollapsibleTrigger>
 
           <div className="flex items-center gap-2">
             {useLocalFilter && (
@@ -362,6 +364,12 @@ export function ShopifyAnalytics({
                 <RefreshCw className="w-4 h-4" />
               )}
             </Button>
+            
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon">
+                {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </Button>
+            </CollapsibleTrigger>
           </div>
         </div>
 
@@ -461,25 +469,15 @@ export function ShopifyAnalytics({
           </div>
         )}
 
-      </div>
-
-      {/* Collapsible Sales Breakdown & Profitability */}
-      {!isLoading && salesBreakdown.grossSales > 0 && (
-        <Collapsible>
-          <div className="glass rounded-xl p-4 card-shadow">
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-green-500" />
-                  <span className="font-medium">פירוט מכירות ורווחיות</span>
-                </div>
-                <Button variant="ghost" size="icon">
-                  <ChevronDown className="w-5 h-5" />
-                </Button>
+        {/* Collapsible Content - All detailed data inside */}
+        <CollapsibleContent className="mt-6 space-y-6">
+          {/* Sales Breakdown & Profitability */}
+          {salesBreakdown.grossSales > 0 && (
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-green-500" />
+                <h4 className="font-medium">פירוט מכירות ורווחיות</h4>
               </div>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent className="mt-4">
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                   <p className="text-xs text-muted-foreground">Gross Sales</p>
@@ -510,25 +508,13 @@ export function ShopifyAnalytics({
                   </div>
                 )}
               </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
+            </div>
+          )}
 
-      {/* Collapsible Details */}
-      {!isLoading && (trafficSources.length > 0 || topProducts.length > 0) && (
-        <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <div className="glass rounded-xl p-4 card-shadow">
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
-                <span className="font-medium">נתונים נוספים</span>
-                <Button variant="ghost" size="icon">
-                  {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </Button>
-              </div>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent className="mt-4">
+          {/* Traffic Sources & Top Products */}
+          {(trafficSources.length > 0 || topProducts.length > 0) && (
+            <div className="pt-4 border-t border-border">
+              <h4 className="font-medium mb-4">נתונים נוספים</h4>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Traffic Sources */}
                 {trafficSources.length > 0 && (
@@ -577,10 +563,10 @@ export function ShopifyAnalytics({
                   </div>
                 )}
               </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
-    </div>
+            </div>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
