@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -19,11 +19,18 @@ import {
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+// Scheduled refresh times (24h format)
+const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
 
 export default function Analytics() {
   const { selectedClient } = useClient();
   const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastRefreshHourRef = useRef<number | null>(null);
+  const toastIdRef = useRef<string | number | null>(null);
   
   // Get date range based on filter
   const dateRange = getDateRangeFromFilter(globalDateFilter, customDateRange);
@@ -54,14 +61,76 @@ export default function Analytics() {
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
   const queryClient = useQueryClient();
-  const shopifyRefetchRef = useRef<(() => void) | null>(null);
 
-  const handleRefreshAll = async () => {
-    // Refresh Shopify analytics
-    await queryClient.invalidateQueries({ queryKey: ['shopify-analytics'] });
-    // Refresh GA and integrations
-    await refetchAll?.();
-  };
+  const handleRefreshAll = useCallback(async (isScheduled = false) => {
+    setIsRefreshing(true);
+    
+    // Show persistent toast
+    const toastMessage = isScheduled 
+      ? "מרענן נתונים (ריענון מתוזמן)..." 
+      : "מרענן נתונים...";
+    
+    toastIdRef.current = toast.loading(toastMessage, {
+      position: "bottom-left",
+      duration: Infinity,
+    });
+
+    try {
+      // Refresh Shopify analytics
+      await queryClient.invalidateQueries({ queryKey: ['shopify-analytics'] });
+      // Refresh GA and integrations
+      await refetchAll?.();
+      
+      // Dismiss loading toast and show success
+      if (toastIdRef.current) {
+        toast.dismiss(toastIdRef.current);
+      }
+      toast.success("הנתונים עודכנו בהצלחה", {
+        position: "bottom-left",
+        duration: 3000,
+      });
+    } catch (error) {
+      // Dismiss loading toast and show error
+      if (toastIdRef.current) {
+        toast.dismiss(toastIdRef.current);
+      }
+      toast.error("שגיאה בריענון הנתונים", {
+        position: "bottom-left",
+        duration: 3000,
+      });
+    } finally {
+      setIsRefreshing(false);
+      toastIdRef.current = null;
+    }
+  }, [queryClient, refetchAll]);
+
+  // Scheduled refresh effect
+  useEffect(() => {
+    const checkScheduledRefresh = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      // Check if current hour is in scheduled times and we haven't refreshed this hour yet
+      // Also check if we're within the first minute of the hour to avoid multiple refreshes
+      if (
+        SCHEDULED_REFRESH_TIMES.includes(currentHour) &&
+        currentMinute === 0 &&
+        lastRefreshHourRef.current !== currentHour
+      ) {
+        lastRefreshHourRef.current = currentHour;
+        handleRefreshAll(true);
+      }
+    };
+
+    // Check every minute
+    const intervalId = setInterval(checkScheduledRefresh, 60 * 1000);
+    
+    // Also check immediately on mount
+    checkScheduledRefresh();
+
+    return () => clearInterval(intervalId);
+  }, [handleRefreshAll]);
 
   if (!selectedClient) {
     return (
@@ -126,10 +195,10 @@ export default function Analytics() {
             <Button 
               variant="outline" 
               size="icon" 
-              disabled={isLoading} 
-              onClick={handleRefreshAll}
+              disabled={isLoading || isRefreshing} 
+              onClick={() => handleRefreshAll(false)}
             >
-              {isLoading ? (
+              {isLoading || isRefreshing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4" />
