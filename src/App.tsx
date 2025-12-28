@@ -19,7 +19,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Backlog from "./pages/Backlog";
 import ClientDashboard from "./pages/ClientDashboard";
-import Clients from "./pages/Clients";
+import ClientProfile from "./pages/ClientProfile";
 import ApiDocs from "./pages/ApiDocs";
 import Analytics from "./pages/Analytics";
 
@@ -38,7 +38,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/client/:clientId" element={<ClientDashboard />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+                <Route path="/clients" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
                 <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
                 <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
