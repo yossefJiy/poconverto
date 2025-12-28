@@ -228,12 +228,36 @@ serve(async (req) => {
         analyticsData = await fetchShopifyAnalytics(storeDomain, accessToken, date_from, date_to);
       }
       
-      // Calculate analytics metrics using total_price (full price before refunds)
-      const totalOrders = allOrders.length;
-      const totalRevenue = allOrders.reduce((sum: number, o: any) => {
-        // Use total_price for full revenue including refunded orders
-        return sum + parseFloat(o.total_price || '0');
-      }, 0);
+      // Filter out cancelled and fully refunded orders for revenue calculation
+      const validOrders = allOrders.filter((o: any) => 
+        o.cancelled_at === null && o.financial_status !== 'refunded'
+      );
+      
+      console.log(`[Shopify API] Total orders: ${allOrders.length}, Valid orders (not cancelled/refunded): ${validOrders.length}`);
+      
+      // Log sample order to see available fields
+      if (validOrders.length > 0) {
+        const sample = validOrders[0];
+        console.log(`[Shopify API] Sample order fields: subtotal_price=${sample.subtotal_price}, total_price=${sample.total_price}, current_subtotal_price=${sample.current_subtotal_price}, current_total_price=${sample.current_total_price}`);
+      }
+      
+      // Calculate analytics metrics
+      const totalOrders = validOrders.length;
+      
+      // Calculate different revenue metrics for comparison
+      const subtotalRevenue = validOrders.reduce((sum: number, o: any) => sum + parseFloat(o.subtotal_price || '0'), 0);
+      const currentSubtotalRevenue = validOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_subtotal_price || o.subtotal_price || '0'), 0);
+      const totalPriceRevenue = validOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total_price || '0'), 0);
+      const currentTotalRevenue = validOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
+      
+      console.log(`[Shopify API] Revenue breakdown:`);
+      console.log(`  - subtotal_price sum: ₪${subtotalRevenue.toFixed(2)}`);
+      console.log(`  - current_subtotal_price sum: ₪${currentSubtotalRevenue.toFixed(2)}`);
+      console.log(`  - total_price sum: ₪${totalPriceRevenue.toFixed(2)}`);
+      console.log(`  - current_total_price sum: ₪${currentTotalRevenue.toFixed(2)}`);
+      
+      // Use current_subtotal_price as the primary revenue (matches Shopify dashboard "Sales")
+      const totalRevenue = currentSubtotalRevenue;
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
       // Calculate items sold
