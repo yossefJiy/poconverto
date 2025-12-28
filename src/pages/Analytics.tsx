@@ -2,11 +2,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
+import { useShopifyData } from "@/hooks/useShopifyData";
 import { AnalyticsSummary } from "@/components/analytics/AnalyticsSummary";
 import { PlatformTabs } from "@/components/analytics/PlatformTabs";
-import { ShopifyDashboard } from "@/components/shopify/ShopifyDashboard";
+import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { 
   Plug, 
   ArrowRight, 
@@ -15,8 +16,7 @@ import {
   Download,
   RefreshCw,
   Loader2,
-  BarChart3,
-  ShoppingBag,
+  Store,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -32,7 +32,7 @@ import { useState } from "react";
 export default function Analytics() {
   const { selectedClient } = useClient();
   const [dateRange, setDateRange] = useState("30");
-  const [mainTab, setMainTab] = useState("analytics");
+  const [shopifyDateFilter, setShopifyDateFilter] = useState("mtd");
   
   const { 
     analyticsData, 
@@ -45,8 +45,24 @@ export default function Analytics() {
     refetchAll
   } = useAnalyticsData(selectedClient?.id, dateRange);
 
+  const {
+    orders: shopifyOrders,
+    shop: shopifyShop,
+    isLoading: shopifyLoading,
+    isError: shopifyError,
+    error: shopifyErrorDetails,
+    refetch: refetchShopify,
+  } = useShopifyData();
+
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
+
+  const handleRefreshAll = () => {
+    refetchAll?.();
+    if (hasShopify || selectedClient?.is_ecommerce) {
+      refetchShopify();
+    }
+  };
 
   if (!selectedClient) {
     return (
@@ -70,15 +86,36 @@ export default function Analytics() {
   }
 
   const noIntegrations = integrations.length === 0;
+  const dataSources = [];
+  
+  if (hasAnalytics) dataSources.push("Google Analytics");
+  if (hasAds) dataSources.push("פרסום");
+  if (hasShopify || selectedClient.is_ecommerce) dataSources.push("Shopify");
 
   return (
     <MainLayout>
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <PageHeader 
-            title={`אנליטיקס - ${selectedClient.name}`}
-            description="הצלבת נתוני אתר מול מערכות פרסום"
-          />
+          <div>
+            <PageHeader 
+              title={`אנליטיקס - ${selectedClient.name}`}
+              description="הצלבת נתוני אתר מול מערכות פרסום ואיקומרס"
+            />
+            {dataSources.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">מקורות מידע:</span>
+                {dataSources.map((source) => (
+                  <Badge 
+                    key={source} 
+                    variant="outline" 
+                    className="bg-primary/10 text-primary border-primary/30"
+                  >
+                    {source}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
           
           <div className="flex items-center gap-3">
             <Select value={dateRange} onValueChange={setDateRange}>
@@ -94,8 +131,13 @@ export default function Analytics() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" disabled={isLoading} onClick={() => refetchAll?.()}>
-              {isLoading ? (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              disabled={isLoading || shopifyLoading} 
+              onClick={handleRefreshAll}
+            >
+              {isLoading || shopifyLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4" />
@@ -110,7 +152,7 @@ export default function Analytics() {
         </div>
 
         {/* No Integrations Warning */}
-        {noIntegrations && (
+        {noIntegrations && !selectedClient.is_ecommerce && (
           <Alert className="border-warning/50 bg-warning/10">
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertTitle>אין חיבורים פעילים</AlertTitle>
@@ -138,55 +180,46 @@ export default function Analytics() {
           </Alert>
         )}
 
-        {/* Main Tabs - Show eCommerce tab if Shopify is connected or for demo */}
-        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="analytics" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              אנליטיקס ופרסום
-            </TabsTrigger>
-            <TabsTrigger value="ecommerce" className="gap-2">
-              <ShoppingBag className="w-4 h-4" />
-              חנות ומלאי
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="analytics">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
-                {/* Summary Section */}
-                <AnalyticsSummary 
-                  websiteData={{
-                    sessions: analyticsData.sessions,
-                    users: analyticsData.users,
-                    pageviews: analyticsData.pageviews,
-                    bounceRate: analyticsData.bounceRate,
-                  }}
-                  adsData={aggregatedAdsData}
-                />
-
-                {/* Platform Tabs */}
-                <div className="glass rounded-xl p-6 card-shadow">
-                  <h2 className="text-xl font-bold mb-6">פירוט לפי פלטפורמה</h2>
-                  <PlatformTabs 
-                    platforms={platformsData}
-                    analyticsData={analyticsData}
-                  />
-                </div>
-              </>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Shopify Analytics - Show if client is ecommerce */}
+            {(hasShopify || selectedClient.is_ecommerce) && (
+              <ShopifyAnalytics
+                orders={shopifyOrders}
+                isLoading={shopifyLoading}
+                isError={shopifyError}
+                error={shopifyErrorDetails}
+                refetch={refetchShopify}
+                dateFilter={shopifyDateFilter}
+                onDateFilterChange={setShopifyDateFilter}
+              />
             )}
-          </TabsContent>
 
-          <TabsContent value="ecommerce">
+            {/* Website & Ads Summary Section */}
+            <AnalyticsSummary 
+              websiteData={{
+                sessions: analyticsData.sessions,
+                users: analyticsData.users,
+                pageviews: analyticsData.pageviews,
+                bounceRate: analyticsData.bounceRate,
+              }}
+              adsData={aggregatedAdsData}
+            />
+
+            {/* Platform Tabs */}
             <div className="glass rounded-xl p-6 card-shadow">
-              <ShopifyDashboard />
+              <h2 className="text-xl font-bold mb-6">פירוט לפי פלטפורמה</h2>
+              <PlatformTabs 
+                platforms={platformsData}
+                analyticsData={analyticsData}
+              />
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
