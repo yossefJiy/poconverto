@@ -59,18 +59,8 @@ export default function Analytics() {
     refetchAll
   } = useAnalyticsData(selectedClient?.id, getDaysFromFilter());
 
-  // Find all Google Ads integrations for the current client
-  const googleAdsIntegrations = integrations.filter(i => i.platform === 'google_ads' && i.is_connected);
-  const [selectedGoogleAdsId, setSelectedGoogleAdsId] = useState<string | null>(null);
-  
-  // Select first integration by default when integrations load
-  useEffect(() => {
-    if (googleAdsIntegrations.length > 0 && !selectedGoogleAdsId) {
-      setSelectedGoogleAdsId(googleAdsIntegrations[0].id);
-    }
-  }, [googleAdsIntegrations, selectedGoogleAdsId]);
-  
-  const selectedGoogleAdsIntegration = googleAdsIntegrations.find(i => i.id === selectedGoogleAdsId);
+  // Find Google Ads integration for the current client
+  const googleAdsIntegration = integrations.find(i => i.platform === 'google_ads' && i.is_connected);
 
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
@@ -278,16 +268,10 @@ export default function Analytics() {
               globalDateFrom={dateRange.dateFrom}
               globalDateTo={dateRange.dateTo}
               onRefresh={handleRefreshAll}
-              integration={selectedGoogleAdsIntegration ? {
-                id: selectedGoogleAdsIntegration.id,
-                settings: selectedGoogleAdsIntegration.settings as any
+              integration={googleAdsIntegration ? {
+                id: googleAdsIntegration.id,
+                settings: googleAdsIntegration.settings as any
               } : undefined}
-              allIntegrations={googleAdsIntegrations.map(i => ({
-                id: i.id,
-                settings: i.settings as any
-              }))}
-              selectedIntegrationId={selectedGoogleAdsId}
-              onIntegrationChange={setSelectedGoogleAdsId}
             />
           </div>
         )}
