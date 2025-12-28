@@ -154,9 +154,10 @@ export function getDateRangeFromFilter(
   customRange?: { from: Date; to: Date }
 ): { startDate: string; endDate: string; dateFrom: string; dateTo: string } {
   const now = new Date();
+  // Today at midnight for start, today at end of day for calculations
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let start: Date;
-  let end: Date = today;
+  let end: Date = today; // Always include today
 
   switch (filter) {
     case "today":
@@ -165,7 +166,7 @@ export function getDateRangeFromFilter(
     case "yesterday":
       start = new Date(today);
       start.setDate(start.getDate() - 1);
-      end = start;
+      end = new Date(start); // Yesterday only
       break;
     case "mtd":
       start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -180,27 +181,35 @@ export function getDateRangeFromFilter(
       break;
     case "7":
       start = new Date(today);
-      start.setDate(start.getDate() - 7);
+      start.setDate(start.getDate() - 6); // 7 days including today
       break;
     case "14":
       start = new Date(today);
-      start.setDate(start.getDate() - 14);
+      start.setDate(start.getDate() - 13); // 14 days including today
       break;
     case "30":
       start = new Date(today);
-      start.setDate(start.getDate() - 30);
+      start.setDate(start.getDate() - 29); // 30 days including today
       break;
     case "90":
       start = new Date(today);
-      start.setDate(start.getDate() - 90);
+      start.setDate(start.getDate() - 89); // 90 days including today
       break;
     default:
       start = new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
+  // Format dates consistently as YYYY-MM-DD
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
+    startDate: formatDate(start),
+    endDate: formatDate(end),
     dateFrom: start.toISOString(),
     dateTo: end.toISOString(),
   };
