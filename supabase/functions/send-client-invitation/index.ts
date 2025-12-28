@@ -13,6 +13,9 @@ interface InvitationRequest {
   clientName: string;
   dashboardUrl: string;
   inviterName?: string;
+  userRole?: string;
+  userName?: string;
+  userPhone?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -21,9 +24,17 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, clientName, dashboardUrl, inviterName }: InvitationRequest = await req.json();
+    const { email, clientName, dashboardUrl, inviterName, userRole, userName, userPhone }: InvitationRequest = await req.json();
 
     console.log(`Sending invitation email to ${email} for client ${clientName}`);
+
+    const roleLabel = userRole ? {
+      admin: "מנהל מערכת",
+      manager: "מנהל",
+      team_lead: "ראש צוות",
+      team_member: "חבר צוות",
+      client: "לקוח",
+    }[userRole] || userRole : "משתמש";
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -34,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         from: "JIY Marketing <onboarding@resend.dev>",
         to: [email],
-        subject: `הוזמנת לצפות בדשבורד של ${clientName}`,
+        subject: `הוזמנת להתחבר למערכת הניהול של ${clientName}`,
         html: `
           <!DOCTYPE html>
           <html dir="rtl" lang="he">
@@ -46,18 +57,30 @@ const handler = async (req: Request): Promise<Response> => {
               h1 { color: #1a1a1a; margin-bottom: 20px; }
               p { color: #666; line-height: 1.6; }
               .button { display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+              .info-box { background: #f0f9ff; border: 1px solid #bae6fd; padding: 16px; border-radius: 8px; margin: 20px 0; }
+              .info-box p { margin: 5px 0; color: #0369a1; }
               .link-box { background: #f0f0f0; padding: 12px; border-radius: 6px; word-break: break-all; margin: 15px 0; }
               .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 12px; }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1>שלום! 👋</h1>
-              <p>${inviterName ? `${inviterName} הזמין/ה אותך` : 'הוזמנת'} לצפות בדשבורד של <strong>${clientName}</strong>.</p>
-              <p>לחץ על הכפתור למטה כדי לגשת לדשבורד:</p>
-              <a href="${dashboardUrl}" class="button">כניסה לדשבורד</a>
+              <h1>שלום ${userName || ""}! 👋</h1>
+              <p>${inviterName ? `${inviterName} הזמין/ה אותך` : 'הוזמנת'} להתחבר למערכת הניהול של <strong>${clientName}</strong>.</p>
+              
+              <div class="info-box">
+                <p><strong>פרטי הגישה שלך:</strong></p>
+                <p>📧 אימייל: ${email}</p>
+                ${userPhone ? `<p>📱 טלפון: ${userPhone}</p>` : ''}
+                <p>🔑 תפקיד: ${roleLabel}</p>
+              </div>
+              
+              <p>התחבר באמצעות Google או צור סיסמה חדשה:</p>
+              <a href="${dashboardUrl}/auth" class="button">כניסה למערכת</a>
+              
               <p>או העתק את הקישור הבא:</p>
-              <div class="link-box">${dashboardUrl}</div>
+              <div class="link-box">${dashboardUrl}/auth</div>
+              
               <div class="footer">
                 <p>אם לא ביקשת גישה זו, התעלם מהודעה זו.</p>
                 <p>© JIY Marketing</p>
