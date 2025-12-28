@@ -335,7 +335,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Generate platform data based on connected integrations
+  // Generate platform data based on connected integrations only
   const { data: platformsData, isLoading: platformsLoading } = useQuery({
     queryKey: ["platforms-data", clientId, integrations],
     queryFn: async () => {
@@ -349,20 +349,12 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
         linkedin: { name: "LinkedIn", logo: "in", color: "bg-[#0A66C2]" },
       };
 
-      // Add platforms for connected integrations
+      // Only add platforms for connected integrations - no mock data
       for (const integration of integrations) {
         const config = platformConfigs[integration.platform];
-        if (config) {
+        if (config && integration.is_connected) {
           platforms.push(generateMockPlatformData(integration.platform, config.name, config.logo, config.color));
         }
-      }
-
-      // If no ad platforms connected, show demo data
-      if (platforms.length === 0) {
-        platforms.push(
-          generateMockPlatformData("google_ads", "Google Ads", "G", "bg-blue-500"),
-          generateMockPlatformData("facebook_ads", "Facebook Ads", "f", "bg-[#1877F2]")
-        );
       }
 
       return platforms;

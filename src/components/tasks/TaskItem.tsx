@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { 
   CheckCircle2, 
   Circle, 
@@ -70,7 +70,7 @@ const priorityConfig = {
   high: { color: 'bg-destructive', labelKey: 'high' },
 };
 
-export function TaskItem({ 
+export const TaskItem = forwardRef<HTMLDivElement, TaskItemProps>(function TaskItem({ 
   task, 
   allTasks, 
   teamMembers,
@@ -79,7 +79,7 @@ export function TaskItem({
   onStatusChange,
   onDelete,
   level = 0 
-}: TaskItemProps) {
+}, ref) {
   const { t, language } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   
@@ -302,4 +302,4 @@ export function TaskItem({
       )}
     </div>
   );
-}
+});
