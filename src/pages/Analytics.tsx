@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -20,7 +21,6 @@ import {
   Loader2,
   Settings,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -32,12 +32,23 @@ const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
 export default function Analytics() {
   const { selectedClient } = useClient();
   const { isAdmin } = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const lastRefreshHourRef = useRef<number | null>(null);
   const toastIdRef = useRef<string | number | null>(null);
+  
+  // Open integrations dialog if URL param is set
+  useEffect(() => {
+    if (searchParams.get('integrations') === 'open') {
+      setShowIntegrationsDialog(true);
+      // Remove the param from URL
+      searchParams.delete('integrations');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   
   // Get date range based on filter
   const dateRange = getDateRangeFromFilter(globalDateFilter, customDateRange);
@@ -239,17 +250,15 @@ export default function Analytics() {
         </div>
 
         {/* No Integrations Warning */}
-        {noIntegrations && !selectedClient.is_ecommerce && (
+        {noIntegrations && !selectedClient.is_ecommerce && isAdmin && (
           <Alert className="border-warning/50 bg-warning/10">
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertTitle>אין חיבורים פעילים</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>חבר את Google Analytics ו-Shopify כדי לראות נתונים אמיתיים</span>
-              <Button asChild size="sm" className="mr-4">
-                <Link to="/integrations">
-                  <Plug className="w-4 h-4 ml-2" />
-                  חבר כעת
-                </Link>
+              <Button size="sm" className="mr-4" onClick={() => setShowIntegrationsDialog(true)}>
+                <Plug className="w-4 h-4 ml-2" />
+                חבר כעת
               </Button>
             </AlertDescription>
           </Alert>
