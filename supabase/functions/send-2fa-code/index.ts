@@ -144,20 +144,49 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
+      // Helper to format time in Hebrew
+      const formatTimeAgo = (dateStr: string): string => {
+        const created = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - created.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        
+        if (diffMin < 1) return `לפני ${diffSec} שניות`;
+        if (diffMin === 1) return "לפני דקה";
+        return `לפני ${diffMin} דקות`;
+      };
+
+      const codeCreatedAt = storedCode.created_at;
+      const timeAgoText = formatTimeAgo(codeCreatedAt);
+      const createdDate = new Date(codeCreatedAt);
+      const formattedTime = createdDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       // Check if code is expired
       if (new Date(storedCode.expires_at) < new Date()) {
-        console.log("[2FA] Code expired");
+        console.log("[2FA] Code expired, created at:", codeCreatedAt);
         return new Response(
-          JSON.stringify({ valid: false, error: "Code has expired. Please request a new code." }),
+          JSON.stringify({ 
+            valid: false, 
+            error: `הקוד פג תוקף. הקוד נוצר ${timeAgoText} (${formattedTime}). בקש קוד חדש.`,
+            code_created_at: codeCreatedAt,
+            code_created_ago: timeAgoText
+          }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       // Check attempts (max 5)
       if (storedCode.attempts >= 5) {
-        console.log("[2FA] Too many attempts");
+        console.log("[2FA] Too many attempts, code created at:", codeCreatedAt);
         return new Response(
-          JSON.stringify({ valid: false, error: "Too many attempts. Please request a new code." }),
+          JSON.stringify({ 
+            valid: false, 
+            error: `יותר מדי נסיונות. הקוד נוצר ${timeAgoText} (${formattedTime}). בקש קוד חדש.`,
+            code_created_at: codeCreatedAt,
+            code_created_ago: timeAgoText,
+            attempts: storedCode.attempts
+          }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -170,9 +199,16 @@ const handler = async (req: Request): Promise<Response> => {
           .update({ attempts: storedCode.attempts + 1 })
           .eq("email", email.toLowerCase());
 
-        console.log("[2FA] Invalid code");
+        const remainingAttempts = 5 - (storedCode.attempts + 1);
+        console.log("[2FA] Invalid code, created at:", codeCreatedAt, "remaining attempts:", remainingAttempts);
         return new Response(
-          JSON.stringify({ valid: false, error: "Invalid code" }),
+          JSON.stringify({ 
+            valid: false, 
+            error: `קוד שגוי. הקוד נוצר ${timeAgoText} (${formattedTime}). נותרו ${remainingAttempts} נסיונות.`,
+            code_created_at: codeCreatedAt,
+            code_created_ago: timeAgoText,
+            remaining_attempts: remainingAttempts
+          }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
