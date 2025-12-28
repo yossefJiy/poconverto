@@ -21,6 +21,7 @@ import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Scheduled refresh times (24h format)
 const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
@@ -68,8 +69,8 @@ export default function Analytics() {
     
     // Show persistent toast
     const toastMessage = isScheduled 
-      ? "מרענן נתונים (ריענון מתוזמן)..." 
-      : "מרענן נתונים...";
+      ? "מרענן נתונים מכל הפלטפורמות (ריענון מתוזמן)..." 
+      : "מרענן נתונים מכל הפלטפורמות...";
     
     toastIdRef.current = toast.loading(toastMessage, {
       position: "bottom-left",
@@ -77,6 +78,17 @@ export default function Analytics() {
     });
 
     try {
+      // Trigger backend sync for all integrations of this client
+      if (selectedClient?.id) {
+        const { error: syncError } = await supabase.functions.invoke('sync-integrations', {
+          body: { client_id: selectedClient.id }
+        });
+        
+        if (syncError) {
+          console.error('Sync error:', syncError);
+        }
+      }
+      
       // Refresh Shopify analytics
       await queryClient.invalidateQueries({ queryKey: ['shopify-analytics'] });
       // Refresh GA and integrations
@@ -86,7 +98,7 @@ export default function Analytics() {
       if (toastIdRef.current) {
         toast.dismiss(toastIdRef.current);
       }
-      toast.success("הנתונים עודכנו בהצלחה", {
+      toast.success("כל הנתונים עודכנו ונשמרו בהצלחה", {
         position: "bottom-left",
         duration: 3000,
       });
@@ -103,7 +115,7 @@ export default function Analytics() {
       setIsRefreshing(false);
       toastIdRef.current = null;
     }
-  }, [queryClient, refetchAll]);
+  }, [queryClient, refetchAll, selectedClient?.id]);
 
   // Scheduled refresh effect
   useEffect(() => {
