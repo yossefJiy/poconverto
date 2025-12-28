@@ -86,6 +86,36 @@ async function generateAccessToken(serviceAccount: any): Promise<string> {
   return tokenData.access_token;
 }
 
+// Helper function to make GA4 API request
+async function runGAReport(
+  accessToken: string, 
+  propertyId: string, 
+  startDate: string, 
+  endDate: string,
+  metrics: Array<{ name: string }>,
+  dimensions: Array<{ name: string }>,
+  orderBys?: any[]
+) {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        metrics,
+        dimensions,
+        orderBys: orderBys || [{ dimension: { dimensionName: dimensions[0].name }, desc: false }],
+        limit: 100
+      })
+    }
+  );
+  return response.json();
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -93,7 +123,7 @@ serve(async (req) => {
   }
 
   try {
-    const { propertyId, startDate, endDate, metrics, dimensions } = await req.json();
+    const { propertyId, startDate, endDate, reportType } = await req.json();
     
     // Get service account from secrets
     let serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_READER');
@@ -101,24 +131,36 @@ serve(async (req) => {
       throw new Error('GOOGLE_ANALYTICS_READER is not configured');
     }
 
-    // Handle potential escape issues in the JSON
-    // Sometimes the secret is stored with escaped newlines
-    serviceAccountJson = serviceAccountJson.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
-    
     console.log("Raw secret length:", serviceAccountJson.length);
-    console.log("First 50 chars:", serviceAccountJson.substring(0, 50));
+    console.log("First 100 chars:", serviceAccountJson.substring(0, 100));
     
     let serviceAccount;
     try {
+      // First try parsing as-is
       serviceAccount = JSON.parse(serviceAccountJson);
     } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      console.error("Attempting to fix JSON format...");
-      // Try removing outer quotes if present
-      if (serviceAccountJson.startsWith('"') && serviceAccountJson.endsWith('"')) {
-        serviceAccountJson = serviceAccountJson.slice(1, -1);
+      console.error("Initial JSON parse error:", parseError);
+      
+      try {
+        // Try fixing common escape issues
+        let fixedJson = serviceAccountJson
+          .replace(/\\\\n/g, '\\n')
+          .replace(/\r\n/g, '\\n')
+          .replace(/\r/g, '\\n')
+          .replace(/\n/g, '\\n');
+        
+        serviceAccount = JSON.parse(fixedJson);
+      } catch (secondError) {
+        console.error("Second parse attempt failed:", secondError);
+        
+        try {
+          const cleanJson = serviceAccountJson.trim().replace(/^\uFEFF/, '');
+          serviceAccount = JSON.parse(cleanJson);
+        } catch (thirdError) {
+          console.error("All parse attempts failed");
+          throw new Error(`Failed to parse service account JSON: ${thirdError}`);
+        }
       }
-      serviceAccount = JSON.parse(serviceAccountJson);
     }
     console.log("Service account email:", serviceAccount.client_email);
     
@@ -136,59 +178,103 @@ serve(async (req) => {
     const requestStartDate = startDate || thirtyDaysAgo.toISOString().split('T')[0];
     const requestEndDate = endDate || today.toISOString().split('T')[0];
 
-    // Default metrics and dimensions
-    const requestMetrics = metrics || [
-      { name: "activeUsers" },
-      { name: "sessions" },
-      { name: "screenPageViews" },
-      { name: "conversions" },
-      { name: "bounceRate" }
-    ];
+    // Fetch multiple reports in parallel
+    console.log("Fetching GA data for report type:", reportType || "all");
 
-    const requestDimensions = dimensions || [
-      { name: "date" }
-    ];
-
-    // Make request to GA4 Data API
-    const gaResponse = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${gaPropertyId}:runReport`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          dateRanges: [
-            {
-              startDate: requestStartDate,
-              endDate: requestEndDate
-            }
-          ],
-          metrics: requestMetrics,
-          dimensions: requestDimensions,
-          orderBys: [
-            {
-              dimension: {
-                dimensionName: "date"
-              },
-              desc: false
-            }
-          ]
-        })
-      }
+    // 1. Daily metrics report
+    const dailyMetricsPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [
+        { name: "activeUsers" },
+        { name: "sessions" },
+        { name: "screenPageViews" },
+        { name: "conversions" },
+        { name: "bounceRate" },
+        { name: "averageSessionDuration" }
+      ],
+      [{ name: "date" }]
     );
 
-    const gaData = await gaResponse.json();
-    
-    if (gaData.error) {
-      console.error("GA API error:", gaData.error);
-      throw new Error(`Google Analytics API error: ${gaData.error.message}`);
+    // 2. Traffic sources report
+    const trafficSourcesPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [{ name: "sessions" }, { name: "activeUsers" }],
+      [{ name: "sessionDefaultChannelGroup" }],
+      [{ metric: { metricName: "sessions" }, desc: true }]
+    );
+
+    // 3. Top pages report
+    const topPagesPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [{ name: "screenPageViews" }, { name: "averageSessionDuration" }, { name: "bounceRate" }],
+      [{ name: "pagePath" }],
+      [{ metric: { metricName: "screenPageViews" }, desc: true }]
+    );
+
+    // 4. Device breakdown
+    const devicesPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [{ name: "sessions" }, { name: "activeUsers" }],
+      [{ name: "deviceCategory" }],
+      [{ metric: { metricName: "sessions" }, desc: true }]
+    );
+
+    // 5. Country breakdown
+    const countriesPromise = runGAReport(
+      accessToken,
+      gaPropertyId,
+      requestStartDate,
+      requestEndDate,
+      [{ name: "sessions" }, { name: "activeUsers" }],
+      [{ name: "country" }],
+      [{ metric: { metricName: "sessions" }, desc: true }]
+    );
+
+    // Wait for all reports
+    const [dailyMetrics, trafficSources, topPages, devices, countries] = await Promise.all([
+      dailyMetricsPromise,
+      trafficSourcesPromise,
+      topPagesPromise,
+      devicesPromise,
+      countriesPromise
+    ]);
+
+    // Check for errors in any report
+    for (const [name, data] of Object.entries({ dailyMetrics, trafficSources, topPages, devices, countries })) {
+      if ((data as any).error) {
+        console.error(`${name} error:`, (data as any).error);
+      }
     }
 
-    console.log("GA data fetched successfully, rows:", gaData.rows?.length || 0);
+    const response = {
+      dailyMetrics,
+      trafficSources,
+      topPages,
+      devices,
+      countries
+    };
 
-    return new Response(JSON.stringify(gaData), {
+    console.log("GA data fetched successfully:", {
+      dailyRows: dailyMetrics.rows?.length || 0,
+      trafficRows: trafficSources.rows?.length || 0,
+      topPagesRows: topPages.rows?.length || 0,
+      devicesRows: devices.rows?.length || 0,
+      countriesRows: countries.rows?.length || 0
+    });
+
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
