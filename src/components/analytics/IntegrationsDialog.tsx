@@ -3,7 +3,6 @@ import { useClient } from "@/hooks/useClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Plug,
   Check,
   X,
   RefreshCw,
@@ -14,13 +13,13 @@ import {
   CheckCircle2,
   ArrowRight,
   Info,
-  LogIn,
-  Plus
+  Building2,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,7 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,6 +34,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const NOTIFY_EMAIL = "yossef@jiy.co.il";
 
@@ -47,10 +46,16 @@ interface PlatformOption {
   description: string;
   credentialKey: string;
   placeholder: string;
-  useOAuth?: boolean;
+  useMccSelection?: boolean;
   steps: { title: string; description: string }[];
   helpUrl: string;
   features: string[];
+}
+
+interface MccAccount {
+  id: string;
+  name: string;
+  currency: string;
 }
 
 const platformOptions: PlatformOption[] = [
@@ -94,11 +99,10 @@ const platformOptions: PlatformOption[] = [
     description: "סנכרון קמפיינים ונתוני ביצועים",
     credentialKey: "customer_id",
     placeholder: "123-456-7890",
-    useOAuth: true,
+    useMccSelection: true,
     steps: [
-      { title: "לחץ על 'התחבר עם Google'", description: "תועבר לדף האישור של Google" },
-      { title: "אשר גישה לחשבון Google Ads", description: "בחר את החשבון הפרסומי שברצונך לחבר" },
-      { title: "הזן Customer ID", description: "הפורמט: XXX-XXX-XXXX (מופיע בפינה הימנית העליונה ב-Google Ads)" },
+      { title: "בחר חשבון מהרשימה", description: "בחר את החשבון הפרסומי של הלקוח" },
+      { title: "אישור החיבור", description: "לחץ על 'התחבר' לסיום" },
     ],
     helpUrl: "https://support.google.com/google-ads/answer/1704344",
     features: ["קמפיינים", "מילות מפתח", "המרות", "עלויות"],
@@ -133,9 +137,10 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformOption | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [credential, setCredential] = useState("");
+  const [selectedMccAccount, setSelectedMccAccount] = useState<MccAccount | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
-  const [oauthCompleted, setOauthCompleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Auto-select platform if defaultPlatform is provided
   useEffect(() => {
@@ -147,85 +152,27 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     }
   }, [open, defaultPlatform]);
 
-  // Handle OAuth callback
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    
-    if (code && state) {
-      handleOAuthCallback(code, state);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  const handleOAuthCallback = async (code: string, state: string) => {
-    try {
-      const stateData = JSON.parse(atob(state));
-      const clientId = stateData.client_id;
-
-      setConnectionStatus("testing");
-      setConnectionMessage("משלים את החיבור ל-Google Ads...");
-      onOpenChange(true);
-      setSelectedPlatform(platformOptions.find(p => p.id === 'google_ads') || null);
-
+  // Fetch MCC accounts when Google Ads is selected
+  const { data: mccAccounts = [], isLoading: isLoadingMcc } = useQuery({
+    queryKey: ["mcc-accounts"],
+    queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
-        body: {
-          action: 'exchange_code',
-          code,
-          redirect_uri: window.location.origin + window.location.pathname,
-          client_id: clientId,
-        }
+        body: { action: 'list_mcc_accounts' }
       });
-
+      
       if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      
+      return data.accounts as MccAccount[];
+    },
+    enabled: open && selectedPlatform?.id === 'google_ads',
+  });
 
-      if (data.success) {
-        setConnectionStatus("success");
-        setConnectionMessage(data.message);
-        setOauthCompleted(true);
-        setCurrentStep(2);
-        queryClient.invalidateQueries({ queryKey: ["integrations"] });
-        toast.success("החיבור ל-Google Ads הושלם!");
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (err) {
-      console.error('OAuth callback error:', err);
-      setConnectionStatus("error");
-      setConnectionMessage(err instanceof Error ? err.message : "שגיאה בחיבור");
-      toast.error("שגיאה בחיבור ל-Google Ads");
-    }
-  };
-
-  const handleGoogleOAuth = async () => {
-    if (!selectedClient) return;
-
-    try {
-      setConnectionStatus("testing");
-      setConnectionMessage("מתחבר ל-Google...");
-
-      const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
-        body: {
-          action: 'get_auth_url',
-          client_id: selectedClient.id,
-          redirect_uri: window.location.origin + window.location.pathname,
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success && data.auth_url) {
-        window.location.href = data.auth_url;
-      } else {
-        throw new Error(data.error || 'Failed to get auth URL');
-      }
-    } catch (err) {
-      console.error('OAuth error:', err);
-      setConnectionStatus("error");
-      setConnectionMessage(err instanceof Error ? err.message : "שגיאה בהתחברות");
-    }
-  };
+  // Filter accounts by search
+  const filteredAccounts = mccAccounts.filter(account => 
+    account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    account.id.includes(searchQuery)
+  );
 
   const { data: integrations = [] } = useQuery({
     queryKey: ["integrations", selectedClient?.id],
@@ -246,12 +193,17 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     mutationFn: async () => {
       if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
       
+      // For Google Ads with MCC selection
+      const credentialValue = selectedPlatform.useMccSelection && selectedMccAccount 
+        ? selectedMccAccount.id 
+        : credential;
+      
       const { data, error } = await supabase.functions.invoke('connect-integration', {
         body: {
           action: "connect",
           platform: selectedPlatform.id,
           client_id: selectedClient.id,
-          credentials: { [selectedPlatform.credentialKey]: credential },
+          credentials: { [selectedPlatform.credentialKey]: credentialValue },
           notify_email: NOTIFY_EMAIL,
         }
       });
@@ -266,7 +218,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
         queryClient.invalidateQueries({ queryKey: ["integrations"] });
         queryClient.invalidateQueries({ queryKey: ["google-ads"] });
         toast.success(data.message);
-        // Close dialog after successful connection
         setTimeout(() => {
           resetDialog();
         }, 1500);
@@ -280,38 +231,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
       setConnectionStatus("error");
       setConnectionMessage(error.message || "שגיאה בחיבור");
       toast.error("שגיאה בחיבור לפלטפורמה");
-    },
-  });
-
-  const testMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
-      
-      const { data, error } = await supabase.functions.invoke('connect-integration', {
-        body: {
-          action: "test",
-          platform: selectedPlatform.id,
-          client_id: selectedClient.id,
-          credentials: { [selectedPlatform.credentialKey]: credential },
-          notify_email: NOTIFY_EMAIL,
-        }
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        setConnectionStatus("success");
-        setConnectionMessage(data.message);
-      } else {
-        setConnectionStatus("error");
-        setConnectionMessage(data.message);
-      }
-    },
-    onError: () => {
-      setConnectionStatus("error");
-      setConnectionMessage("שגיאה בבדיקת החיבור");
     },
   });
 
@@ -346,9 +265,15 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setSelectedPlatform(platform);
     setCurrentStep(0);
     setCredential("");
+    setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
-    setOauthCompleted(false);
+    setSearchQuery("");
+  };
+
+  const handleMccAccountSelect = (account: MccAccount) => {
+    setSelectedMccAccount(account);
+    setCurrentStep(1);
   };
 
   const handleConnect = () => {
@@ -356,24 +281,24 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     connectMutation.mutate();
   };
 
-  const handleTest = () => {
-    setConnectionStatus("testing");
-    testMutation.mutate();
-  };
-
   const resetDialog = () => {
     onOpenChange(false);
     setSelectedPlatform(null);
     setCurrentStep(0);
     setCredential("");
+    setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
-    setOauthCompleted(false);
+    setSearchQuery("");
   };
 
   if (!selectedClient) {
     return null;
   }
+
+  const canConnect = selectedPlatform?.useMccSelection 
+    ? !!selectedMccAccount 
+    : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -459,8 +384,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
         ) : (
           <div className="space-y-6 mt-4">
             {/* Steps */}
-            <div className="space-y-4">
-              <h4 className="font-semibold flex items-center gap-2">
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2 text-sm">
                 <Info className="w-4 h-4 text-primary" />
                 שלבי החיבור:
               </h4>
@@ -476,39 +401,80 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                     {currentStep > index ? <Check className="w-3 h-3" /> : index + 1}
                   </div>
                   <div>
-                    <p className="font-medium">{step.title}</p>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
+                    <p className="font-medium text-sm">{step.title}</p>
+                    <p className="text-xs text-muted-foreground">{step.description}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* OAuth Button for Google Ads */}
-            {selectedPlatform.useOAuth && !oauthCompleted && (
-              <Button 
-                onClick={handleGoogleOAuth} 
-                disabled={connectionStatus === "testing"}
-                className="w-full glow"
-                size="lg"
-              >
-                {connectionStatus === "testing" ? (
-                  <Loader2 className="w-4 h-4 animate-spin ml-2" />
+            {/* MCC Account Selection for Google Ads */}
+            {selectedPlatform.useMccSelection && (
+              <div className="space-y-3">
+                <Label>בחר חשבון Google Ads:</Label>
+                
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="חפש לפי שם או מספר חשבון..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-10"
+                    dir="rtl"
+                  />
+                </div>
+
+                {isLoadingMcc ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="mr-2 text-muted-foreground">טוען רשימת חשבונות...</span>
+                  </div>
+                ) : filteredAccounts.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {searchQuery ? "לא נמצאו חשבונות תואמים" : "לא נמצאו חשבונות ב-MCC"}
+                  </div>
                 ) : (
-                  <LogIn className="w-4 h-4 ml-2" />
+                  <ScrollArea className="h-[250px] rounded-lg border">
+                    <div className="p-2 space-y-2">
+                      {filteredAccounts.map((account) => (
+                        <button
+                          key={account.id}
+                          onClick={() => handleMccAccountSelect(account)}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-right",
+                            selectedMccAccount?.id === account.id 
+                              ? "border-primary bg-primary/10" 
+                              : "border-transparent bg-muted/50 hover:bg-muted"
+                          )}
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-[#4285F4]/20 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-[#4285F4]" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{account.name}</p>
+                            <p className="text-xs text-muted-foreground">{account.id} • {account.currency}</p>
+                          </div>
+                          {selectedMccAccount?.id === account.id && (
+                            <Check className="w-5 h-5 text-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
-                התחבר עם Google
-              </Button>
+              </div>
             )}
 
-            {/* Input */}
-            {(!selectedPlatform.useOAuth || oauthCompleted) && (
+            {/* Manual Input for other platforms */}
+            {!selectedPlatform.useMccSelection && (
               <div className="space-y-2">
-                <Label>{oauthCompleted ? "הזן Customer ID:" : "הזן את המזהה:"}</Label>
+                <Label>הזן את המזהה:</Label>
                 <Input
                   value={credential}
                   onChange={(e) => {
                     setCredential(e.target.value);
-                    setCurrentStep(2);
+                    setCurrentStep(1);
                     setConnectionStatus("idle");
                   }}
                   placeholder={selectedPlatform.placeholder}
@@ -535,7 +501,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                 {connectionStatus === "success" && <CheckCircle2 className="h-4 w-4 text-success" />}
                 {connectionStatus === "error" && <AlertTriangle className="h-4 w-4" />}
                 <AlertTitle>
-                  {connectionStatus === "testing" && "בודק חיבור..."}
+                  {connectionStatus === "testing" && "מתחבר..."}
                   {connectionStatus === "success" && "החיבור הצליח!"}
                   {connectionStatus === "error" && "החיבור נכשל"}
                 </AlertTitle>
@@ -550,10 +516,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               <Button variant="outline" onClick={() => setSelectedPlatform(null)} className="flex-1">
                 חזור
               </Button>
-              <Button variant="outline" onClick={handleTest} disabled={!credential || connectionStatus === "testing"}>
-                בדוק חיבור
-              </Button>
-              <Button onClick={handleConnect} disabled={!credential || connectionStatus === "testing"} className="flex-1 glow">
+              <Button onClick={handleConnect} disabled={!canConnect || connectionStatus === "testing"} className="flex-1 glow">
                 {connectionStatus === "testing" ? <Loader2 className="w-4 h-4 animate-spin" /> : (
                   <>
                     התחבר

@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { useClient } from "@/hooks/useClient";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-  Plug,
-  Check,
-  X,
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+// This page now redirects to Analytics where integrations are managed
+export default function Integrations() {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    navigate('/analytics', { replace: true });
+  }, [navigate]);
+  
+  return null;
+}
   RefreshCw,
   Loader2,
   ExternalLink,
