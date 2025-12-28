@@ -258,21 +258,23 @@ serve(async (req) => {
       // Get unique customers
       const uniqueCustomers = new Set(allOrders.map((o: any) => o.email || o.customer?.email).filter(Boolean)).size;
       
-      // Use real session data if available, otherwise estimate
-      let realSessions = analyticsData?.sessions || null;
-      let realVisitors = analyticsData?.visitors || null;
-      let conversionRate: number;
+      // Use real session data if available - NO ESTIMATES
+      let realSessions: number | null = analyticsData?.sessions || null;
+      let realVisitors: number | null = analyticsData?.visitors || null;
+      let conversionRate: string | null = null;
+      let isRealSessionData = false;
       
       if (analyticsData && analyticsData.sessions > 0) {
         // Use real conversion rate from ShopifyQL
-        conversionRate = analyticsData.conversionRate;
-        console.log(`[Shopify API] Using real analytics: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+        conversionRate = analyticsData.conversionRate.toFixed(2);
+        isRealSessionData = true;
+        console.log(`[Shopify API] Real analytics data available: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate}%`);
       } else {
-        // Fallback to estimated values
-        realSessions = Math.round(totalOrders / 0.02);
-        realVisitors = Math.round(realSessions * 0.7);
-        conversionRate = totalOrders > 0 ? (totalOrders / realSessions) * 100 : 0;
-        console.log(`[Shopify API] Using estimated analytics: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+        // No real data available - don't estimate
+        realSessions = null;
+        realVisitors = null;
+        conversionRate = null;
+        console.log(`[Shopify API] No real session data available - read_reports scope may be missing`);
       }
       
       // Analyze traffic sources from UTM parameters and referring sites
@@ -325,8 +327,8 @@ serve(async (req) => {
               uniqueCustomers,
               sessions: realSessions,
               visitors: realVisitors,
-              conversionRate: conversionRate.toFixed(2),
-              isRealSessionData: analyticsData !== null && analyticsData.sessions > 0,
+              conversionRate,
+              isRealSessionData,
             },
             orderStatus: {
               paid: paidOrders,
