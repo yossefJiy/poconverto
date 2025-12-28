@@ -21,7 +21,6 @@ interface IntegrationRequest {
     access_token?: string;
     property_id?: string;
     customer_id?: string;
-    login_customer_id?: string;
     ad_account_id?: string;
     advertiser_id?: string;
   };
@@ -384,7 +383,6 @@ serve(async (req) => {
           store_url: credentials.store_url,
           property_id: credentials.property_id,
           customer_id: credentials.customer_id,
-          login_customer_id: credentials.login_customer_id,
           ad_account_id: credentials.ad_account_id,
           advertiser_id: credentials.advertiser_id,
           connection_data: result.data,

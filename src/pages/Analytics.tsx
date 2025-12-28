@@ -59,9 +59,6 @@ export default function Analytics() {
     refetchAll
   } = useAnalyticsData(selectedClient?.id, getDaysFromFilter());
 
-  // Find Google Ads integration for the current client
-  const googleAdsIntegration = integrations.find(i => i.platform === 'google_ads' && i.is_connected);
-
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
   const queryClient = useQueryClient();
@@ -268,10 +265,6 @@ export default function Analytics() {
               globalDateFrom={dateRange.dateFrom}
               globalDateTo={dateRange.dateTo}
               onRefresh={handleRefreshAll}
-              integration={googleAdsIntegration ? {
-                id: googleAdsIntegration.id,
-                settings: googleAdsIntegration.settings as any
-              } : undefined}
             />
           </div>
         )}
