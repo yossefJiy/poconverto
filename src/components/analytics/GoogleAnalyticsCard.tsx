@@ -72,29 +72,6 @@ function formatCurrency(num: number): string {
   return "₪" + formatNumber(num);
 }
 
-// Mock e-commerce metrics - these would come from GA4 Enhanced Ecommerce
-function getMockEcommerceMetrics(sessions: number) {
-  const addToCartRate = 3.2 + Math.random() * 2;
-  const checkoutRate = 1.8 + Math.random();
-  const conversionRate = 0.8 + Math.random() * 0.5;
-  const avgOrderValue = 180 + Math.random() * 120;
-  
-  const addToCart = Math.floor(sessions * (addToCartRate / 100));
-  const checkout = Math.floor(sessions * (checkoutRate / 100));
-  const purchases = Math.floor(sessions * (conversionRate / 100));
-  const revenue = purchases * avgOrderValue;
-
-  return {
-    addToCart,
-    checkout,
-    purchases,
-    revenue,
-    addToCartRate,
-    checkoutRate,
-    conversionRate,
-  };
-}
-
 // Generate mock previous month data for comparison
 function getPreviousMonthComparison(currentValue: number): { prevValue: number; change: number } {
   const changePercent = (Math.random() * 30) - 10; // -10% to +20%
@@ -226,18 +203,13 @@ export function GoogleAnalyticsCard({
     );
   }
 
-  const ecommerceMetrics = getMockEcommerceMetrics(analyticsData.sessions);
-
-  // Generate comparisons
+  // Generate comparisons - only for traffic metrics (real GA data)
   const sessionsComparison = getPreviousMonthComparison(analyticsData.sessions);
   const usersComparison = getPreviousMonthComparison(analyticsData.users);
   const pageviewsComparison = getPreviousMonthComparison(analyticsData.pageviews);
   const bounceRateComparison = { prevValue: analyticsData.bounceRate + 2, change: -2.3 };
-  const addToCartComparison = getPreviousMonthComparison(ecommerceMetrics.addToCart);
-  const checkoutComparison = getPreviousMonthComparison(ecommerceMetrics.checkout);
-  const purchasesComparison = getPreviousMonthComparison(ecommerceMetrics.purchases);
-  const revenueComparison = getPreviousMonthComparison(ecommerceMetrics.revenue);
 
+  // Only show traffic metrics from GA (ecommerce data comes from Shopify)
   const summaryMetrics = [
     {
       label: "סשנים",
@@ -266,34 +238,6 @@ export function GoogleAnalyticsCard({
       change: bounceRateComparison.change,
       icon: <TrendingDown className="w-5 h-5" />,
       color: "bg-orange-500/20 text-orange-500",
-    },
-    {
-      label: "הוספה לסל",
-      value: formatNumber(ecommerceMetrics.addToCart),
-      change: addToCartComparison.change,
-      icon: <ShoppingCart className="w-5 h-5" />,
-      color: "bg-cyan-500/20 text-cyan-500",
-    },
-    {
-      label: "צ'ק אאוט",
-      value: formatNumber(ecommerceMetrics.checkout),
-      change: checkoutComparison.change,
-      icon: <CreditCard className="w-5 h-5" />,
-      color: "bg-teal-500/20 text-teal-500",
-    },
-    {
-      label: "המרות - רכישות",
-      value: formatNumber(ecommerceMetrics.purchases),
-      change: purchasesComparison.change,
-      icon: <ShoppingCart className="w-5 h-5" />,
-      color: "bg-green-500/20 text-green-500",
-    },
-    {
-      label: "סכום רכישות בפועל",
-      value: formatCurrency(ecommerceMetrics.revenue),
-      change: revenueComparison.change,
-      icon: <DollarSign className="w-5 h-5" />,
-      color: "bg-emerald-500/20 text-emerald-500",
     },
   ];
 
@@ -351,7 +295,7 @@ export function GoogleAnalyticsCard({
         </div>
 
         {/* Summary Metrics - Always Visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           {summaryMetrics.map((metric) => (
             <MetricWithComparison key={metric.label} {...metric} />
           ))}
