@@ -153,30 +153,45 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          facebook_url: string | null
           id: string
           industry: string | null
+          instagram_url: string | null
+          linkedin_url: string | null
           logo_url: string | null
           name: string
+          tiktok_url: string | null
+          twitter_url: string | null
           updated_at: string
           website: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
+          facebook_url?: string | null
           id?: string
           industry?: string | null
+          instagram_url?: string | null
+          linkedin_url?: string | null
           logo_url?: string | null
           name: string
+          tiktok_url?: string | null
+          twitter_url?: string | null
           updated_at?: string
           website?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
+          facebook_url?: string | null
           id?: string
           industry?: string | null
+          instagram_url?: string | null
+          linkedin_url?: string | null
           logo_url?: string | null
           name?: string
+          tiktok_url?: string | null
+          twitter_url?: string | null
           updated_at?: string
           website?: string | null
         }
