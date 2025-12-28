@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Analytics() {
   const { selectedClient } = useClient();
@@ -52,9 +53,14 @@ export default function Analytics() {
 
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
+  const queryClient = useQueryClient();
+  const shopifyRefetchRef = useRef<(() => void) | null>(null);
 
-  const handleRefreshAll = () => {
-    refetchAll?.();
+  const handleRefreshAll = async () => {
+    // Refresh Shopify analytics
+    await queryClient.invalidateQueries({ queryKey: ['shopify-analytics'] });
+    // Refresh GA and integrations
+    await refetchAll?.();
   };
 
   if (!selectedClient) {
@@ -165,7 +171,7 @@ export default function Analytics() {
               <ShopifyAnalytics
                 globalDateFrom={dateRange.dateFrom}
                 globalDateTo={dateRange.dateTo}
-                onRefresh={refetchAll}
+                onRefresh={handleRefreshAll}
               />
             )}
 
@@ -176,6 +182,7 @@ export default function Analytics() {
                 isLoading={isLoading}
                 globalDateFrom={dateRange.dateFrom}
                 globalDateTo={dateRange.dateTo}
+                onRefresh={handleRefreshAll}
               />
             )}
           </div>
