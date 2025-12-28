@@ -79,8 +79,9 @@ serve(async (req) => {
       }
       
       // Calculate analytics metrics
+      // Use current_total_price which reflects the actual paid amount after refunds/discounts
       const totalOrders = allOrders.length;
-      const totalRevenue = allOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total_price || '0'), 0);
+      const totalRevenue = allOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
       // Calculate items sold
