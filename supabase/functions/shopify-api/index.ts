@@ -148,7 +148,7 @@ async function fetchShopifyAnalytics(
             columns { name dataType }
             rows
           }
-          parseErrors { code message }
+          parseErrors
         }
       }
     `;
