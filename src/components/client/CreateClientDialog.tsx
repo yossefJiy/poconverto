@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useClient } from "@/hooks/useClient";
+import { DefaultModulesSelector, DefaultModules, defaultModulesConfig } from "./DefaultModulesSelector";
 
 interface CreateClientDialogProps {
   trigger?: React.ReactNode;
@@ -36,16 +37,20 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
     description: "",
     logo_url: "",
   });
+  
+  const [modules, setModules] = useState<DefaultModules>(defaultModulesConfig);
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.from("clients").insert({
+      const { data, error } = await supabase.from("clients").insert([{
         name: form.name,
         industry: form.industry || null,
         website: form.website || null,
         description: form.description || null,
         logo_url: form.logo_url || null,
-      }).select().single();
+        modules_enabled: JSON.parse(JSON.stringify(modules)),
+        is_ecommerce: modules.ecommerce,
+      }]).select().single();
       if (error) throw error;
       return data;
     },
@@ -55,6 +60,7 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
       toast.success("הלקוח נוצר בהצלחה");
       setOpen(false);
       setForm({ name: "", industry: "", website: "", description: "", logo_url: "" });
+      setModules(defaultModulesConfig);
       setSelectedClient(data);
     },
     onError: () => toast.error("שגיאה ביצירת לקוח"),
@@ -126,8 +132,14 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
               rows={3}
             />
           </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-2 block">מודולים פעילים</label>
+            <DefaultModulesSelector modules={modules} onChange={setModules} />
+          </div>
+          
           <Button 
-            className="w-full" 
+            className="w-full"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
           >
