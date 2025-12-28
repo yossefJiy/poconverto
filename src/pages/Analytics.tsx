@@ -37,7 +37,7 @@ export default function Analytics() {
     isLoading,
     hasAnalytics,
     hasAds,
-    refetchAnalytics
+    refetchAll
   } = useAnalyticsData(selectedClient?.id, dateRange);
 
   if (!selectedClient) {
@@ -86,7 +86,7 @@ export default function Analytics() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" disabled={isLoading} onClick={() => refetchAnalytics?.()}>
+            <Button variant="outline" size="icon" disabled={isLoading} onClick={() => refetchAll?.()}>
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
