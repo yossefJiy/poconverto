@@ -116,7 +116,7 @@ async function fetchShopifyAnalytics(
   dateTo: string
 ): Promise<{ sessions: number; visitors: number; conversionRate: number; totalSales: number | null } | null> {
   const cleanDomain = storeDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const graphqlUrl = `https://${cleanDomain}/admin/api/2024-10/graphql.json`;
+  const graphqlUrl = `https://${cleanDomain}/admin/api/2025-10/graphql.json`;
   
   // Format dates for ShopifyQL (YYYY-MM-DD)
   const fromDate = extractDateOnly(dateFrom);
