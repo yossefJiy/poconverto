@@ -39,6 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
+import { ClientSettingsSection } from "@/components/client/ClientSettingsSection";
 import { Link } from "react-router-dom";
 
 // TikTok icon component
@@ -298,7 +299,7 @@ export default function ClientProfile() {
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-bold">{clientData?.name}</h1>
+              <h1 className="text-3xl font-bold">{clientData?.name} - הגדרות</h1>
               {clientData?.industry && (
                 <Badge variant="secondary" className="mt-1">
                   <Briefcase className="w-3 h-3 ml-1" />
@@ -518,6 +519,15 @@ export default function ClientProfile() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Client Settings Section */}
+        <ClientSettingsSection
+          clientId={selectedClient.id}
+          clientName={selectedClient.name}
+          isEcommerce={clientData?.is_ecommerce || false}
+          isLeadGen={(clientData as any)?.is_lead_gen ?? true}
+          integrations={integrations}
+        />
       </div>
 
       {/* Edit Dialog */}

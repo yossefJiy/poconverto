@@ -62,6 +62,35 @@ interface ShopifyShop {
   shop_owner: string;
 }
 
+interface ShopifyAnalytics {
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    avgOrderValue: number;
+    totalItemsSold: number;
+    uniqueCustomers: number;
+    estimatedSessions: number;
+    conversionRate: string;
+  };
+  orderStatus: {
+    paid: number;
+    fulfilled: number;
+    pending: number;
+    refunded: number;
+  };
+  trafficSources: Array<{
+    source: string;
+    orders: number;
+    percentage: string;
+  }>;
+  topProducts: Array<{
+    name: string;
+    quantity: number;
+    revenue: number;
+  }>;
+  orders: ShopifyOrder[];
+}
+
 interface ShopifyDataResult {
   products: ShopifyProduct[];
   orders: ShopifyOrder[];
@@ -136,6 +165,18 @@ export function useShopifyData(): ShopifyDataResult {
     error: shopError || productsError || ordersError,
     refetch,
   };
+}
+
+export function useShopifyAnalytics(dateFrom?: string, dateTo?: string) {
+  return useQuery({
+    queryKey: ['shopify-analytics', dateFrom, dateTo],
+    queryFn: () => callShopifyApi('get_analytics', { 
+      date_from: dateFrom, 
+      date_to: dateTo 
+    }),
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+  });
 }
 
 export function useShopifyProducts(limit = 50) {

@@ -2,7 +2,6 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
-import { useShopifyData } from "@/hooks/useShopifyData";
 import { AnalyticsSummary } from "@/components/analytics/AnalyticsSummary";
 import { PlatformTabs } from "@/components/analytics/PlatformTabs";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
@@ -16,7 +15,6 @@ import {
   Download,
   RefreshCw,
   Loader2,
-  Store,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -45,23 +43,11 @@ export default function Analytics() {
     refetchAll
   } = useAnalyticsData(selectedClient?.id, dateRange);
 
-  const {
-    orders: shopifyOrders,
-    shop: shopifyShop,
-    isLoading: shopifyLoading,
-    isError: shopifyError,
-    error: shopifyErrorDetails,
-    refetch: refetchShopify,
-  } = useShopifyData();
-
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
 
   const handleRefreshAll = () => {
     refetchAll?.();
-    if (hasShopify || selectedClient?.is_ecommerce) {
-      refetchShopify();
-    }
   };
 
   if (!selectedClient) {
@@ -134,10 +120,10 @@ export default function Analytics() {
             <Button 
               variant="outline" 
               size="icon" 
-              disabled={isLoading || shopifyLoading} 
+              disabled={isLoading} 
               onClick={handleRefreshAll}
             >
-              {isLoading || shopifyLoading ? (
+              {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4" />
@@ -189,13 +175,9 @@ export default function Analytics() {
             {/* Shopify Analytics - Show if client is ecommerce */}
             {(hasShopify || selectedClient.is_ecommerce) && (
               <ShopifyAnalytics
-                orders={shopifyOrders}
-                isLoading={shopifyLoading}
-                isError={shopifyError}
-                error={shopifyErrorDetails}
-                refetch={refetchShopify}
                 dateFilter={shopifyDateFilter}
                 onDateFilterChange={setShopifyDateFilter}
+                onRefresh={refetchAll}
               />
             )}
 
