@@ -139,8 +139,8 @@ export function ShopifyAnalytics({
   // Fetch comparison data for previous period
   const { data: comparisonData, isLoading: isLoadingComparison } = useShopifyComparison(dateFrom, dateTo);
   const handleRefresh = () => {
+    // Only refetch this component's data, not all components
     refetch();
-    onRefresh?.();
   };
 
   const handleLocalFilterChange = (value: string) => {

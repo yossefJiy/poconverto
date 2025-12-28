@@ -199,11 +199,12 @@ export function GoogleAnalyticsCard({
   };
 
   const handleRefresh = async () => {
-    if (onRefresh) {
-      setIsRefreshing(true);
-      await onRefresh();
-      setIsRefreshing(false);
-    }
+    // Only show refreshing state for this component
+    // The actual data refresh happens via React Query when parent refetches
+    setIsRefreshing(true);
+    // Simulate a small delay for UX feedback
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsRefreshing(false);
   };
 
   if (isLoading) {
