@@ -22,6 +22,9 @@ import { AIInsightsDialog } from "@/components/ai/AIInsightsDialog";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
+import { ClientLinksCard } from "@/components/dashboard/ClientLinksCard";
+import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
+import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
@@ -66,6 +69,37 @@ export default function Dashboard() {
         ctr: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0",
       };
     },
+  });
+
+  // Fetch client full data for links
+  const { data: clientData } = useQuery({
+    queryKey: ["client-full-dashboard", selectedClient?.id],
+    queryFn: async () => {
+      if (!selectedClient) return null;
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("id", selectedClient.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedClient,
+  });
+
+  // Fetch integrations
+  const { data: integrations = [] } = useQuery({
+    queryKey: ["client-integrations-dashboard", selectedClient?.id],
+    queryFn: async () => {
+      if (!selectedClient) return [];
+      const { data, error } = await supabase
+        .from("integrations")
+        .select("*")
+        .eq("client_id", selectedClient.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedClient,
   });
 
   const { data: recentTasks = [] } = useQuery({
@@ -224,70 +258,87 @@ export default function Dashboard() {
             )}
 
             {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Tasks */}
-              {isModuleEnabled("tasks") && (
-                <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
-                  <div className="p-4 border-b border-border">
-                    <h3 className="font-bold">משימות אחרונות</h3>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {recentTasks.length === 0 ? (
-                      <div className="p-6 text-center text-muted-foreground">אין משימות</div>
-                    ) : (
-                      recentTasks.map((task: any) => (
-                        <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{task.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {task.team_members?.name || task.assignee || "לא משויך"}
-                              </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Recent Tasks & Campaigns */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Recent Tasks */}
+                {isModuleEnabled("tasks") && (
+                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+                    <div className="p-4 border-b border-border">
+                      <h3 className="font-bold">משימות אחרונות</h3>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {recentTasks.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground">אין משימות</div>
+                      ) : (
+                        recentTasks.map((task: any) => (
+                          <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{task.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {task.team_members?.name || task.assignee || "לא משויך"}
+                                </p>
+                              </div>
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                statusConfig[task.status]?.color || "bg-muted",
+                                "text-foreground"
+                              )}>
+                                {statusConfig[task.status]?.label || task.status}
+                              </span>
                             </div>
-                            <span className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              statusConfig[task.status]?.color || "bg-muted",
-                              "text-foreground"
-                            )}>
-                              {statusConfig[task.status]?.label || task.status}
-                            </span>
                           </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Recent Campaigns */}
-              {isModuleEnabled("campaigns") && (
-                <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
-                  <div className="p-4 border-b border-border">
-                    <h3 className="font-bold">קמפיינים אחרונים</h3>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {recentCampaigns.length === 0 ? (
-                      <div className="p-6 text-center text-muted-foreground">אין קמפיינים</div>
-                    ) : (
-                      recentCampaigns.map((campaign: any) => (
-                        <div key={campaign.id} className="p-4 hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{campaign.name}</p>
-                              <p className="text-xs text-muted-foreground">{campaign.platform}</p>
+                {/* Recent Campaigns */}
+                {isModuleEnabled("campaigns") && (
+                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
+                    <div className="p-4 border-b border-border">
+                      <h3 className="font-bold">קמפיינים אחרונים</h3>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {recentCampaigns.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground">אין קמפיינים</div>
+                      ) : (
+                        recentCampaigns.map((campaign: any) => (
+                          <div key={campaign.id} className="p-4 hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{campaign.name}</p>
+                                <p className="text-xs text-muted-foreground">{campaign.platform}</p>
+                              </div>
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                statusConfig[campaign.status]?.color || "bg-muted",
+                                "text-foreground"
+                              )}>
+                                {statusConfig[campaign.status]?.label || campaign.status}
+                              </span>
                             </div>
-                            <span className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              statusConfig[campaign.status]?.color || "bg-muted",
-                              "text-foreground"
-                            )}>
-                              {statusConfig[campaign.status]?.label || campaign.status}
-                            </span>
                           </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* Right Column - Links, Integrations, Quick Actions */}
+              {selectedClient && (
+                <div className="space-y-4 opacity-0 animate-slide-up" style={{ animationDelay: "0.55s", animationFillMode: "forwards" }}>
+                  <ClientLinksCard 
+                    website={clientData?.website}
+                    instagram_url={(clientData as any)?.instagram_url}
+                    facebook_url={(clientData as any)?.facebook_url}
+                    tiktok_url={(clientData as any)?.tiktok_url}
+                  />
+                  <IntegrationsCard integrations={integrations} />
+                  <QuickActionsCard isModuleEnabled={isModuleEnabled} />
                 </div>
               )}
             </div>
