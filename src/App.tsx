@@ -21,6 +21,8 @@ import ApiDocs from "./pages/ApiDocs";
 import Analytics from "./pages/Analytics";
 import Ecommerce from "./pages/Ecommerce";
 import SystemDiagram from "./pages/SystemDiagram";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +49,8 @@ const App = () => (
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
               <Route path="/system-diagram" element={<SystemDiagram />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -417,6 +417,19 @@ const Auth = () => {
               </div>
             </div>
           )}
+          
+          {/* Policy Links */}
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <Link to="/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors">
+                מדיניות פרטיות
+              </Link>
+              <span className="text-muted-foreground">|</span>
+              <Link to="/terms-of-service" className="text-muted-foreground hover:text-primary transition-colors">
+                תנאי שימוש
+              </Link>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
