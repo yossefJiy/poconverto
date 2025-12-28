@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +76,14 @@ serve(async (req) => {
   }
 
   try {
+    // Validate user authentication
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      console.error('[AI Marketing] Auth failed:', auth.error);
+      return unauthorizedResponse(auth.error);
+    }
+    console.log('[AI Marketing] Authenticated user:', auth.user.id);
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -310,6 +311,14 @@ serve(async (req) => {
   }
 
   try {
+    // Validate user authentication
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      console.error('[Connect Integration] Auth failed:', auth.error);
+      return unauthorizedResponse(auth.error);
+    }
+    console.log('[Connect Integration] Authenticated user:', auth.user.id);
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
