@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   ArrowRight,
   Info,
-  Mail
+  Mail,
+  LogIn
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,20 @@ import {
 } from "@/components/ui/alert";
 
 const NOTIFY_EMAIL = "yossef@jiy.co.il";
+
+interface PlatformOption {
+  id: string;
+  name: string;
+  logo: string;
+  color: string;
+  description: string;
+  credentialKey: string;
+  placeholder: string;
+  useOAuth?: boolean;
+  steps: { title: string; description: string }[];
+  helpUrl: string;
+  features: string[];
+}
 
 const platformOptions = [
   { 
@@ -81,10 +96,11 @@ const platformOptions = [
     description: "סנכרון קמפיינים ונתוני ביצועים",
     credentialKey: "customer_id",
     placeholder: "123-456-7890",
+    useOAuth: true,
     steps: [
-      { title: "היכנס ל-Google Ads", description: "עבור ל-ads.google.com" },
-      { title: "מצא את Customer ID", description: "המספר מופיע בפינה הימנית העליונה" },
-      { title: "העתק בפורמט הנכון", description: "הפורמט: XXX-XXX-XXXX" },
+      { title: "לחץ על 'התחבר עם Google'", description: "תועבר לדף האישור של Google" },
+      { title: "אשר גישה לחשבון Google Ads", description: "בחר את החשבון הפרסומי שברצונך לחבר" },
+      { title: "הזן Customer ID", description: "הפורמט: XXX-XXX-XXXX (מופיע בפינה הימנית העליונה ב-Google Ads)" },
     ],
     helpUrl: "https://support.google.com/google-ads/answer/1704344",
     features: ["קמפיינים", "מילות מפתח", "המרות", "עלויות"],
@@ -159,11 +175,93 @@ export default function Integrations() {
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<typeof platformOptions[0] | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformOption | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [credential, setCredential] = useState("");
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
+  const [oauthCompleted, setOauthCompleted] = useState(false);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    
+    if (code && state) {
+      handleOAuthCallback(code, state);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleOAuthCallback = async (code: string, state: string) => {
+    try {
+      const stateData = JSON.parse(atob(state));
+      const clientId = stateData.client_id;
+
+      setConnectionStatus("testing");
+      setConnectionMessage("משלים את החיבור ל-Google Ads...");
+      setShowDialog(true);
+      setSelectedPlatform(platformOptions.find(p => p.id === 'google_ads') as PlatformOption || null);
+
+      const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
+        body: {
+          action: 'exchange_code',
+          code,
+          redirect_uri: window.location.origin + window.location.pathname,
+          client_id: clientId,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setConnectionStatus("success");
+        setConnectionMessage(data.message);
+        setOauthCompleted(true);
+        setCurrentStep(2);
+        queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        toast.success("החיבור ל-Google Ads הושלם!");
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('OAuth callback error:', err);
+      setConnectionStatus("error");
+      setConnectionMessage(err instanceof Error ? err.message : "שגיאה בחיבור");
+      toast.error("שגיאה בחיבור ל-Google Ads");
+    }
+  };
+
+  const handleGoogleOAuth = async () => {
+    if (!selectedClient) return;
+
+    try {
+      setConnectionStatus("testing");
+      setConnectionMessage("מתחבר ל-Google...");
+
+      const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
+        body: {
+          action: 'get_auth_url',
+          client_id: selectedClient.id,
+          redirect_uri: window.location.origin + window.location.pathname,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        throw new Error(data.error || 'Failed to get auth URL');
+      }
+    } catch (err) {
+      console.error('OAuth error:', err);
+      setConnectionStatus("error");
+      setConnectionMessage(err instanceof Error ? err.message : "שגיאה בהתחברות");
+    }
+  };
 
   const { data: integrations = [], isLoading } = useQuery({
     queryKey: ["integrations", selectedClient?.id],
@@ -497,22 +595,40 @@ export default function Integrations() {
                 ))}
               </div>
 
-              {/* Input */}
-              <div className="space-y-2">
-                <Label>הזן את המזהה:</Label>
-                <Input
-                  value={credential}
-                  onChange={(e) => {
-                    setCredential(e.target.value);
-                    setCurrentStep(2);
-                    setConnectionStatus("idle");
-                  }}
-                  placeholder={selectedPlatform.placeholder}
-                  dir="ltr"
-                  className="text-left"
-                />
-              </div>
+              {/* OAuth Button for Google Ads */}
+              {selectedPlatform.useOAuth && !oauthCompleted && (
+                <Button 
+                  onClick={handleGoogleOAuth} 
+                  disabled={connectionStatus === "testing"}
+                  className="w-full glow"
+                  size="lg"
+                >
+                  {connectionStatus === "testing" ? (
+                    <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                  ) : (
+                    <LogIn className="w-4 h-4 ml-2" />
+                  )}
+                  התחבר עם Google
+                </Button>
+              )}
 
+              {/* Input - show for non-OAuth or after OAuth completed */}
+              {(!selectedPlatform.useOAuth || oauthCompleted) && (
+                <div className="space-y-2">
+                  <Label>{oauthCompleted ? "הזן Customer ID:" : "הזן את המזהה:"}</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      setCredential(e.target.value);
+                      setCurrentStep(2);
+                      setConnectionStatus("idle");
+                    }}
+                    placeholder={selectedPlatform.placeholder}
+                    dir="ltr"
+                    className="text-left"
+                  />
+                </div>
+              )}
               {/* Features */}
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium mb-2">לאחר החיבור תקבל גישה ל:</p>
