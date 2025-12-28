@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -22,6 +23,15 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate authentication - only authenticated users can send admin alerts
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      console.error("[Admin Alert] Unauthorized request:", auth.error);
+      return unauthorizedResponse(auth.error);
+    }
+
+    console.log("[Admin Alert] Authenticated user:", auth.user?.id);
+
     const { issue, context, timestamp }: AdminAlertRequest = await req.json();
 
     console.log(`[Admin Alert] Issue: ${issue}, Context: ${context}`);
