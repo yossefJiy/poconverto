@@ -21,6 +21,7 @@ import Backlog from "./pages/Backlog";
 import ClientDashboard from "./pages/ClientDashboard";
 import Clients from "./pages/Clients";
 import ApiDocs from "./pages/ApiDocs";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
                 <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
                 <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
