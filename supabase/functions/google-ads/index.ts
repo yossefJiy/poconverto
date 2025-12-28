@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -9,6 +10,18 @@ const corsHeaders = {
 // Google Ads API base URL
 const GOOGLE_ADS_API_VERSION = 'v22';
 const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
+
+// Global credentials (fallback)
+const GLOBAL_CLIENT_ID = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
+const GLOBAL_CLIENT_SECRET = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+const GLOBAL_DEVELOPER_TOKEN = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
+
+interface ClientCredentials {
+  access_token?: string;
+  refresh_token?: string;
+  token_expires_at?: string;
+  customer_id?: string;
+}
 
 // Generate access token using OAuth2 Refresh Token flow
 async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
@@ -75,6 +88,84 @@ async function executeGoogleAdsQuery(
   return data;
 }
 
+// Get credentials for a specific client from database
+async function getClientCredentials(
+  supabaseClient: any, 
+  clientId: string
+): Promise<{ credentials: ClientCredentials; integrationId: string } | null> {
+  console.log('[Google Ads] Fetching credentials for client:', clientId);
+  
+  const { data: integration, error } = await supabaseClient
+    .from('integrations')
+    .select('id, encrypted_credentials, settings, external_account_id')
+    .eq('client_id', clientId)
+    .eq('platform', 'google_ads')
+    .eq('is_connected', true)
+    .single();
+
+  if (error || !integration) {
+    console.log('[Google Ads] No integration found for client:', clientId);
+    return null;
+  }
+
+  if (!integration.encrypted_credentials) {
+    console.log('[Google Ads] No encrypted credentials for client:', clientId);
+    return null;
+  }
+
+  // Decrypt credentials
+  const { data: decryptedData, error: decryptError } = await supabaseClient
+    .rpc('decrypt_integration_credentials', { encrypted_data: integration.encrypted_credentials });
+
+  if (decryptError || !decryptedData) {
+    console.error('[Google Ads] Decryption error:', decryptError);
+    return null;
+  }
+
+  const credentials = decryptedData as ClientCredentials;
+  
+  // Add customer_id from settings or external_account_id
+  if (integration.settings?.customer_id) {
+    credentials.customer_id = integration.settings.customer_id;
+  } else if (integration.external_account_id) {
+    credentials.customer_id = integration.external_account_id;
+  }
+
+  return { credentials, integrationId: integration.id };
+}
+
+// Update stored access token after refresh
+async function updateStoredTokens(
+  supabaseClient: any,
+  integrationId: string,
+  credentials: ClientCredentials,
+  newAccessToken: string
+): Promise<void> {
+  const updatedCredentials = {
+    ...credentials,
+    access_token: newAccessToken,
+    token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour
+  };
+
+  const { data: encryptedData, error: encryptError } = await supabaseClient
+    .rpc('encrypt_integration_credentials', { credentials: updatedCredentials });
+
+  if (encryptError) {
+    console.warn('[Google Ads] Failed to update stored tokens:', encryptError);
+    return;
+  }
+
+  await supabaseClient
+    .from('integrations')
+    .update({
+      encrypted_credentials: encryptedData,
+      last_sync_at: new Date().toISOString(),
+    })
+    .eq('id', integrationId);
+
+  console.log('[Google Ads] Updated stored tokens for integration:', integrationId);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,31 +181,89 @@ serve(async (req) => {
     }
     console.log('[Google Ads] Authenticated user:', auth.user.id);
 
-    // Get credentials from environment
-    const developerToken = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
-    const customerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
-    const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-    const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
-    const refreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
+    // Parse request body
+    const { startDate, endDate, clientId } = await req.json();
 
-    if (!developerToken) {
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    let accessToken: string | undefined;
+    let customerId: string | undefined;
+    let integrationId: string | null = null;
+    let clientCredentials: ClientCredentials | null = null;
+
+    // Try to get per-client credentials first
+    if (clientId) {
+      const clientData = await getClientCredentials(supabaseClient, clientId);
+      
+      if (clientData && clientData.credentials.refresh_token) {
+        console.log('[Google Ads] Using per-client OAuth credentials');
+        clientCredentials = clientData.credentials;
+        integrationId = clientData.integrationId;
+
+        const refreshToken = clientCredentials.refresh_token!;
+
+        // Check if we have a valid access token
+        const tokenExpiry = clientCredentials.token_expires_at 
+          ? new Date(clientCredentials.token_expires_at) 
+          : new Date(0);
+        
+        if (clientCredentials.access_token && tokenExpiry > new Date()) {
+          accessToken = clientCredentials.access_token;
+          console.log('[Google Ads] Using cached access token');
+        } else {
+          // Refresh the access token
+          accessToken = await getAccessToken(
+            GLOBAL_CLIENT_ID!,
+            GLOBAL_CLIENT_SECRET!,
+            refreshToken
+          );
+          
+          // Update stored tokens in background
+          if (integrationId) {
+            updateStoredTokens(supabaseClient, integrationId, clientCredentials, accessToken);
+          }
+        }
+
+        customerId = clientCredentials.customer_id || '';
+        if (!customerId) {
+          throw new Error('Customer ID not configured for this client');
+        }
+      } else {
+        console.log('[Google Ads] No per-client credentials, falling back to global');
+      }
+    }
+
+    // Fallback to global credentials if no per-client credentials
+    if (!accessToken) {
+      console.log('[Google Ads] Using global credentials');
+      
+      const globalRefreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
+      const globalCustomerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
+
+      if (!GLOBAL_CLIENT_ID || !GLOBAL_CLIENT_SECRET) {
+        throw new Error('GOOGLE_ADS_CLIENT_ID or GOOGLE_ADS_CLIENT_SECRET is not configured');
+      }
+      if (!globalRefreshToken) {
+        throw new Error('GOOGLE_ADS_REFRESH_TOKEN is not configured. Please connect Google Ads from the Integrations page.');
+      }
+      if (!globalCustomerId) {
+        throw new Error('GOOGLE_ADS_CUSTOMER_ID is not configured');
+      }
+
+      accessToken = await getAccessToken(GLOBAL_CLIENT_ID, GLOBAL_CLIENT_SECRET, globalRefreshToken);
+      customerId = globalCustomerId;
+    }
+
+    if (!GLOBAL_DEVELOPER_TOKEN) {
       throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN is not configured');
-    }
-    if (!customerId) {
-      throw new Error('GOOGLE_ADS_CUSTOMER_ID is not configured');
-    }
-    if (!clientId || !clientSecret) {
-      throw new Error('GOOGLE_ADS_CLIENT_ID or GOOGLE_ADS_CLIENT_SECRET is not configured');
-    }
-    if (!refreshToken) {
-      throw new Error('GOOGLE_ADS_REFRESH_TOKEN is not configured');
     }
 
     console.log('[Google Ads] All credentials loaded successfully');
 
-    // Parse request body
-    const { startDate, endDate, reportType } = await req.json();
-    
     // Default date range: last 30 days
     const today = new Date();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -122,17 +271,10 @@ serve(async (req) => {
     const requestStartDate = startDate || thirtyDaysAgo.toISOString().split('T')[0];
     const requestEndDate = endDate || today.toISOString().split('T')[0];
 
-    // Format dates for Google Ads API (YYYY-MM-DD)
-    const formattedStartDate = requestStartDate.replace(/-/g, '');
-    const formattedEndDate = requestEndDate.replace(/-/g, '');
-
     console.log(`[Google Ads] Date range: ${requestStartDate} to ${requestEndDate}`);
 
-    // Get access token using refresh token flow
-    const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
-
     // Clean customer ID (remove dashes if present)
-    const cleanCustomerId = customerId.replace(/-/g, '');
+    const cleanCustomerId = customerId!.replace(/-/g, '');
 
     // 1. Campaign Performance Query
     const campaignQuery = `
@@ -220,11 +362,11 @@ serve(async (req) => {
     console.log('[Google Ads] Executing queries...');
     
     const [campaigns, daily, adGroups, keywords, account] = await Promise.all([
-      executeGoogleAdsQuery(accessToken, developerToken, cleanCustomerId, campaignQuery).catch(e => ({ error: e.message })),
-      executeGoogleAdsQuery(accessToken, developerToken, cleanCustomerId, dailyQuery).catch(e => ({ error: e.message })),
-      executeGoogleAdsQuery(accessToken, developerToken, cleanCustomerId, adGroupQuery).catch(e => ({ error: e.message })),
-      executeGoogleAdsQuery(accessToken, developerToken, cleanCustomerId, keywordsQuery).catch(e => ({ error: e.message })),
-      executeGoogleAdsQuery(accessToken, developerToken, cleanCustomerId, accountQuery).catch(e => ({ error: e.message }))
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, campaignQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, dailyQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, adGroupQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, keywordsQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, accountQuery).catch(e => ({ error: e.message }))
     ]);
 
     // Process and format the response
