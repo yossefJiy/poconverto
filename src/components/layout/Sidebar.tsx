@@ -54,7 +54,7 @@ const menuItems: MenuItem[] = [
 const settingsItems = [
   { icon: User, label: "פרופיל", path: "/settings", section: "profile", adminOnly: false },
   { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
-  { icon: Plug, label: "חיבורים", path: "/integrations", adminOnly: false },
+  { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
 ];
 
