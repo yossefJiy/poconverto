@@ -15,6 +15,166 @@ interface ShopifyRequest {
   date_to?: string;
 }
 
+// Function to fetch analytics data using ShopifyQL via GraphQL API
+async function fetchShopifyQLAnalytics(
+  storeDomain: string, 
+  accessToken: string, 
+  dateFrom: string, 
+  dateTo: string
+): Promise<{ sessions: number; visitors: number; conversionRate: number } | null> {
+  const cleanDomain = storeDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const graphqlUrl = `https://${cleanDomain}/admin/api/2024-10/graphql.json`;
+  
+  // Format dates for ShopifyQL (YYYY-MM-DD)
+  const fromDate = new Date(dateFrom).toISOString().split('T')[0];
+  const toDate = new Date(dateTo).toISOString().split('T')[0];
+  
+  // ShopifyQL query to get sessions and sales data
+  const shopifyqlQuery = `
+    FROM sessions
+    SHOW sessions, visitors, added_to_cart_sessions, sessions_converted
+    SINCE ${fromDate}
+    UNTIL ${toDate}
+  `;
+  
+  const graphqlQuery = `
+    query {
+      shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').trim()}") {
+        __typename
+        ... on TableResponse {
+          tableData {
+            columns {
+              name
+              dataType
+            }
+            rowData
+          }
+        }
+        ... on PolarisVizResponse {
+          data {
+            key
+            data {
+              key
+              value
+            }
+          }
+        }
+        parseErrors {
+          code
+          message
+          range {
+            start { line character }
+            end { line character }
+          }
+        }
+      }
+    }
+  `;
+  
+  try {
+    console.log('[Shopify API] Fetching ShopifyQL analytics...');
+    const response = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: graphqlQuery }),
+    });
+    
+    if (!response.ok) {
+      console.error('[Shopify API] GraphQL request failed:', response.status);
+      return null;
+    }
+    
+    const result = await response.json();
+    console.log('[Shopify API] ShopifyQL response:', JSON.stringify(result, null, 2));
+    
+    if (result.errors) {
+      console.error('[Shopify API] GraphQL errors:', result.errors);
+      return null;
+    }
+    
+    const queryResult = result.data?.shopifyqlQuery;
+    
+    if (queryResult?.parseErrors?.length > 0) {
+      console.error('[Shopify API] ShopifyQL parse errors:', queryResult.parseErrors);
+      return null;
+    }
+    
+    // Parse table response
+    if (queryResult?.__typename === 'TableResponse' && queryResult.tableData) {
+      const columns = queryResult.tableData.columns;
+      const rows = queryResult.tableData.rowData || [];
+      
+      let totalSessions = 0;
+      let totalVisitors = 0;
+      let totalConverted = 0;
+      
+      // Find column indices
+      const sessionsIdx = columns.findIndex((c: any) => c.name === 'sessions');
+      const visitorsIdx = columns.findIndex((c: any) => c.name === 'visitors');
+      const convertedIdx = columns.findIndex((c: any) => c.name === 'sessions_converted');
+      
+      // Sum up the values from all rows
+      for (const row of rows) {
+        if (sessionsIdx >= 0 && row[sessionsIdx]) {
+          totalSessions += parseInt(row[sessionsIdx]) || 0;
+        }
+        if (visitorsIdx >= 0 && row[visitorsIdx]) {
+          totalVisitors += parseInt(row[visitorsIdx]) || 0;
+        }
+        if (convertedIdx >= 0 && row[convertedIdx]) {
+          totalConverted += parseInt(row[convertedIdx]) || 0;
+        }
+      }
+      
+      const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
+      
+      console.log(`[Shopify API] Analytics from ShopifyQL: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+      
+      return {
+        sessions: totalSessions,
+        visitors: totalVisitors,
+        conversionRate,
+      };
+    }
+    
+    // Parse PolarisViz response
+    if (queryResult?.__typename === 'PolarisVizResponse' && queryResult.data) {
+      let totalSessions = 0;
+      let totalVisitors = 0;
+      let totalConverted = 0;
+      
+      for (const series of queryResult.data) {
+        if (series.key === 'sessions') {
+          totalSessions = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
+        } else if (series.key === 'visitors') {
+          totalVisitors = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
+        } else if (series.key === 'sessions_converted') {
+          totalConverted = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
+        }
+      }
+      
+      const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
+      
+      console.log(`[Shopify API] Analytics from PolarisViz: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+      
+      return {
+        sessions: totalSessions,
+        visitors: totalVisitors,
+        conversionRate,
+      };
+    }
+    
+    console.log('[Shopify API] Could not parse ShopifyQL response');
+    return null;
+  } catch (error) {
+    console.error('[Shopify API] ShopifyQL fetch error:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -78,6 +238,12 @@ serve(async (req) => {
         allOrders = ordersData.orders || [];
       }
       
+      // Try to fetch real session data using ShopifyQL
+      let analyticsData = null;
+      if (date_from && date_to) {
+        analyticsData = await fetchShopifyQLAnalytics(storeDomain, accessToken, date_from, date_to);
+      }
+      
       // Calculate analytics metrics
       // Use current_total_price which reflects the actual paid amount after refunds/discounts
       const totalOrders = allOrders.length;
@@ -92,10 +258,22 @@ serve(async (req) => {
       // Get unique customers
       const uniqueCustomers = new Set(allOrders.map((o: any) => o.email || o.customer?.email).filter(Boolean)).size;
       
-      // Calculate conversion rate (orders / sessions estimate based on typical 2% conversion)
-      // Note: Shopify doesn't provide session data via Admin API, this is an estimate
-      const estimatedSessions = Math.round(totalOrders / 0.02);
-      const conversionRate = totalOrders > 0 ? (totalOrders / estimatedSessions) * 100 : 0;
+      // Use real session data if available, otherwise estimate
+      let realSessions = analyticsData?.sessions || null;
+      let realVisitors = analyticsData?.visitors || null;
+      let conversionRate: number;
+      
+      if (analyticsData && analyticsData.sessions > 0) {
+        // Use real conversion rate from ShopifyQL
+        conversionRate = analyticsData.conversionRate;
+        console.log(`[Shopify API] Using real analytics: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+      } else {
+        // Fallback to estimated values
+        realSessions = Math.round(totalOrders / 0.02);
+        realVisitors = Math.round(realSessions * 0.7);
+        conversionRate = totalOrders > 0 ? (totalOrders / realSessions) * 100 : 0;
+        console.log(`[Shopify API] Using estimated analytics: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+      }
       
       // Analyze traffic sources from UTM parameters and referring sites
       const trafficSources: Record<string, number> = {};
@@ -133,7 +311,7 @@ serve(async (req) => {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
       
-      console.log(`Analytics calculated: ${totalOrders} orders, ${totalRevenue} revenue`);
+      console.log(`Analytics calculated: ${totalOrders} orders, ${totalRevenue} revenue, ${realSessions} sessions`);
       
       return new Response(
         JSON.stringify({
@@ -145,8 +323,10 @@ serve(async (req) => {
               avgOrderValue,
               totalItemsSold,
               uniqueCustomers,
-              estimatedSessions,
+              sessions: realSessions,
+              visitors: realVisitors,
               conversionRate: conversionRate.toFixed(2),
+              isRealSessionData: analyticsData !== null && analyticsData.sessions > 0,
             },
             orderStatus: {
               paid: paidOrders,
