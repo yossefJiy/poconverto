@@ -79,10 +79,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setRole(null);
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+    const storageKey = projectId ? `sb-${projectId}-auth-token` : null;
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch {
+      // Fallback: force-clear local session to prevent redirect loops/flicker if network revoke fails
+      try {
+        if (storageKey) {
+          localStorage.removeItem(storageKey);
+          localStorage.removeItem(`${storageKey}-code-verifier`);
+        }
+      } catch {
+        // ignore
+      }
+    } finally {
+      setUser(null);
+      setSession(null);
+      setRole(null);
+    }
   };
 
   return (

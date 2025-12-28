@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Target, 
@@ -63,8 +63,14 @@ const settingsItems = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
 
   const userEmail = user?.email || "";
   const userInitials = userEmail ? userEmail.substring(0, 2).toUpperCase() : "U";
@@ -245,7 +251,7 @@ export function Sidebar() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={signOut}
+                onClick={handleSignOut}
                 className="text-destructive focus:text-destructive cursor-pointer"
               >
                 <LogOut className="w-4 h-4 ml-2" />
