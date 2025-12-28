@@ -23,6 +23,7 @@ import ClientProfile from "./pages/ClientProfile";
 import ApiDocs from "./pages/ApiDocs";
 import Analytics from "./pages/Analytics";
 import Ecommerce from "./pages/Ecommerce";
+import SecurityLogs from "./pages/SecurityLogs";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
                 <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                 <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
+                <Route path="/security-logs" element={<ProtectedRoute><SecurityLogs /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
