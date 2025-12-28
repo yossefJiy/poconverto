@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Google Ads API base URL
-const GOOGLE_ADS_API_VERSION = 'v18';
+const GOOGLE_ADS_API_VERSION = 'v22';
 const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
 // Generate access token using OAuth2 Refresh Token flow
