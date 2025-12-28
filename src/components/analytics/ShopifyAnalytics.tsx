@@ -13,6 +13,9 @@ import {
   Eye,
   Percent,
   Globe,
+  ChevronDown,
+  ChevronUp,
+  MousePointer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,10 +30,15 @@ import {
 } from "@/components/ui/select";
 import { useShopifyAnalytics } from "@/hooks/useShopifyData";
 import { Progress } from "@/components/ui/progress";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ShopifyAnalyticsProps {
-  dateFilter: string;
-  onDateFilterChange: (value: string) => void;
+  globalDateFrom: string;
+  globalDateTo: string;
   onRefresh?: () => void;
 }
 
@@ -44,43 +52,49 @@ function formatCurrency(num: number): string {
   return "₪" + formatNumber(num);
 }
 
-function getDateRange(filter: string): { dateFrom: string; dateTo: string } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  let start: Date;
-  const end = today;
-  
-  switch (filter) {
-    case "mtd":
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-    case "ytd":
-      start = new Date(now.getFullYear(), 0, 1);
-      break;
-    case "y1":
-    case "y2":
-    case "y3": {
-      const yearsBack = parseInt(filter.replace('y', ''));
-      start = new Date(now.getFullYear() - yearsBack, now.getMonth(), 1);
-      break;
-    }
-    default:
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-  
-  return {
-    dateFrom: start.toISOString(),
-    dateTo: end.toISOString(),
-  };
-}
-
 export function ShopifyAnalytics({ 
-  dateFilter,
-  onDateFilterChange,
+  globalDateFrom,
+  globalDateTo,
   onRefresh,
 }: ShopifyAnalyticsProps) {
-  const { dateFrom, dateTo } = useMemo(() => getDateRange(dateFilter), [dateFilter]);
+  const [useLocalFilter, setUseLocalFilter] = useState(false);
+  const [localDateFilter, setLocalDateFilter] = useState("mtd");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Calculate local date range if using local filter
+  const { dateFrom, dateTo } = useMemo(() => {
+    if (!useLocalFilter) {
+      return { dateFrom: globalDateFrom, dateTo: globalDateTo };
+    }
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start: Date;
+    const end = today;
+    
+    switch (localDateFilter) {
+      case "mtd":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "ytd":
+        start = new Date(now.getFullYear(), 0, 1);
+        break;
+      case "y1":
+      case "y2":
+      case "y3": {
+        const yearsBack = parseInt(localDateFilter.replace('y', ''));
+        start = new Date(now.getFullYear() - yearsBack, now.getMonth(), 1);
+        break;
+      }
+      default:
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    
+    return {
+      dateFrom: start.toISOString(),
+      dateTo: end.toISOString(),
+    };
+  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
   
   const { 
     data: analyticsData, 
@@ -93,6 +107,15 @@ export function ShopifyAnalytics({
   const handleRefresh = () => {
     refetch();
     onRefresh?.();
+  };
+
+  const handleLocalFilterChange = (value: string) => {
+    setLocalDateFilter(value);
+    setUseLocalFilter(true);
+  };
+
+  const handleResetToGlobal = () => {
+    setUseLocalFilter(false);
   };
 
   if (isError) {
@@ -131,23 +154,18 @@ export function ShopifyAnalytics({
   const trafficSources = analyticsData?.trafficSources || [];
   const topProducts = analyticsData?.topProducts || [];
 
-  const getFilterLabel = () => {
-    switch (dateFilter) {
-      case "mtd": return "מתחילת החודש";
-      case "ytd": return "מתחילת השנה";
-      case "y1": return "12 חודשים אחרונים";
-      case "y2": return "24 חודשים אחרונים";
-      case "y3": return "36 חודשים אחרונים";
-      default: return "";
-    }
-  };
+  // Calculate CTR (mock - would come from real data)
+  const ctr = summary.estimatedSessions > 0 
+    ? ((summary.totalOrders / summary.estimatedSessions) * 100).toFixed(2) 
+    : "0";
 
-  const metrics = [
+  // Main dashboard metrics - always visible
+  const mainMetrics = [
     {
-      label: "סשנים (משוער)",
-      value: formatNumber(summary.estimatedSessions),
-      icon: <Eye className="w-5 h-5" />,
-      color: "bg-blue-500/20 text-blue-500",
+      label: "סה״כ מכירות",
+      value: formatCurrency(summary.totalRevenue),
+      icon: <DollarSign className="w-5 h-5" />,
+      color: "bg-green-500/20 text-green-500",
     },
     {
       label: "הזמנות",
@@ -156,28 +174,22 @@ export function ShopifyAnalytics({
       color: "bg-purple-500/20 text-purple-500",
     },
     {
-      label: "הכנסות",
-      value: formatCurrency(summary.totalRevenue),
-      icon: <DollarSign className="w-5 h-5" />,
-      color: "bg-green-500/20 text-green-500",
+      label: "CTR",
+      value: ctr + "%",
+      icon: <MousePointer className="w-5 h-5" />,
+      color: "bg-blue-500/20 text-blue-500",
     },
     {
-      label: "אחוז המרה",
-      value: summary.conversionRate + "%",
-      icon: <Percent className="w-5 h-5" />,
-      color: "bg-orange-500/20 text-orange-500",
-    },
-    {
-      label: "ממוצע להזמנה",
-      value: formatCurrency(summary.avgOrderValue),
-      icon: <TrendingUp className="w-5 h-5" />,
+      label: "סשנים",
+      value: formatNumber(summary.estimatedSessions),
+      icon: <Eye className="w-5 h-5" />,
       color: "bg-cyan-500/20 text-cyan-500",
     },
     {
-      label: "לקוחות ייחודיים",
-      value: formatNumber(summary.uniqueCustomers),
-      icon: <Users className="w-5 h-5" />,
-      color: "bg-pink-500/20 text-pink-500",
+      label: "פריטים שנמכרו",
+      value: formatNumber(summary.totalItemsSold),
+      icon: <Package className="w-5 h-5" />,
+      color: "bg-orange-500/20 text-orange-500",
     },
   ];
 
@@ -192,15 +204,22 @@ export function ShopifyAnalytics({
             </div>
             <div>
               <h3 className="font-bold text-lg">נתוני Shopify</h3>
-              <p className="text-sm text-muted-foreground">{getFilterLabel()}</p>
+              <p className="text-sm text-muted-foreground">
+                {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Select value={dateFilter} onValueChange={onDateFilterChange}>
+            {useLocalFilter && (
+              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
+                חזור לסינון גלובלי
+              </Button>
+            )}
+            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
               <SelectTrigger className="w-[180px]">
                 <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue />
+                <SelectValue placeholder="שנה תאריכים" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mtd">מתחילת החודש (MTD)</SelectItem>
@@ -222,14 +241,14 @@ export function ShopifyAnalytics({
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="bg-muted/50 rounded-lg p-4 animate-pulse h-24" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {metrics.map((metric) => (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {mainMetrics.map((metric) => (
               <div key={metric.label} className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
                 <div className="flex items-center gap-2 mb-2">
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", metric.color)}>
@@ -266,56 +285,71 @@ export function ShopifyAnalytics({
         )}
       </div>
 
-      {/* Traffic Sources & Top Products */}
+      {/* Collapsible Details */}
       {!isLoading && (trafficSources.length > 0 || topProducts.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Traffic Sources */}
-          {trafficSources.length > 0 && (
-            <div className="glass rounded-xl p-6 card-shadow">
-              <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-primary" />
-                <h4 className="font-bold">מקורות תנועה</h4>
+        <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <div className="glass rounded-xl p-4 card-shadow">
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                <span className="font-medium">נתונים נוספים</span>
+                <Button variant="ghost" size="icon">
+                  {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </Button>
               </div>
-              <div className="space-y-3">
-                {trafficSources.slice(0, 5).map((source) => (
-                  <div key={source.source} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{source.source}</span>
-                      <span className="font-medium">{source.orders} הזמנות ({source.percentage}%)</span>
-                    </div>
-                    <Progress value={parseFloat(source.percentage)} className="h-2" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            </CollapsibleTrigger>
 
-          {/* Top Products */}
-          {topProducts.length > 0 && (
-            <div className="glass rounded-xl p-6 card-shadow">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="w-5 h-5 text-primary" />
-                <h4 className="font-bold">מוצרים מובילים</h4>
-              </div>
-              <div className="space-y-3">
-                {topProducts.slice(0, 5).map((product, index) => (
-                  <div key={product.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm truncate max-w-[200px]">{product.name}</span>
+            <CollapsibleContent className="mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Traffic Sources */}
+                {trafficSources.length > 0 && (
+                  <div className="bg-muted/30 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Globe className="w-5 h-5 text-primary" />
+                      <h4 className="font-bold">מקורות תנועה</h4>
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium text-sm">{formatCurrency(product.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{product.quantity} יחידות</p>
+                    <div className="space-y-3">
+                      {trafficSources.slice(0, 5).map((source) => (
+                        <div key={source.source} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{source.source}</span>
+                            <span className="font-medium">{source.orders} הזמנות ({source.percentage}%)</span>
+                          </div>
+                          <Progress value={parseFloat(source.percentage)} className="h-2" />
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Top Products */}
+                {topProducts.length > 0 && (
+                  <div className="bg-muted/30 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Package className="w-5 h-5 text-primary" />
+                      <h4 className="font-bold">מוצרים מובילים</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {topProducts.slice(0, 5).map((product, index) => (
+                        <div key={product.name} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm truncate max-w-[200px]">{product.name}</span>
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-sm">{formatCurrency(product.revenue)}</p>
+                            <p className="text-xs text-muted-foreground">{product.quantity} יחידות</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
       )}
     </div>
   );

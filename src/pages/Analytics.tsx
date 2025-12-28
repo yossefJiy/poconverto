@@ -1,47 +1,54 @@
+import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
-import { AnalyticsSummary } from "@/components/analytics/AnalyticsSummary";
-import { PlatformTabs } from "@/components/analytics/PlatformTabs";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
+import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
+import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Plug, 
   ArrowRight, 
   AlertCircle,
-  Calendar,
   Download,
   RefreshCw,
   Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
 
 export default function Analytics() {
   const { selectedClient } = useClient();
-  const [dateRange, setDateRange] = useState("30");
-  const [shopifyDateFilter, setShopifyDateFilter] = useState("mtd");
+  const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  
+  // Get date range based on filter
+  const dateRange = getDateRangeFromFilter(globalDateFilter, customDateRange);
+  
+  // Calculate days for the hook (for backward compatibility)
+  const getDaysFromFilter = () => {
+    switch (globalDateFilter) {
+      case "today": return "1";
+      case "yesterday": return "1";
+      case "mtd": return "30";
+      case "7": return "7";
+      case "14": return "14";
+      case "30": return "30";
+      case "90": return "90";
+      case "custom": return "30";
+      default: return "30";
+    }
+  };
   
   const { 
     analyticsData, 
-    platformsData, 
-    aggregatedAdsData, 
     integrations,
     isLoading,
     hasAnalytics,
-    hasAds,
     refetchAll
-  } = useAnalyticsData(selectedClient?.id, dateRange);
+  } = useAnalyticsData(selectedClient?.id, getDaysFromFilter());
 
   // Check if client has Shopify integration
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
@@ -74,9 +81,8 @@ export default function Analytics() {
   const noIntegrations = integrations.length === 0;
   const dataSources = [];
   
-  if (hasAnalytics) dataSources.push("Google Analytics");
-  if (hasAds) dataSources.push("פרסום");
   if (hasShopify || selectedClient.is_ecommerce) dataSources.push("Shopify");
+  if (hasAnalytics) dataSources.push("Google Analytics");
 
   return (
     <MainLayout>
@@ -85,7 +91,7 @@ export default function Analytics() {
           <div>
             <PageHeader 
               title={`אנליטיקס - ${selectedClient.name}`}
-              description="הצלבת נתוני אתר מול מערכות פרסום ואיקומרס"
+              description="נתוני אתר ואיקומרס"
             />
             {dataSources.length > 0 && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -104,18 +110,12 @@ export default function Analytics() {
           </div>
           
           <div className="flex items-center gap-3">
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-[150px]">
-                <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 ימים</SelectItem>
-                <SelectItem value="14">14 ימים</SelectItem>
-                <SelectItem value="30">30 ימים</SelectItem>
-                <SelectItem value="90">90 ימים</SelectItem>
-              </SelectContent>
-            </Select>
+            <GlobalDateFilter
+              value={globalDateFilter}
+              onChange={setGlobalDateFilter}
+              customDateRange={customDateRange}
+              onCustomDateChange={setCustomDateRange}
+            />
 
             <Button 
               variant="outline" 
@@ -143,7 +143,7 @@ export default function Analytics() {
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertTitle>אין חיבורים פעילים</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
-              <span>חבר את Google Analytics ופלטפורמות הפרסום שלך כדי לראות נתונים אמיתיים</span>
+              <span>חבר את Google Analytics ו-Shopify כדי לראות נתונים אמיתיים</span>
               <Button asChild size="sm" className="mr-4">
                 <Link to="/integrations">
                   <Plug className="w-4 h-4 ml-2" />
@@ -154,52 +154,28 @@ export default function Analytics() {
           </Alert>
         )}
 
-        {/* Demo Data Notice */}
-        {!noIntegrations && (!hasAnalytics || !hasAds) && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>נתונים חלקיים</AlertTitle>
-            <AlertDescription>
-              {!hasAnalytics && "Google Analytics לא מחובר - נתוני תנועה מוצגים להדגמה. "}
-              {!hasAds && "אין פלטפורמות פרסום מחוברות - נתוני פרסום מוצגים להדגמה."}
-            </AlertDescription>
-          </Alert>
-        )}
-
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Shopify Analytics - Show if client is ecommerce */}
+            {/* Shopify Analytics - First */}
             {(hasShopify || selectedClient.is_ecommerce) && (
               <ShopifyAnalytics
-                dateFilter={shopifyDateFilter}
-                onDateFilterChange={setShopifyDateFilter}
+                globalDateFrom={dateRange.dateFrom}
+                globalDateTo={dateRange.dateTo}
                 onRefresh={refetchAll}
               />
             )}
 
-            {/* Website & Ads Summary Section */}
-            <AnalyticsSummary 
-              websiteData={{
-                sessions: analyticsData.sessions,
-                users: analyticsData.users,
-                pageviews: analyticsData.pageviews,
-                bounceRate: analyticsData.bounceRate,
-              }}
-              adsData={aggregatedAdsData}
-            />
-
-            {/* Platform Tabs */}
-            <div className="glass rounded-xl p-6 card-shadow">
-              <h2 className="text-xl font-bold mb-6">פירוט לפי פלטפורמה</h2>
-              <PlatformTabs 
-                platforms={platformsData}
+            {/* Google Analytics - Second, Collapsible */}
+            {hasAnalytics && (
+              <GoogleAnalyticsCard
                 analyticsData={analyticsData}
+                isLoading={isLoading}
               />
-            </div>
+            )}
           </div>
         )}
       </div>
