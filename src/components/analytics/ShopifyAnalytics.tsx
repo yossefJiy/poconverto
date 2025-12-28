@@ -72,34 +72,35 @@ export function ShopifyAnalytics({
     }
     
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Use end of today to include today's data
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     let start: Date;
     let end: Date = today;
     
     switch (localDateFilter) {
       case "today":
-        start = today;
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         break;
       case "yesterday":
         start = new Date(today);
         start.setDate(start.getDate() - 1);
-        end = start;
+        end = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59);
         break;
       case "mtd":
-        // December 1st, 2024 explicitly
-        start = new Date(2024, 11, 1); // Month is 0-indexed, so 11 = December
+        // First day of current month
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
       case "7":
         start = new Date(today);
-        start.setDate(start.getDate() - 7);
+        start.setDate(start.getDate() - 6); // 7 days including today
         break;
       case "30":
         start = new Date(today);
-        start.setDate(start.getDate() - 30);
+        start.setDate(start.getDate() - 29); // 30 days including today
         break;
       case "90":
         start = new Date(today);
-        start.setDate(start.getDate() - 90);
+        start.setDate(start.getDate() - 89); // 90 days including today
         break;
       case "ytd":
         start = new Date(now.getFullYear(), 0, 1);
@@ -108,7 +109,7 @@ export function ShopifyAnalytics({
         start = new Date(now.getFullYear(), now.getMonth(), 1);
     }
     
-    // Format as YYYY-MM-DD to avoid timezone issues
+    // Format as YYYY-MM-DD
     const formatDateOnly = (d: Date) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
