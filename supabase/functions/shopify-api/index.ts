@@ -124,7 +124,7 @@ async function fetchShopifyAnalytics(
   
   console.log(`[Shopify API] ShopifyQL date range: ${fromDate} to ${toDate}`);
   
-  // Query for sessions data - only use 'sessions' column which is available
+  // Query for sessions data
   const sessionsQuery = `
     FROM sessions
     SHOW sessions
@@ -132,10 +132,10 @@ async function fetchShopifyAnalytics(
     UNTIL ${toDate}
   `;
   
-  // Query for total_sales (matches "Total sales over time" in Shopify dashboard)
+  // Query for sales data (matching Shopify dashboard structure)
   const salesQuery = `
     FROM sales
-    SHOW total_sales
+    SHOW orders, gross_sales, discounts, returns, net_sales, shipping_charges, duties, additional_fees, taxes, total_sales
     SINCE ${fromDate}
     UNTIL ${toDate}
   `;
@@ -204,32 +204,50 @@ async function fetchShopifyAnalytics(
       console.log('[Shopify API] Sessions parse error:', sessionsResult.data.shopifyqlQuery.parseErrors);
     }
     
-    // Parse sales result - new API format
+    // Parse sales result - new API format with full sales data
+    let grossSales = 0;
+    let netSales = 0;
+    let ordersFromQL = 0;
+    
     if (salesResult?.data?.shopifyqlQuery?.tableData) {
       const tableData = salesResult.data.shopifyqlQuery.tableData;
       const rows = tableData?.rows || [];
+      const columns = tableData?.columns || [];
       
+      console.log('[Shopify API] Sales columns:', columns.map((c: any) => c.name));
       console.log('[Shopify API] Sales rows count:', rows.length);
       
       totalSales = 0;
       for (const row of rows) {
-        // New format: rows are objects with column names as keys
+        // Parse all available fields
         if (row.total_sales) {
           const value = row.total_sales.toString().replace(/[^\d.-]/g, '');
           totalSales += parseFloat(value) || 0;
         }
+        if (row.gross_sales) {
+          const value = row.gross_sales.toString().replace(/[^\d.-]/g, '');
+          grossSales += parseFloat(value) || 0;
+        }
+        if (row.net_sales) {
+          const value = row.net_sales.toString().replace(/[^\d.-]/g, '');
+          netSales += parseFloat(value) || 0;
+        }
+        if (row.orders) {
+          ordersFromQL += parseInt(row.orders) || 0;
+        }
       }
       
-      console.log(`[Shopify API] ShopifyQL Total Sales: ₪${totalSales.toFixed(2)}`);
+      console.log(`[Shopify API] ShopifyQL: total_sales=₪${totalSales.toFixed(2)}, gross_sales=₪${grossSales.toFixed(2)}, net_sales=₪${netSales.toFixed(2)}, orders=${ordersFromQL}`);
     } else if (salesResult?.errors) {
       console.log('[Shopify API] Sales query error:', salesResult.errors[0]?.message);
     } else if (salesResult?.data?.shopifyqlQuery?.parseErrors?.length > 0) {
       console.log('[Shopify API] Sales query parse error:', salesResult.data.shopifyqlQuery.parseErrors);
     }
     
-    const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
+    // Calculate conversion rate if we have sessions data
+    const conversionRate = totalSessions > 0 && ordersFromQL > 0 ? (ordersFromQL / totalSessions) * 100 : 0;
     
-    console.log(`[Shopify API] Analytics summary: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%, totalSales=${totalSales}`);
+    console.log(`[Shopify API] Analytics summary: sessions=${totalSessions}, conversionRate=${conversionRate.toFixed(2)}%, totalSales=${totalSales}`);
     
     return { sessions: totalSessions, visitors: totalVisitors, conversionRate, totalSales };
   } catch (error) {
