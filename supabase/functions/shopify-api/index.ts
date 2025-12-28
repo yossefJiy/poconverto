@@ -15,8 +15,78 @@ interface ShopifyRequest {
   date_to?: string;
 }
 
-// Function to fetch analytics data using ShopifyQL via GraphQL API
-async function fetchShopifyQLAnalytics(
+// Function to fetch ALL orders with pagination
+async function fetchAllOrders(
+  baseUrl: string,
+  accessToken: string,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<any[]> {
+  let allOrders: any[] = [];
+  let hasNextPage = true;
+  let pageInfo: string | null = null;
+  let pageCount = 0;
+  const maxPages = 20; // Safety limit
+  
+  while (hasNextPage && pageCount < maxPages) {
+    let endpoint = `/orders.json?limit=250&status=any`;
+    
+    if (pageInfo) {
+      // Use page_info for subsequent requests (Shopify cursor pagination)
+      endpoint = `/orders.json?limit=250&page_info=${pageInfo}`;
+    } else {
+      // First request - use date filters
+      if (dateFrom) endpoint += `&created_at_min=${dateFrom}`;
+      if (dateTo) endpoint += `&created_at_max=${dateTo}`;
+    }
+    
+    console.log(`[Shopify API] Fetching orders page ${pageCount + 1}: ${endpoint}`);
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error(`[Shopify API] Failed to fetch orders: ${response.status}`);
+      break;
+    }
+    
+    const data = await response.json();
+    const orders = data.orders || [];
+    allOrders = allOrders.concat(orders);
+    
+    console.log(`[Shopify API] Got ${orders.length} orders on page ${pageCount + 1}, total so far: ${allOrders.length}`);
+    
+    // Check for next page in Link header
+    const linkHeader = response.headers.get('Link');
+    if (linkHeader) {
+      const nextMatch = linkHeader.match(/<[^>]*page_info=([^>&]*)>; rel="next"/);
+      if (nextMatch) {
+        pageInfo = nextMatch[1];
+        pageCount++;
+      } else {
+        hasNextPage = false;
+      }
+    } else {
+      hasNextPage = false;
+    }
+    
+    // If we got less than 250, we're done
+    if (orders.length < 250) {
+      hasNextPage = false;
+    }
+  }
+  
+  console.log(`[Shopify API] Total orders fetched: ${allOrders.length}`);
+  return allOrders;
+}
+
+// Function to fetch analytics using GraphQL Analytics API
+async function fetchShopifyAnalytics(
   storeDomain: string, 
   accessToken: string, 
   dateFrom: string, 
@@ -29,50 +99,31 @@ async function fetchShopifyQLAnalytics(
   const fromDate = new Date(dateFrom).toISOString().split('T')[0];
   const toDate = new Date(dateTo).toISOString().split('T')[0];
   
-  // ShopifyQL query to get sessions and sales data
+  // Try using shopifyqlQuery first
   const shopifyqlQuery = `
     FROM sessions
-    SHOW sessions, visitors, added_to_cart_sessions, sessions_converted
+    SHOW sessions, visitors, sessions_converted
     SINCE ${fromDate}
     UNTIL ${toDate}
   `;
   
   const graphqlQuery = `
     query {
-      shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').trim()}") {
+      shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').replace(/"/g, '\\"').trim()}") {
         __typename
         ... on TableResponse {
           tableData {
-            columns {
-              name
-              dataType
-            }
+            columns { name dataType }
             rowData
           }
         }
-        ... on PolarisVizResponse {
-          data {
-            key
-            data {
-              key
-              value
-            }
-          }
-        }
-        parseErrors {
-          code
-          message
-          range {
-            start { line character }
-            end { line character }
-          }
-        }
+        parseErrors { code message }
       }
     }
   `;
   
   try {
-    console.log('[Shopify API] Fetching ShopifyQL analytics...');
+    console.log('[Shopify API] Attempting ShopifyQL analytics query...');
     const response = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
@@ -88,10 +139,9 @@ async function fetchShopifyQLAnalytics(
     }
     
     const result = await response.json();
-    console.log('[Shopify API] ShopifyQL response:', JSON.stringify(result, null, 2));
     
     if (result.errors) {
-      console.error('[Shopify API] GraphQL errors:', result.errors);
+      console.log('[Shopify API] ShopifyQL not available (requires read_reports scope):', result.errors[0]?.message);
       return null;
     }
     
@@ -111,78 +161,36 @@ async function fetchShopifyQLAnalytics(
       let totalVisitors = 0;
       let totalConverted = 0;
       
-      // Find column indices
       const sessionsIdx = columns.findIndex((c: any) => c.name === 'sessions');
       const visitorsIdx = columns.findIndex((c: any) => c.name === 'visitors');
       const convertedIdx = columns.findIndex((c: any) => c.name === 'sessions_converted');
       
-      // Sum up the values from all rows
       for (const row of rows) {
-        if (sessionsIdx >= 0 && row[sessionsIdx]) {
-          totalSessions += parseInt(row[sessionsIdx]) || 0;
-        }
-        if (visitorsIdx >= 0 && row[visitorsIdx]) {
-          totalVisitors += parseInt(row[visitorsIdx]) || 0;
-        }
-        if (convertedIdx >= 0 && row[convertedIdx]) {
-          totalConverted += parseInt(row[convertedIdx]) || 0;
-        }
+        if (sessionsIdx >= 0 && row[sessionsIdx]) totalSessions += parseInt(row[sessionsIdx]) || 0;
+        if (visitorsIdx >= 0 && row[visitorsIdx]) totalVisitors += parseInt(row[visitorsIdx]) || 0;
+        if (convertedIdx >= 0 && row[convertedIdx]) totalConverted += parseInt(row[convertedIdx]) || 0;
       }
       
       const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
       
-      console.log(`[Shopify API] Analytics from ShopifyQL: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
+      console.log(`[Shopify API] Real analytics: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
       
-      return {
-        sessions: totalSessions,
-        visitors: totalVisitors,
-        conversionRate,
-      };
+      return { sessions: totalSessions, visitors: totalVisitors, conversionRate };
     }
     
-    // Parse PolarisViz response
-    if (queryResult?.__typename === 'PolarisVizResponse' && queryResult.data) {
-      let totalSessions = 0;
-      let totalVisitors = 0;
-      let totalConverted = 0;
-      
-      for (const series of queryResult.data) {
-        if (series.key === 'sessions') {
-          totalSessions = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
-        } else if (series.key === 'visitors') {
-          totalVisitors = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
-        } else if (series.key === 'sessions_converted') {
-          totalConverted = series.data.reduce((sum: number, d: any) => sum + (parseFloat(d.value) || 0), 0);
-        }
-      }
-      
-      const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
-      
-      console.log(`[Shopify API] Analytics from PolarisViz: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
-      
-      return {
-        sessions: totalSessions,
-        visitors: totalVisitors,
-        conversionRate,
-      };
-    }
-    
-    console.log('[Shopify API] Could not parse ShopifyQL response');
     return null;
   } catch (error) {
-    console.error('[Shopify API] ShopifyQL fetch error:', error);
+    console.error('[Shopify API] Analytics fetch error:', error);
     return null;
   }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Validate user authentication
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       console.error('[Shopify API] Auth failed:', auth.error);
@@ -196,58 +204,36 @@ serve(async (req) => {
     if (!accessToken || !storeDomain) {
       console.error('Missing Shopify credentials');
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Shopify credentials not configured' 
-        }),
+        JSON.stringify({ success: false, error: 'Shopify credentials not configured' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Clean up store domain (remove protocol and trailing slashes)
-    const cleanDomain = storeDomain
-      .replace(/^https?:\/\//, '')
-      .replace(/\/$/, '');
-    
+    const cleanDomain = storeDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const baseUrl = `https://${cleanDomain}/admin/api/2024-01`;
 
     const { action, product_id, limit = 50, page_info, date_from, date_to }: ShopifyRequest = await req.json();
 
-    console.log(`Shopify API request: ${action}`);
+    console.log(`[Shopify API] Request: ${action}`);
 
-    // For analytics, we need to fetch orders and calculate metrics
     if (action === 'get_analytics') {
-      console.log(`Fetching analytics data from ${date_from} to ${date_to}`);
+      console.log(`[Shopify API] Fetching analytics from ${date_from} to ${date_to}`);
       
-      // Fetch all orders for the date range
-      let allOrders: any[] = [];
-      let ordersEndpoint = `/orders.json?limit=250&status=any`;
-      if (date_from) ordersEndpoint += `&created_at_min=${date_from}`;
-      if (date_to) ordersEndpoint += `&created_at_max=${date_to}`;
+      // Fetch ALL orders with pagination
+      const allOrders = await fetchAllOrders(baseUrl, accessToken, date_from, date_to);
       
-      const ordersResponse = await fetch(`${baseUrl}${ordersEndpoint}`, {
-        method: 'GET',
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        allOrders = ordersData.orders || [];
-      }
-      
-      // Try to fetch real session data using ShopifyQL
+      // Try to fetch real session data
       let analyticsData = null;
       if (date_from && date_to) {
-        analyticsData = await fetchShopifyQLAnalytics(storeDomain, accessToken, date_from, date_to);
+        analyticsData = await fetchShopifyAnalytics(storeDomain, accessToken, date_from, date_to);
       }
       
-      // Calculate analytics metrics
-      // Use current_total_price which reflects the actual paid amount after refunds/discounts
+      // Calculate analytics metrics using total_price (full price before refunds)
       const totalOrders = allOrders.length;
-      const totalRevenue = allOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
+      const totalRevenue = allOrders.reduce((sum: number, o: any) => {
+        // Use total_price for full revenue including refunded orders
+        return sum + parseFloat(o.total_price || '0');
+      }, 0);
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
       // Calculate items sold
@@ -255,29 +241,24 @@ serve(async (req) => {
         return sum + (o.line_items || []).reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0);
       }, 0);
       
-      // Get unique customers
+      // Unique customers
       const uniqueCustomers = new Set(allOrders.map((o: any) => o.email || o.customer?.email).filter(Boolean)).size;
       
-      // Use real session data if available - NO ESTIMATES
+      // Session data - only real data, no estimates
       let realSessions: number | null = analyticsData?.sessions || null;
       let realVisitors: number | null = analyticsData?.visitors || null;
       let conversionRate: string | null = null;
       let isRealSessionData = false;
       
       if (analyticsData && analyticsData.sessions > 0) {
-        // Use real conversion rate from ShopifyQL
         conversionRate = analyticsData.conversionRate.toFixed(2);
         isRealSessionData = true;
-        console.log(`[Shopify API] Real analytics data available: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate}%`);
+        console.log(`[Shopify API] Real analytics: sessions=${realSessions}, visitors=${realVisitors}, conversionRate=${conversionRate}%`);
       } else {
-        // No real data available - don't estimate
-        realSessions = null;
-        realVisitors = null;
-        conversionRate = null;
-        console.log(`[Shopify API] No real session data available - read_reports scope may be missing`);
+        console.log(`[Shopify API] No real session data - read_reports scope required`);
       }
       
-      // Analyze traffic sources from UTM parameters and referring sites
+      // Traffic sources
       const trafficSources: Record<string, number> = {};
       allOrders.forEach((order: any) => {
         const source = order.source_name || order.referring_site || 'direct';
@@ -290,7 +271,7 @@ serve(async (req) => {
         trafficSources[sourceName] = (trafficSources[sourceName] || 0) + 1;
       });
       
-      // Financial status breakdown
+      // Order status breakdown
       const paidOrders = allOrders.filter((o: any) => o.financial_status === 'paid').length;
       const fulfilledOrders = allOrders.filter((o: any) => o.fulfillment_status === 'fulfilled').length;
       const pendingOrders = allOrders.filter((o: any) => o.financial_status === 'pending').length;
@@ -313,7 +294,7 @@ serve(async (req) => {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
       
-      console.log(`Analytics calculated: ${totalOrders} orders, ${totalRevenue} revenue, ${realSessions} sessions`);
+      console.log(`[Shopify API] Final: ${totalOrders} orders, ₪${totalRevenue.toFixed(2)} revenue`);
       
       return new Response(
         JSON.stringify({
@@ -382,7 +363,7 @@ serve(async (req) => {
         );
     }
 
-    console.log(`Calling Shopify API: ${baseUrl}${endpoint}`);
+    console.log(`[Shopify API] Calling: ${baseUrl}${endpoint}`);
 
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method,
@@ -394,50 +375,35 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Shopify API error: ${response.status} - ${errorText}`);
+      console.error(`[Shopify API] Error: ${response.status} - ${errorText}`);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Shopify API error: ${response.status}`,
-          details: errorText
-        }),
+        JSON.stringify({ success: false, error: `Shopify API error: ${response.status}`, details: errorText }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
     
-    // Extract pagination info from Link header
     const linkHeader = response.headers.get('Link');
     let pagination = null;
     if (linkHeader) {
       const nextMatch = linkHeader.match(/<[^>]*page_info=([^>&]*)>; rel="next"/);
       const prevMatch = linkHeader.match(/<[^>]*page_info=([^>&]*)>; rel="previous"/);
-      pagination = {
-        next: nextMatch ? nextMatch[1] : null,
-        previous: prevMatch ? prevMatch[1] : null,
-      };
+      pagination = { next: nextMatch?.[1] || null, previous: prevMatch?.[1] || null };
     }
 
-    console.log(`Shopify API success: ${action}`);
+    console.log(`[Shopify API] Success: ${action}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data,
-        pagination 
-      }),
+      JSON.stringify({ success: true, data, pagination }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Shopify API error:', error);
+    console.error('[Shopify API] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: errorMessage 
-      }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
