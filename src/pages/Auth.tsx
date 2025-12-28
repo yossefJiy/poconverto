@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,9 @@ const Auth = () => {
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [authStep, setAuthStep] = useState<AuthStep>("credentials");
   const [resendTimer, setResendTimer] = useState(0);
+  
+  // Flag to prevent navigation during 2FA flow
+  const is2FAInProgress = useRef(false);
 
   // Timer countdown effect
   useEffect(() => {
@@ -46,13 +49,17 @@ const Auth = () => {
   useEffect(() => {
     // Check if user is already logged in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Don't navigate if we're in the middle of 2FA flow
+      if (is2FAInProgress.current) {
+        return;
+      }
       if (session?.user) {
         navigate("/");
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+      if (session?.user && !is2FAInProgress.current) {
         navigate("/");
       }
     });
@@ -104,6 +111,8 @@ const Auth = () => {
     if (!validateInputs()) return;
     
     setLoading(true);
+    // Set flag to prevent navigation during 2FA
+    is2FAInProgress.current = true;
     
     try {
       // First verify credentials are correct
@@ -113,6 +122,7 @@ const Auth = () => {
       });
 
       if (signInError) {
+        is2FAInProgress.current = false;
         if (signInError.message.includes("Invalid login credentials")) {
           toast.error("אימייל או סיסמה שגויים");
         } else {
@@ -132,6 +142,7 @@ const Auth = () => {
       setAuthStep("otp");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
     } catch (error: any) {
+      is2FAInProgress.current = false;
       console.error("2FA send error:", error);
       toast.error("שגיאה בשליחת קוד אימות: " + (error.message || "Unknown error"));
     } finally {
@@ -163,6 +174,9 @@ const Auth = () => {
       }
 
       // Code is valid - now sign in with password
+      // Reset the 2FA flag so navigation works
+      is2FAInProgress.current = false;
+      
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -205,6 +219,7 @@ const Auth = () => {
     setAuthStep("credentials");
     setOtpCode("");
     setResendTimer(0);
+    is2FAInProgress.current = false;
   };
 
   const formatTime = (seconds: number) => {
@@ -316,44 +331,69 @@ const Auth = () => {
                 </AlertDescription>
               </Alert>
 
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>קוד אימות</Label>
-                  <div className="flex justify-center" dir="ltr">
+              <form onSubmit={handleVerifyOtp} className="space-y-6">
+                <div className="space-y-4">
+                  <Label className="text-center block text-lg font-semibold">הזן את קוד האימות</Label>
+                  <div className="flex justify-center py-4" dir="ltr">
                     <InputOTP
                       maxLength={6}
                       value={otpCode}
                       onChange={(value) => setOtpCode(value)}
+                      className="gap-3"
                     >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
+                      <InputOTPGroup className="gap-2">
+                        <InputOTPSlot 
+                          index={0} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
+                        <InputOTPSlot 
+                          index={1} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
+                        <InputOTPSlot 
+                          index={2} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
+                        <InputOTPSlot 
+                          index={3} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
+                        <InputOTPSlot 
+                          index={4} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
+                        <InputOTPSlot 
+                          index={5} 
+                          className="w-14 h-14 text-2xl font-bold border-2 border-primary/30 focus:border-primary rounded-lg shadow-sm"
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
+                  <p className="text-center text-sm text-muted-foreground">
+                    בדוק את תיבת האימייל שלך וקוד האימות יגיע תוך דקות ספורות
+                  </p>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading || otpCode.length !== 6}>
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-lg font-semibold" 
+                  disabled={loading || otpCode.length !== 6}
+                >
                   {loading ? "מאמת..." : "אמת והתחבר"}
                 </Button>
               </form>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4 pt-2">
                 {/* Resend button with timer */}
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center">
                   {resendTimer > 0 ? (
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm bg-muted/50 px-4 py-2 rounded-lg">
                       <Clock className="w-4 h-4" />
                       <span>שליחה מחדש תתאפשר בעוד {formatTime(resendTimer)}</span>
                     </div>
                   ) : (
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleResendOtp}
                       disabled={loading}
                       className="flex items-center gap-2"
