@@ -319,6 +319,83 @@ export function GoogleAnalyticsCard({
 
         {/* Collapsible Detailed Content */}
         <CollapsibleContent className="mt-6 space-y-6">
+          {/* E-commerce Funnel - First (most important) */}
+          {analyticsData.ecommerce && (
+            <div className="bg-muted/30 rounded-xl p-4">
+              <h4 className="font-bold mb-4 flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                משפך E-commerce (Google Analytics)
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-background/50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-500">
+                    {formatNumber(analyticsData.ecommerce.addToCarts)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">הוספות לסל</p>
+                  <p className="text-xs font-medium text-green-500">
+                    {analyticsData.ecommerce.conversionRates.addToCartRate}%
+                  </p>
+                </div>
+                <div className="bg-background/50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-yellow-500">
+                    {formatNumber(analyticsData.ecommerce.checkouts)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">התחלת תשלום</p>
+                  <p className="text-xs font-medium text-green-500">
+                    {analyticsData.ecommerce.conversionRates.checkoutRate}%
+                  </p>
+                </div>
+                <div className="bg-background/50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-500">
+                    {formatNumber(analyticsData.ecommerce.purchases)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">רכישות</p>
+                  <p className="text-xs font-medium text-green-500">
+                    {analyticsData.ecommerce.conversionRates.purchaseRate}%
+                  </p>
+                </div>
+                <div className="bg-background/50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-primary">
+                    {analyticsData.ecommerce.conversionRates.overallConversionRate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">יחס המרה כולל</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    (סשנים → רכישות)
+                  </p>
+                </div>
+              </div>
+              
+              {/* Funnel visualization */}
+              <div className="relative mt-4">
+                <div className="flex items-center justify-between">
+                  {[
+                    { label: "סשנים", value: analyticsData.ecommerce.sessions, color: "bg-blue-500" },
+                    { label: "הוספה לסל", value: analyticsData.ecommerce.addToCarts, color: "bg-indigo-500" },
+                    { label: "צ'קאאוט", value: analyticsData.ecommerce.checkouts, color: "bg-yellow-500" },
+                    { label: "רכישות", value: analyticsData.ecommerce.purchases, color: "bg-green-500" },
+                  ].map((step, index, arr) => {
+                    const maxVal = arr[0].value || 1;
+                    const widthPercent = (step.value / maxVal) * 100;
+                    return (
+                      <div key={step.label} className="flex-1 px-1">
+                        <div className="text-center mb-2">
+                          <p className="text-xs text-muted-foreground">{step.label}</p>
+                          <p className="font-bold">{formatNumber(step.value)}</p>
+                        </div>
+                        <div className="h-3 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn("h-full rounded-full transition-all", step.color)}
+                            style={{ width: `${widthPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Daily Sessions Chart */}
@@ -461,83 +538,6 @@ export function GoogleAnalyticsCard({
               )}
             </div>
           </div>
-
-          {/* E-commerce Funnel */}
-          {analyticsData.ecommerce && (
-            <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4 flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                משפך E-commerce (Google Analytics)
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-500">
-                    {formatNumber(analyticsData.ecommerce.addToCarts)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">הוספות לסל</p>
-                  <p className="text-xs font-medium text-green-500">
-                    {analyticsData.ecommerce.conversionRates.addToCartRate}%
-                  </p>
-                </div>
-                <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-yellow-500">
-                    {formatNumber(analyticsData.ecommerce.checkouts)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">התחלת תשלום</p>
-                  <p className="text-xs font-medium text-green-500">
-                    {analyticsData.ecommerce.conversionRates.checkoutRate}%
-                  </p>
-                </div>
-                <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-500">
-                    {formatNumber(analyticsData.ecommerce.purchases)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">רכישות</p>
-                  <p className="text-xs font-medium text-green-500">
-                    {analyticsData.ecommerce.conversionRates.purchaseRate}%
-                  </p>
-                </div>
-                <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-primary">
-                    {analyticsData.ecommerce.conversionRates.overallConversionRate}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">יחס המרה כולל</p>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    (סשנים → רכישות)
-                  </p>
-                </div>
-              </div>
-              
-              {/* Funnel visualization */}
-              <div className="relative mt-4">
-                <div className="flex items-center justify-between">
-                  {[
-                    { label: "סשנים", value: analyticsData.ecommerce.sessions, color: "bg-blue-500" },
-                    { label: "הוספה לסל", value: analyticsData.ecommerce.addToCarts, color: "bg-indigo-500" },
-                    { label: "צ'קאאוט", value: analyticsData.ecommerce.checkouts, color: "bg-yellow-500" },
-                    { label: "רכישות", value: analyticsData.ecommerce.purchases, color: "bg-green-500" },
-                  ].map((step, index, arr) => {
-                    const maxVal = arr[0].value || 1;
-                    const widthPercent = (step.value / maxVal) * 100;
-                    return (
-                      <div key={step.label} className="flex-1 px-1">
-                        <div className="text-center mb-2">
-                          <p className="text-xs text-muted-foreground">{step.label}</p>
-                          <p className="font-bold">{formatNumber(step.value)}</p>
-                        </div>
-                        <div className="h-3 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={cn("h-full rounded-full transition-all", step.color)}
-                            style={{ width: `${widthPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
         </CollapsibleContent>
       </div>
     </Collapsible>

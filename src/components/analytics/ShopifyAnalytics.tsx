@@ -373,38 +373,69 @@ export function ShopifyAnalytics({
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            {mainMetrics.map((metric) => (
-              <div key={metric.label} className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", metric.color)}>
-                    {metric.icon}
+            {mainMetrics.map((metric) => {
+              // Get comparison data for this metric
+              const getComparison = () => {
+                if (!comparisonData) return null;
+                switch (metric.label) {
+                  case "סה״כ מכירות":
+                    return { change: comparisonData.changes.revenue, prev: comparisonData.previous.totalRevenue };
+                  case "הזמנות":
+                    return { change: comparisonData.changes.orders, prev: comparisonData.previous.totalOrders };
+                  default:
+                    return null;
+                }
+              };
+              const comparison = getComparison();
+              
+              return (
+                <div key={metric.label} className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", metric.color)}>
+                      {metric.icon}
+                    </div>
                   </div>
+                  {metric.available ? (
+                    <>
+                      <p className="text-xl font-bold">{metric.value}</p>
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                      {comparison && !isLoadingComparison && (
+                        <div className="flex items-center gap-1 mt-1">
+                          {comparison.change >= 0 ? (
+                            <TrendingUp className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 text-red-500" />
+                          )}
+                          <span className={cn(
+                            "text-xs font-medium",
+                            comparison.change >= 0 ? "text-green-500" : "text-red-500"
+                          )}>
+                            {comparison.change >= 0 ? "+" : ""}{comparison.change.toFixed(1)}%
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-yellow-600">נדרשת פעולה</p>
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                      {'actionIssue' in metric && metric.actionIssue && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="mt-1 h-6 text-xs p-1"
+                          onClick={() => handleSendAdminEmail(metric.actionIssue!)}
+                          disabled={isSendingEmail}
+                        >
+                          <Mail className="w-3 h-3 ml-1" />
+                          דווח
+                        </Button>
+                      )}
+                    </>
+                  )}
                 </div>
-                {metric.available ? (
-                  <>
-                    <p className="text-xl font-bold">{metric.value}</p>
-                    <p className="text-xs text-muted-foreground">{metric.label}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-yellow-600">נדרשת פעולה</p>
-                    <p className="text-xs text-muted-foreground">{metric.label}</p>
-                    {'actionIssue' in metric && metric.actionIssue && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="mt-1 h-6 text-xs p-1"
-                        onClick={() => handleSendAdminEmail(metric.actionIssue!)}
-                        disabled={isSendingEmail}
-                      >
-                        <Mail className="w-3 h-3 ml-1" />
-                        דווח
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -430,78 +461,59 @@ export function ShopifyAnalytics({
           </div>
         )}
 
-        {/* Previous Period Comparison */}
-        {!isLoading && comparisonData && (
-          <div className="mt-6 pt-4 border-t border-border">
-            <h4 className="text-sm font-medium mb-3">השוואה לתקופה קודמת</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">הזמנות</p>
-                <p className="text-lg font-bold">{formatNumber(comparisonData.current.totalOrders)}</p>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">לפני: {formatNumber(comparisonData.previous.totalOrders)}</span>
-                  <span className={cn(
-                    "text-xs font-medium px-1 rounded",
-                    comparisonData.changes.orders >= 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {comparisonData.changes.orders >= 0 ? "+" : ""}{comparisonData.changes.orders.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">מכירות</p>
-                <p className="text-lg font-bold">{formatCurrency(comparisonData.current.totalRevenue)}</p>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">לפני: {formatCurrency(comparisonData.previous.totalRevenue)}</span>
-                  <span className={cn(
-                    "text-xs font-medium px-1 rounded",
-                    comparisonData.changes.revenue >= 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {comparisonData.changes.revenue >= 0 ? "+" : ""}{comparisonData.changes.revenue.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Gross/Net Sales Breakdown with Profitability */}
-        {!isLoading && salesBreakdown.grossSales > 0 && (
-          <div className="mt-6 pt-4 border-t border-border">
-            <h4 className="text-sm font-medium mb-3">פירוט מכירות ורווחיות</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                <p className="text-xs text-muted-foreground">Gross Sales</p>
-                <p className="text-lg font-bold text-green-600">{formatCurrency(salesBreakdown.grossSales)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <p className="text-xs text-muted-foreground">הנחות</p>
-                <p className="text-lg font-bold text-red-500">-{formatCurrency(salesBreakdown.discounts)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <p className="text-xs text-muted-foreground">Net Sales</p>
-                <p className="text-lg font-bold text-blue-600">{formatCurrency(salesBreakdown.netSales)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                <p className="text-xs text-muted-foreground">סה״כ מכירות</p>
-                <p className="text-lg font-bold text-purple-600">{formatCurrency(salesBreakdown.totalSales)}</p>
-              </div>
-              {clientProfitMargin > 0 && (
-                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <p className="text-xs text-muted-foreground">רווח גולמי ({clientProfitMargin}%)</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(grossProfit)}</p>
-                </div>
-              )}
-              {clientJiyCommission > 0 && (
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-xs text-muted-foreground">עמלת JIY ({clientJiyCommission}%)</p>
-                  <p className="text-lg font-bold text-amber-600">{formatCurrency(jiyCommission)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Collapsible Sales Breakdown & Profitability */}
+      {!isLoading && salesBreakdown.grossSales > 0 && (
+        <Collapsible>
+          <div className="glass rounded-xl p-4 card-shadow">
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                  <span className="font-medium">פירוט מכירות ורווחיות</span>
+                </div>
+                <Button variant="ghost" size="icon">
+                  <ChevronDown className="w-5 h-5" />
+                </Button>
+              </div>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <p className="text-xs text-muted-foreground">Gross Sales</p>
+                  <p className="text-lg font-bold text-green-600">{formatCurrency(salesBreakdown.grossSales)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-xs text-muted-foreground">הנחות</p>
+                  <p className="text-lg font-bold text-red-500">-{formatCurrency(salesBreakdown.discounts)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-xs text-muted-foreground">Net Sales</p>
+                  <p className="text-lg font-bold text-blue-600">{formatCurrency(salesBreakdown.netSales)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <p className="text-xs text-muted-foreground">סה״כ מכירות</p>
+                  <p className="text-lg font-bold text-purple-600">{formatCurrency(salesBreakdown.totalSales)}</p>
+                </div>
+                {clientProfitMargin > 0 && (
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-xs text-muted-foreground">רווח גולמי ({clientProfitMargin}%)</p>
+                    <p className="text-lg font-bold text-emerald-600">{formatCurrency(grossProfit)}</p>
+                  </div>
+                )}
+                {clientJiyCommission > 0 && (
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="text-xs text-muted-foreground">עמלת JIY ({clientJiyCommission}%)</p>
+                    <p className="text-lg font-bold text-amber-600">{formatCurrency(jiyCommission)}</p>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
 
       {/* Collapsible Details */}
       {!isLoading && (trafficSources.length > 0 || topProducts.length > 0) && (
