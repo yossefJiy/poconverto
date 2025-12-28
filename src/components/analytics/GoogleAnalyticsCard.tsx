@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   BarChart3, 
   Users, 
@@ -10,6 +10,7 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   AreaChart, 
   Area, 
@@ -47,6 +55,8 @@ interface AnalyticsData {
 interface GoogleAnalyticsCardProps {
   analyticsData: AnalyticsData;
   isLoading?: boolean;
+  globalDateFrom: string;
+  globalDateTo: string;
 }
 
 function formatNumber(num: number): string {
@@ -127,8 +137,68 @@ function MetricWithComparison({ label, value, change, icon, color }: MetricWithC
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-export function GoogleAnalyticsCard({ analyticsData, isLoading }: GoogleAnalyticsCardProps) {
+export function GoogleAnalyticsCard({ 
+  analyticsData, 
+  isLoading,
+  globalDateFrom,
+  globalDateTo,
+}: GoogleAnalyticsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [useLocalFilter, setUseLocalFilter] = useState(false);
+  const [localDateFilter, setLocalDateFilter] = useState("mtd");
+
+  // Calculate local date range if using local filter
+  const { dateFrom, dateTo } = useMemo(() => {
+    if (!useLocalFilter) {
+      return { dateFrom: globalDateFrom, dateTo: globalDateTo };
+    }
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start: Date;
+    const end = today;
+    
+    switch (localDateFilter) {
+      case "today":
+        start = today;
+        break;
+      case "yesterday":
+        start = new Date(today);
+        start.setDate(start.getDate() - 1);
+        break;
+      case "mtd":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "7":
+        start = new Date(today);
+        start.setDate(start.getDate() - 7);
+        break;
+      case "30":
+        start = new Date(today);
+        start.setDate(start.getDate() - 30);
+        break;
+      case "90":
+        start = new Date(today);
+        start.setDate(start.getDate() - 90);
+        break;
+      default:
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    
+    return {
+      dateFrom: start.toISOString(),
+      dateTo: end.toISOString(),
+    };
+  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
+
+  const handleLocalFilterChange = (value: string) => {
+    setLocalDateFilter(value);
+    setUseLocalFilter(true);
+  };
+
+  const handleResetToGlobal = () => {
+    setUseLocalFilter(false);
+  };
 
   if (isLoading) {
     return (
@@ -217,22 +287,48 @@ export function GoogleAnalyticsCard({ analyticsData, isLoading }: GoogleAnalytic
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className="glass rounded-xl p-6 card-shadow">
-        <CollapsibleTrigger asChild>
-          <div className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
-            <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
                 <BarChart3 className="w-4 h-4 text-blue-500" />
               </div>
               <div>
                 <h3 className="font-bold text-lg">Google Analytics</h3>
-                <p className="text-sm text-muted-foreground">נתוני תנועה והמרות</p>
+                <p className="text-sm text-muted-foreground">
+                  {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
+                </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon">
-              {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </Button>
+          </CollapsibleTrigger>
+          
+          <div className="flex items-center gap-2">
+            {useLocalFilter && (
+              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
+                חזור לסינון גלובלי
+              </Button>
+            )}
+            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
+              <SelectTrigger className="w-[180px]">
+                <Calendar className="w-4 h-4 ml-2" />
+                <SelectValue placeholder="שנה תאריכים" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">היום</SelectItem>
+                <SelectItem value="yesterday">אתמול</SelectItem>
+                <SelectItem value="mtd">מתחילת החודש</SelectItem>
+                <SelectItem value="7">7 ימים אחרונים</SelectItem>
+                <SelectItem value="30">30 ימים אחרונים</SelectItem>
+                <SelectItem value="90">90 ימים אחרונים</SelectItem>
+              </SelectContent>
+            </Select>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon">
+                {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </Button>
+            </CollapsibleTrigger>
           </div>
-        </CollapsibleTrigger>
+        </div>
 
         {/* Summary Metrics - Always Visible */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mt-6">

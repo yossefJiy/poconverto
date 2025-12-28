@@ -174,6 +174,8 @@ export default function Analytics() {
               <GoogleAnalyticsCard
                 analyticsData={analyticsData}
                 isLoading={isLoading}
+                globalDateFrom={dateRange.dateFrom}
+                globalDateTo={dateRange.dateTo}
               />
             )}
           </div>
