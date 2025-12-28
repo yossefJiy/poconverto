@@ -356,8 +356,39 @@ serve(async (req) => {
         await sendFailureEmail(notify_email, platform, result.message, clientName);
       }
 
-      // If test succeeded and action is connect, save to database
+      // If test succeeded and action is connect, save to database with encrypted credentials
       if (result.success && action === 'connect') {
+        // Prepare sensitive credentials for encryption
+        const sensitiveCredentials = {
+          api_key: credentials.api_key,
+          access_token: credentials.access_token,
+        };
+        
+        // Encrypt sensitive credentials using database function
+        let encryptedCredentials = null;
+        if (sensitiveCredentials.api_key || sensitiveCredentials.access_token) {
+          const { data: encryptedData, error: encryptError } = await supabaseClient
+            .rpc('encrypt_integration_credentials', { credentials: sensitiveCredentials });
+          
+          if (encryptError) {
+            console.error('Encryption error:', encryptError);
+            // Continue without encryption but log the issue
+          } else {
+            encryptedCredentials = encryptedData;
+          }
+        }
+
+        // Store only non-sensitive metadata in settings
+        const safeSettings = {
+          store_url: credentials.store_url,
+          property_id: credentials.property_id,
+          customer_id: credentials.customer_id,
+          ad_account_id: credentials.ad_account_id,
+          advertiser_id: credentials.advertiser_id,
+          connection_data: result.data,
+          connected_at: new Date().toISOString(),
+        };
+
         const { error: insertError } = await supabaseClient
           .from('integrations')
           .insert({
@@ -365,11 +396,8 @@ serve(async (req) => {
             platform,
             external_account_id: credentials.store_url || credentials.property_id || credentials.customer_id || credentials.ad_account_id || credentials.advertiser_id,
             is_connected: true,
-            settings: {
-              ...credentials,
-              connection_data: result.data,
-              connected_at: new Date().toISOString(),
-            },
+            settings: safeSettings,
+            encrypted_credentials: encryptedCredentials,
             last_sync_at: new Date().toISOString(),
           });
 
@@ -380,6 +408,8 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        
+        console.log(`[Connect Integration] Credentials stored ${encryptedCredentials ? 'encrypted' : 'without sensitive data'}`);
       }
 
       // Always return 200 so the client can handle success/failure properly
