@@ -153,8 +153,10 @@ export function ShopifyAnalytics({
     avgOrderValue: 0,
     totalItemsSold: 0,
     uniqueCustomers: 0,
-    estimatedSessions: 0,
+    sessions: 0,
+    visitors: 0,
     conversionRate: '0',
+    isRealSessionData: false,
   };
 
   const orderStatus = analyticsData?.orderStatus || {
@@ -167,7 +169,7 @@ export function ShopifyAnalytics({
   const trafficSources = analyticsData?.trafficSources || [];
   const topProducts = analyticsData?.topProducts || [];
 
-  // Main dashboard metrics - always visible (removed sessions and CTR as they're not real from Admin API)
+  // Main dashboard metrics - now includes real session data from ShopifyQL Analytics API
   const mainMetrics = [
     {
       label: "סה״כ מכירות",
@@ -180,6 +182,22 @@ export function ShopifyAnalytics({
       value: formatNumber(summary.totalOrders),
       icon: <ShoppingCart className="w-5 h-5" />,
       color: "bg-purple-500/20 text-purple-500",
+    },
+    {
+      label: "סשנים",
+      value: formatNumber(summary.sessions || 0),
+      icon: <Eye className="w-5 h-5" />,
+      color: "bg-indigo-500/20 text-indigo-500",
+      badge: summary.isRealSessionData ? "נתונים אמיתיים" : "הערכה",
+      badgeColor: summary.isRealSessionData ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500",
+    },
+    {
+      label: "יחס המרה",
+      value: summary.conversionRate + "%",
+      icon: <Percent className="w-5 h-5" />,
+      color: "bg-cyan-500/20 text-cyan-500",
+      badge: summary.isRealSessionData ? "נתונים אמיתיים" : "הערכה",
+      badgeColor: summary.isRealSessionData ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500",
     },
     {
       label: "ממוצע להזמנה",
@@ -197,10 +215,9 @@ export function ShopifyAnalytics({
       label: "לקוחות ייחודיים",
       value: formatNumber(summary.uniqueCustomers),
       icon: <Users className="w-5 h-5" />,
-      color: "bg-cyan-500/20 text-cyan-500",
+      color: "bg-pink-500/20 text-pink-500",
     },
   ];
-
   return (
     <div className="space-y-6">
       {/* Main Analytics Card */}
@@ -251,19 +268,24 @@ export function ShopifyAnalytics({
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div key={i} className="bg-muted/50 rounded-lg p-4 animate-pulse h-24" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             {mainMetrics.map((metric) => (
               <div key={metric.label} className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
                 <div className="flex items-center gap-2 mb-2">
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", metric.color)}>
                     {metric.icon}
                   </div>
+                  {'badge' in metric && metric.badge && (
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", metric.badgeColor)}>
+                      {metric.badge}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xl font-bold">{metric.value}</p>
                 <p className="text-xs text-muted-foreground">{metric.label}</p>
