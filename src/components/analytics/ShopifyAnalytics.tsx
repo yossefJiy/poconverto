@@ -86,7 +86,8 @@ export function ShopifyAnalytics({
         end = start;
         break;
       case "mtd":
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        // December 1st, 2024 explicitly
+        start = new Date(2024, 11, 1); // Month is 0-indexed, so 11 = December
         break;
       case "7":
         start = new Date(today);

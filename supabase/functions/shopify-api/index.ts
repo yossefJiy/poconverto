@@ -311,8 +311,8 @@ serve(async (req) => {
       const currentSubtotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_subtotal_price || o.subtotal_price || '0'), 0);
       const currentTotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
       
-      // Calculate with VAT (18%)
-      const VAT_RATE = 1.18;
+      // Calculate with VAT (17%)
+      const VAT_RATE = 1.17;
       const allOrdersSubtotalWithVat = allOrdersSubtotal * VAT_RATE;
       const notCancelledSubtotalWithVat = notCancelledSubtotal * VAT_RATE;
       
@@ -320,9 +320,9 @@ serve(async (req) => {
       console.log(`  ALL orders (incl cancelled) - subtotal: ₪${allOrdersSubtotal.toFixed(2)}, total: ₪${allOrdersTotal.toFixed(2)}`);
       console.log(`  NOT cancelled - subtotal: ₪${notCancelledSubtotal.toFixed(2)}, total: ₪${notCancelledTotal.toFixed(2)}`);
       console.log(`  CURRENT (after refunds) - subtotal: ₪${currentSubtotal.toFixed(2)}, total: ₪${currentTotal.toFixed(2)}`);
-      console.log(`  === WITH 18% VAT ===`);
-      console.log(`  ALL orders subtotal + 18% VAT: ₪${allOrdersSubtotalWithVat.toFixed(2)}`);
-      console.log(`  NOT cancelled subtotal + 18% VAT: ₪${notCancelledSubtotalWithVat.toFixed(2)}`);
+      console.log(`  === WITH 17% VAT ===`);
+      console.log(`  ALL orders subtotal + 17% VAT: ₪${allOrdersSubtotalWithVat.toFixed(2)}`);
+      console.log(`  NOT cancelled subtotal + 17% VAT: ₪${notCancelledSubtotalWithVat.toFixed(2)}`);
       if (analyticsData?.totalSales !== null) {
         console.log(`  ShopifyQL total_sales: ₪${analyticsData?.totalSales?.toFixed(2)}`);
       }
