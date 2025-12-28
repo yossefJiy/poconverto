@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.connect-integration]
 verify_jwt = false
+
+[functions.shopify-api]
+verify_jwt = false
