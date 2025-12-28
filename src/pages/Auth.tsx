@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,15 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { PhoneSignIn } from "@/components/auth/PhoneSignIn";
-import { Mail, Phone, ShieldCheck, KeyRound, ArrowRight } from "lucide-react";
+import { Mail, Phone, ShieldCheck, KeyRound, ArrowRight, Clock, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const emailSchema = z.string().email("אימייל לא תקין");
 const passwordSchema = z.string().min(6, "הסיסמה חייבת להכיל לפחות 6 תווים");
 
 type AuthStep = "credentials" | "otp";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -28,6 +30,18 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [authStep, setAuthStep] = useState<AuthStep>("credentials");
+  const [resendTimer, setResendTimer] = useState(0);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+
+    const interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -69,48 +83,60 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const send2FACode = useCallback(async () => {
+    const response = await supabase.functions.invoke("send-2fa-code", {
+      body: { email, action: "send" },
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message || "Failed to send code");
+    }
+
+    if (response.data?.error) {
+      throw new Error(response.data.error);
+    }
+
+    return response.data;
+  }, [email]);
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateInputs()) return;
     
     setLoading(true);
     
-    // First verify credentials are correct
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      // First verify credentials are correct
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (signInError) {
-      if (signInError.message.includes("Invalid login credentials")) {
-        toast.error("אימייל או סיסמה שגויים");
-      } else {
-        toast.error(signInError.message);
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials")) {
+          toast.error("אימייל או סיסמה שגויים");
+        } else {
+          toast.error(signInError.message);
+        }
+        setLoading(false);
+        return;
       }
+
+      // Sign out immediately - we need 2FA verification
+      await supabase.auth.signOut();
+
+      // Send 2FA code via our edge function
+      await send2FACode();
+
+      toast.success("קוד אימות נשלח לאימייל שלך");
+      setAuthStep("otp");
+      setResendTimer(RESEND_COOLDOWN_SECONDS);
+    } catch (error: any) {
+      console.error("2FA send error:", error);
+      toast.error("שגיאה בשליחת קוד אימות: " + (error.message || "Unknown error"));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Sign out immediately - we need OTP verification
-    await supabase.auth.signOut();
-
-    // Send OTP to email
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-      }
-    });
-
-    if (otpError) {
-      toast.error("שגיאה בשליחת קוד אימות: " + otpError.message);
-      setLoading(false);
-      return;
-    }
-
-    toast.success("קוד אימות נשלח לאימייל שלך");
-    setAuthStep("otp");
-    setLoading(false);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -123,44 +149,68 @@ const Auth = () => {
     
     setLoading(true);
     
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otpCode,
-      type: 'email',
-    });
+    try {
+      // Verify the code via our edge function
+      const response = await supabase.functions.invoke("send-2fa-code", {
+        body: { email, action: "verify", code: otpCode },
+      });
 
-    if (error) {
-      toast.error("קוד אימות שגוי או פג תוקף");
+      if (response.error || !response.data?.valid) {
+        const errorMessage = response.data?.error || response.error?.message || "Invalid code";
+        toast.error(errorMessage === "Invalid code" ? "קוד אימות שגוי" : errorMessage);
+        setLoading(false);
+        return;
+      }
+
+      // Code is valid - now sign in with password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        toast.error("שגיאה בהתחברות: " + signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      toast.success("התחברת בהצלחה!");
+      navigate("/");
+    } catch (error: any) {
+      console.error("2FA verify error:", error);
+      toast.error("שגיאה באימות: " + (error.message || "Unknown error"));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    toast.success("התחברת בהצלחה!");
-    navigate("/");
-    setLoading(false);
   };
 
   const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
+    
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-      }
-    });
-
-    if (error) {
-      toast.error("שגיאה בשליחת קוד: " + error.message);
-    } else {
+    try {
+      await send2FACode();
       toast.success("קוד חדש נשלח לאימייל שלך");
+      setResendTimer(RESEND_COOLDOWN_SECONDS);
+    } catch (error: any) {
+      console.error("Resend error:", error);
+      toast.error("שגיאה בשליחת קוד: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleBackToCredentials = () => {
     setAuthStep("credentials");
     setOtpCode("");
+    setResendTimer(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -292,22 +342,34 @@ const Auth = () => {
                 </Button>
               </form>
 
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResendOtp}
-                  disabled={loading}
-                  className="text-muted-foreground"
-                >
-                  שלח קוד חדש
-                </Button>
+              <div className="flex flex-col gap-3">
+                {/* Resend button with timer */}
+                <div className="flex items-center justify-center gap-2">
+                  {resendTimer > 0 ? (
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Clock className="w-4 h-4" />
+                      <span>שליחה מחדש תתאפשר בעוד {formatTime(resendTimer)}</span>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendOtp}
+                      disabled={loading}
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      לא קיבלת? שלח קוד חדש
+                    </Button>
+                  )}
+                </div>
+
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleBackToCredentials}
                   disabled={loading}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 mx-auto"
                 >
                   <ArrowRight className="w-4 h-4" />
                   חזרה להתחברות
