@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
+  Plus,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -92,6 +94,8 @@ interface GoogleAdsCardProps {
   globalDateFrom: string;
   globalDateTo: string;
   clientId?: string;
+  isAdmin?: boolean;
+  onAddIntegration?: () => void;
   onRefresh?: () => void;
 }
 
@@ -145,6 +149,8 @@ export function GoogleAdsCard({
   globalDateFrom,
   globalDateTo,
   clientId,
+  isAdmin = false,
+  onAddIntegration,
   onRefresh,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -264,6 +270,33 @@ export function GoogleAdsCard({
   }
 
   if (error) {
+    // Check if error is about missing integration
+    const isIntegrationError = error.includes('לא מוגדר') || error.includes('חסר');
+    
+    if (isIntegrationError && isAdmin && onAddIntegration) {
+      return (
+        <div className="glass rounded-xl p-6 card-shadow">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <Target className="w-4 h-4 text-orange-500" />
+            </div>
+            <h3 className="font-bold text-lg">Google Ads</h3>
+          </div>
+          <div className="flex flex-col items-center gap-4 py-8">
+            <Plug className="w-12 h-12 text-muted-foreground" />
+            <div className="text-center">
+              <p className="font-medium">Google Ads לא מוגדר עבור לקוח זה</p>
+              <p className="text-sm text-muted-foreground">הוסף אינטגרציה כדי לראות נתוני קמפיינים</p>
+            </div>
+            <Button onClick={onAddIntegration} className="glow">
+              <Plus className="w-4 h-4 ml-2" />
+              הוסף אינטגרציה
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="glass rounded-xl p-6 card-shadow">
         <div className="flex items-center gap-2 mb-4">

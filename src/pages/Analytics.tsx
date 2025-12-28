@@ -3,10 +3,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
+import { usePermissions } from "@/hooks/useAuth";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
 import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
+import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -16,6 +18,7 @@ import {
   Download,
   RefreshCw,
   Loader2,
+  Settings,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,9 +31,11 @@ const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
 
 export default function Analytics() {
   const { selectedClient } = useClient();
+  const { isAdmin } = usePermissions();
   const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const lastRefreshHourRef = useRef<number | null>(null);
   const toastIdRef = useRef<string | number | null>(null);
   
@@ -199,6 +204,13 @@ export default function Analytics() {
           </div>
           
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setShowIntegrationsDialog(true)}>
+                <Settings className="w-4 h-4 ml-2" />
+                ניהול אינטגרציות
+              </Button>
+            )}
+
             <GlobalDateFilter
               value={globalDateFilter}
               onChange={setGlobalDateFilter}
@@ -277,10 +289,18 @@ export default function Analytics() {
               globalDateFrom={dateRange.dateFrom}
               globalDateTo={dateRange.dateTo}
               clientId={selectedClient?.id}
+              isAdmin={isAdmin}
+              onAddIntegration={() => setShowIntegrationsDialog(true)}
               onRefresh={handleRefreshAll}
             />
           </div>
         )}
+
+        {/* Integrations Dialog */}
+        <IntegrationsDialog
+          open={showIntegrationsDialog}
+          onOpenChange={setShowIntegrationsDialog}
+        />
       </div>
     </MainLayout>
   );
