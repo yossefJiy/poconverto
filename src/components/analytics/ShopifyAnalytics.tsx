@@ -107,9 +107,17 @@ export function ShopifyAnalytics({
         start = new Date(now.getFullYear(), now.getMonth(), 1);
     }
     
+    // Format as YYYY-MM-DD to avoid timezone issues
+    const formatDateOnly = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
     return {
-      dateFrom: start.toISOString(),
-      dateTo: end.toISOString(),
+      dateFrom: formatDateOnly(start),
+      dateTo: formatDateOnly(end),
     };
   }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
   
