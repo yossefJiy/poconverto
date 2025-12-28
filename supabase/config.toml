@@ -3,6 +3,9 @@ project_id = "ovkuabbfubtiwnlksmxd"
 [functions.google-analytics]
 verify_jwt = false
 
+[functions.google-ads]
+verify_jwt = false
+
 [functions.send-client-invitation]
 verify_jwt = false
 
