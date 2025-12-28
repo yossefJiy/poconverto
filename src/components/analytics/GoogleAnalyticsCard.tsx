@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronUp,
   Calendar,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,6 +59,7 @@ interface GoogleAnalyticsCardProps {
   isLoading?: boolean;
   globalDateFrom: string;
   globalDateTo: string;
+  onRefresh?: () => void;
 }
 
 function formatNumber(num: number): string {
@@ -142,10 +145,12 @@ export function GoogleAnalyticsCard({
   isLoading,
   globalDateFrom,
   globalDateTo,
+  onRefresh,
 }: GoogleAnalyticsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useLocalFilter, setUseLocalFilter] = useState(false);
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Calculate local date range if using local filter
   const { dateFrom, dateTo } = useMemo(() => {
@@ -198,6 +203,14 @@ export function GoogleAnalyticsCard({
 
   const handleResetToGlobal = () => {
     setUseLocalFilter(false);
+  };
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      await onRefresh();
+      setIsRefreshing(false);
+    }
   };
 
   if (isLoading) {
@@ -322,6 +335,13 @@ export function GoogleAnalyticsCard({
                 <SelectItem value="90">90 ימים אחרונים</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" size="icon" disabled={isLoading || isRefreshing} onClick={handleRefresh}>
+              {isLoading || isRefreshing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </Button>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="icon">
                 {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
