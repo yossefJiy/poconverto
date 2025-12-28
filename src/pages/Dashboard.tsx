@@ -1,6 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
+import { useClientModules } from "@/hooks/useClientModules";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -24,6 +25,7 @@ import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
+  const { isModuleEnabled } = useClientModules();
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", selectedClient?.id],
@@ -125,153 +127,169 @@ export default function Dashboard() {
           <>
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <MetricCard
-                title="קמפיינים פעילים"
-                value={stats?.activeCampaigns || 0}
-                icon={<Megaphone className="w-5 h-5" />}
-                delay={0.1}
-              />
-              <MetricCard
-                title="משימות פתוחות"
-                value={stats?.openTasks || 0}
-                icon={<CheckSquare className="w-5 h-5" />}
-                delay={0.15}
-              />
-              <MetricCard
-                title="חשיפות"
-                value={formatNumber(stats?.totalImpressions || 0)}
-                icon={<Eye className="w-5 h-5" />}
-                delay={0.2}
-              />
-              <MetricCard
-                title="המרות"
-                value={stats?.totalConversions || 0}
-                icon={<TrendingUp className="w-5 h-5" />}
-                delay={0.25}
-              />
+              {isModuleEnabled("campaigns") && (
+                <MetricCard
+                  title="קמפיינים פעילים"
+                  value={stats?.activeCampaigns || 0}
+                  icon={<Megaphone className="w-5 h-5" />}
+                  delay={0.1}
+                />
+              )}
+              {isModuleEnabled("tasks") && (
+                <MetricCard
+                  title="משימות פתוחות"
+                  value={stats?.openTasks || 0}
+                  icon={<CheckSquare className="w-5 h-5" />}
+                  delay={0.15}
+                />
+              )}
+              {isModuleEnabled("campaigns") && (
+                <MetricCard
+                  title="חשיפות"
+                  value={formatNumber(stats?.totalImpressions || 0)}
+                  icon={<Eye className="w-5 h-5" />}
+                  delay={0.2}
+                />
+              )}
+              {isModuleEnabled("campaigns") && (
+                <MetricCard
+                  title="המרות"
+                  value={stats?.totalConversions || 0}
+                  icon={<TrendingUp className="w-5 h-5" />}
+                  delay={0.25}
+                />
+              )}
             </div>
 
             {/* Budget & Performance */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-primary" />
+            {isModuleEnabled("campaigns") && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">תקציב</p>
+                      <p className="text-2xl font-bold">₪{formatNumber(stats?.totalBudget || 0)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">תקציב</p>
-                    <p className="text-2xl font-bold">₪{formatNumber(stats?.totalBudget || 0)}</p>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${stats?.totalBudget ? (stats.totalSpent / stats.totalBudget) * 100 : 0}%` }}
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ₪{formatNumber(stats?.totalSpent || 0)} מתוך ₪{formatNumber(stats?.totalBudget || 0)}
+                  </p>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${stats?.totalBudget ? (stats.totalSpent / stats.totalBudget) * 100 : 0}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  ₪{formatNumber(stats?.totalSpent || 0)} מתוך ₪{formatNumber(stats?.totalBudget || 0)}
-                </p>
-              </div>
 
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.35s", animationFillMode: "forwards" }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                    <MousePointer className="w-5 h-5 text-accent" />
+                <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.35s", animationFillMode: "forwards" }}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                      <MousePointer className="w-5 h-5 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">קליקים</p>
+                      <p className="text-2xl font-bold">{formatNumber(stats?.totalClicks || 0)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">קליקים</p>
-                    <p className="text-2xl font-bold">{formatNumber(stats?.totalClicks || 0)}</p>
-                  </div>
+                  <p className="text-sm">
+                    <span className="text-success font-medium">{stats?.ctr}%</span>
+                    <span className="text-muted-foreground"> CTR</span>
+                  </p>
                 </div>
-                <p className="text-sm">
-                  <span className="text-success font-medium">{stats?.ctr}%</span>
-                  <span className="text-muted-foreground"> CTR</span>
-                </p>
-              </div>
 
-              <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-                    <CheckSquare className="w-5 h-5 text-success" />
+                {isModuleEnabled("tasks") && (
+                  <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
+                        <CheckSquare className="w-5 h-5 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">משימות הושלמו</p>
+                        <p className="text-2xl font-bold">{stats?.completedTasks || 0}</p>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-success rounded-full transition-all"
+                        style={{ width: `${stats?.openTasks || stats?.completedTasks ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">משימות הושלמו</p>
-                    <p className="text-2xl font-bold">{stats?.completedTasks || 0}</p>
-                  </div>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-success rounded-full transition-all"
-                    style={{ width: `${stats?.openTasks || stats?.completedTasks ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }}
-                  />
-                </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Tasks */}
-              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-bold">משימות אחרונות</h3>
-                </div>
-                <div className="divide-y divide-border">
-                  {recentTasks.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">אין משימות</div>
-                  ) : (
-                    recentTasks.map((task: any) => (
-                      <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{task.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {task.team_members?.name || task.assignee || "לא משויך"}
-                            </p>
+              {isModuleEnabled("tasks") && (
+                <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+                  <div className="p-4 border-b border-border">
+                    <h3 className="font-bold">משימות אחרונות</h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {recentTasks.length === 0 ? (
+                      <div className="p-6 text-center text-muted-foreground">אין משימות</div>
+                    ) : (
+                      recentTasks.map((task: any) => (
+                        <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{task.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {task.team_members?.name || task.assignee || "לא משויך"}
+                              </p>
+                            </div>
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-xs font-medium",
+                              statusConfig[task.status]?.color || "bg-muted",
+                              "text-foreground"
+                            )}>
+                              {statusConfig[task.status]?.label || task.status}
+                            </span>
                           </div>
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            statusConfig[task.status]?.color || "bg-muted",
-                            "text-foreground"
-                          )}>
-                            {statusConfig[task.status]?.label || task.status}
-                          </span>
                         </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Recent Campaigns */}
-              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-bold">קמפיינים אחרונים</h3>
-                </div>
-                <div className="divide-y divide-border">
-                  {recentCampaigns.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">אין קמפיינים</div>
-                  ) : (
-                    recentCampaigns.map((campaign: any) => (
-                      <div key={campaign.id} className="p-4 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{campaign.name}</p>
-                            <p className="text-xs text-muted-foreground">{campaign.platform}</p>
+              {isModuleEnabled("campaigns") && (
+                <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
+                  <div className="p-4 border-b border-border">
+                    <h3 className="font-bold">קמפיינים אחרונים</h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {recentCampaigns.length === 0 ? (
+                      <div className="p-6 text-center text-muted-foreground">אין קמפיינים</div>
+                    ) : (
+                      recentCampaigns.map((campaign: any) => (
+                        <div key={campaign.id} className="p-4 hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{campaign.name}</p>
+                              <p className="text-xs text-muted-foreground">{campaign.platform}</p>
+                            </div>
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-xs font-medium",
+                              statusConfig[campaign.status]?.color || "bg-muted",
+                              "text-foreground"
+                            )}>
+                              {statusConfig[campaign.status]?.label || campaign.status}
+                            </span>
                           </div>
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            statusConfig[campaign.status]?.color || "bg-muted",
-                            "text-foreground"
-                          )}>
-                            {statusConfig[campaign.status]?.label || campaign.status}
-                          </span>
                         </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </>
         )}
