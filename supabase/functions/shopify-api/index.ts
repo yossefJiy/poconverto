@@ -15,6 +15,22 @@ interface ShopifyRequest {
   date_to?: string;
 }
 
+// Helper to extract YYYY-MM-DD from various date formats
+function extractDateOnly(dateStr: string): string {
+  // If already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  // Extract date part from ISO string or other formats
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    return match[1];
+  }
+  // Fallback: try to parse and format
+  const date = new Date(dateStr);
+  return date.toISOString().split('T')[0];
+}
+
 // Function to fetch ALL orders with pagination
 async function fetchAllOrders(
   baseUrl: string,
@@ -28,6 +44,12 @@ async function fetchAllOrders(
   let pageCount = 0;
   const maxPages = 20; // Safety limit
   
+  // Convert dates to date-only format for Shopify (YYYY-MM-DD)
+  const fromDateClean = dateFrom ? extractDateOnly(dateFrom) : null;
+  const toDateClean = dateTo ? extractDateOnly(dateTo) : null;
+  
+  console.log(`[Shopify API] Date range: ${fromDateClean} to ${toDateClean}`);
+  
   while (hasNextPage && pageCount < maxPages) {
     let endpoint = `/orders.json?limit=250&status=any`;
     
@@ -35,9 +57,10 @@ async function fetchAllOrders(
       // Use page_info for subsequent requests (Shopify cursor pagination)
       endpoint = `/orders.json?limit=250&page_info=${pageInfo}`;
     } else {
-      // First request - use date filters
-      if (dateFrom) endpoint += `&created_at_min=${dateFrom}`;
-      if (dateTo) endpoint += `&created_at_max=${dateTo}`;
+      // First request - use date filters with proper timezone handling
+      // Shopify expects ISO format, but we want the full day in shop's timezone
+      if (fromDateClean) endpoint += `&created_at_min=${fromDateClean}T00:00:00`;
+      if (toDateClean) endpoint += `&created_at_max=${toDateClean}T23:59:59`;
     }
     
     console.log(`[Shopify API] Fetching orders page ${pageCount + 1}: ${endpoint}`);
@@ -85,45 +108,54 @@ async function fetchAllOrders(
   return allOrders;
 }
 
-// Function to fetch analytics using GraphQL Analytics API
+// Function to fetch analytics using GraphQL Analytics API (ShopifyQL)
 async function fetchShopifyAnalytics(
   storeDomain: string, 
   accessToken: string, 
   dateFrom: string, 
   dateTo: string
-): Promise<{ sessions: number; visitors: number; conversionRate: number } | null> {
+): Promise<{ sessions: number; visitors: number; conversionRate: number; totalSales: number | null } | null> {
   const cleanDomain = storeDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const graphqlUrl = `https://${cleanDomain}/admin/api/2024-10/graphql.json`;
   
   // Format dates for ShopifyQL (YYYY-MM-DD)
-  const fromDate = new Date(dateFrom).toISOString().split('T')[0];
-  const toDate = new Date(dateTo).toISOString().split('T')[0];
+  const fromDate = extractDateOnly(dateFrom);
+  const toDate = extractDateOnly(dateTo);
   
-  // Try using shopifyqlQuery first
-  const shopifyqlQuery = `
+  console.log(`[Shopify API] ShopifyQL date range: ${fromDate} to ${toDate}`);
+  
+  // Query for sessions data
+  const sessionsQuery = `
     FROM sessions
     SHOW sessions, visitors, sessions_converted
     SINCE ${fromDate}
     UNTIL ${toDate}
   `;
   
-  const graphqlQuery = `
-    query {
-      shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').replace(/"/g, '\\"').trim()}") {
-        __typename
-        ... on TableResponse {
-          tableData {
-            columns { name dataType }
-            rowData
-          }
-        }
-        parseErrors { code message }
-      }
-    }
+  // Query for total_sales (matches "Total sales over time" in Shopify dashboard)
+  const salesQuery = `
+    FROM sales
+    SHOW total_sales
+    SINCE ${fromDate}
+    UNTIL ${toDate}
   `;
   
-  try {
-    console.log('[Shopify API] Attempting ShopifyQL analytics query...');
+  const makeQuery = async (shopifyqlQuery: string) => {
+    const graphqlQuery = `
+      query {
+        shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').replace(/"/g, '\\"').trim()}") {
+          __typename
+          ... on TableResponse {
+            tableData {
+              columns { name dataType }
+              rowData
+            }
+          }
+          parseErrors { code message }
+        }
+      }
+    `;
+    
     const response = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
@@ -138,28 +170,28 @@ async function fetchShopifyAnalytics(
       return null;
     }
     
-    const result = await response.json();
+    return response.json();
+  };
+  
+  try {
+    console.log('[Shopify API] Attempting ShopifyQL queries...');
     
-    if (result.errors) {
-      console.log('[Shopify API] ShopifyQL not available (requires read_reports scope):', result.errors[0]?.message);
-      return null;
-    }
+    // Execute both queries in parallel
+    const [sessionsResult, salesResult] = await Promise.all([
+      makeQuery(sessionsQuery),
+      makeQuery(salesQuery)
+    ]);
     
-    const queryResult = result.data?.shopifyqlQuery;
+    let totalSessions = 0;
+    let totalVisitors = 0;
+    let totalConverted = 0;
+    let totalSales: number | null = null;
     
-    if (queryResult?.parseErrors?.length > 0) {
-      console.error('[Shopify API] ShopifyQL parse errors:', queryResult.parseErrors);
-      return null;
-    }
-    
-    // Parse table response
-    if (queryResult?.__typename === 'TableResponse' && queryResult.tableData) {
-      const columns = queryResult.tableData.columns;
-      const rows = queryResult.tableData.rowData || [];
-      
-      let totalSessions = 0;
-      let totalVisitors = 0;
-      let totalConverted = 0;
+    // Parse sessions result
+    if (sessionsResult?.data?.shopifyqlQuery?.__typename === 'TableResponse') {
+      const tableData = sessionsResult.data.shopifyqlQuery.tableData;
+      const columns = tableData?.columns || [];
+      const rows = tableData?.rowData || [];
       
       const sessionsIdx = columns.findIndex((c: any) => c.name === 'sessions');
       const visitorsIdx = columns.findIndex((c: any) => c.name === 'visitors');
@@ -171,14 +203,40 @@ async function fetchShopifyAnalytics(
         if (convertedIdx >= 0 && row[convertedIdx]) totalConverted += parseInt(row[convertedIdx]) || 0;
       }
       
-      const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
-      
-      console.log(`[Shopify API] Real analytics: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%`);
-      
-      return { sessions: totalSessions, visitors: totalVisitors, conversionRate };
+      console.log(`[Shopify API] Sessions data: sessions=${totalSessions}, visitors=${totalVisitors}, converted=${totalConverted}`);
+    } else if (sessionsResult?.errors) {
+      console.log('[Shopify API] Sessions query error:', sessionsResult.errors[0]?.message);
     }
     
-    return null;
+    // Parse sales result
+    if (salesResult?.data?.shopifyqlQuery?.__typename === 'TableResponse') {
+      const tableData = salesResult.data.shopifyqlQuery.tableData;
+      const columns = tableData?.columns || [];
+      const rows = tableData?.rowData || [];
+      
+      const salesIdx = columns.findIndex((c: any) => c.name === 'total_sales');
+      
+      totalSales = 0;
+      for (const row of rows) {
+        if (salesIdx >= 0 && row[salesIdx]) {
+          // total_sales can be formatted like "₪1,234.56" or just a number
+          const value = row[salesIdx].toString().replace(/[^\d.-]/g, '');
+          totalSales += parseFloat(value) || 0;
+        }
+      }
+      
+      console.log(`[Shopify API] ShopifyQL Total Sales: ₪${totalSales.toFixed(2)}`);
+    } else if (salesResult?.errors) {
+      console.log('[Shopify API] Sales query error:', salesResult.errors[0]?.message);
+    } else if (salesResult?.data?.shopifyqlQuery?.parseErrors) {
+      console.log('[Shopify API] Sales query parse error:', salesResult.data.shopifyqlQuery.parseErrors);
+    }
+    
+    const conversionRate = totalSessions > 0 ? (totalConverted / totalSessions) * 100 : 0;
+    
+    console.log(`[Shopify API] Analytics summary: sessions=${totalSessions}, visitors=${totalVisitors}, conversionRate=${conversionRate.toFixed(2)}%, totalSales=${totalSales}`);
+    
+    return { sessions: totalSessions, visitors: totalVisitors, conversionRate, totalSales };
   } catch (error) {
     console.error('[Shopify API] Analytics fetch error:', error);
     return null;
@@ -257,10 +315,13 @@ serve(async (req) => {
       console.log(`  ALL orders (incl cancelled) - subtotal: ₪${allOrdersSubtotal.toFixed(2)}, total: ₪${allOrdersTotal.toFixed(2)}`);
       console.log(`  NOT cancelled - subtotal: ₪${notCancelledSubtotal.toFixed(2)}, total: ₪${notCancelledTotal.toFixed(2)}`);
       console.log(`  CURRENT (after refunds) - subtotal: ₪${currentSubtotal.toFixed(2)}, total: ₪${currentTotal.toFixed(2)}`);
+      if (analyticsData?.totalSales !== null) {
+        console.log(`  ShopifyQL total_sales: ₪${analyticsData?.totalSales?.toFixed(2)}`);
+      }
       
-      // Use notCancelledTotal as the primary revenue (matches Shopify "Total sales")
+      // Use ShopifyQL total_sales if available, otherwise fall back to order-based calculation
       const totalOrders = notCancelledOrders.length;
-      const totalRevenue = notCancelledTotal;
+      const totalRevenue = analyticsData?.totalSales ?? notCancelledTotal;
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
       // Calculate items sold
