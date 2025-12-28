@@ -233,29 +233,14 @@ serve(async (req) => {
           throw new Error('Customer ID not configured for this client');
         }
       } else {
-        console.log('[Google Ads] No per-client credentials, falling back to global');
+        // No per-client credentials found - require explicit configuration
+        console.log('[Google Ads] No per-client credentials found for client:', clientId);
+        throw new Error('Google Ads לא מוגדר עבור לקוח זה. יש להוסיף מספר חשבון Google Ads בהגדרות האינטגרציות.');
       }
-    }
-
-    // Fallback to global credentials if no per-client credentials
-    if (!accessToken) {
-      console.log('[Google Ads] Using global credentials');
-      
-      const globalRefreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
-      const globalCustomerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
-
-      if (!GLOBAL_CLIENT_ID || !GLOBAL_CLIENT_SECRET) {
-        throw new Error('GOOGLE_ADS_CLIENT_ID or GOOGLE_ADS_CLIENT_SECRET is not configured');
-      }
-      if (!globalRefreshToken) {
-        throw new Error('GOOGLE_ADS_REFRESH_TOKEN is not configured. Please connect Google Ads from the Integrations page.');
-      }
-      if (!globalCustomerId) {
-        throw new Error('GOOGLE_ADS_CUSTOMER_ID is not configured');
-      }
-
-      accessToken = await getAccessToken(GLOBAL_CLIENT_ID, GLOBAL_CLIENT_SECRET, globalRefreshToken);
-      customerId = globalCustomerId;
+    } else {
+      // No clientId provided - this shouldn't happen from the frontend
+      console.log('[Google Ads] No clientId provided in request');
+      throw new Error('חסר מזהה לקוח בבקשה. יש לבחור לקוח כדי לצפות בנתוני Google Ads.');
     }
 
     if (!GLOBAL_DEVELOPER_TOKEN) {

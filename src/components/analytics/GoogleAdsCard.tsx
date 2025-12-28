@@ -91,6 +91,7 @@ interface GoogleAdsData {
 interface GoogleAdsCardProps {
   globalDateFrom: string;
   globalDateTo: string;
+  clientId?: string;
   onRefresh?: () => void;
 }
 
@@ -143,6 +144,7 @@ function MetricWithComparison({ label, value, change, icon, color }: MetricWithC
 export function GoogleAdsCard({ 
   globalDateFrom,
   globalDateTo,
+  clientId,
   onRefresh,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -166,7 +168,7 @@ export function GoogleAdsCard({
         : globalDateTo.split('T')[0];
 
       const { data: responseData, error: functionError } = await supabase.functions.invoke('google-ads', {
-        body: { startDate, endDate }
+        body: { startDate, endDate, clientId }
       });
 
       if (functionError) {
@@ -222,8 +224,10 @@ export function GoogleAdsCard({
   };
 
   useEffect(() => {
-    fetchGoogleAdsData();
-  }, [globalDateFrom, globalDateTo, useLocalFilter, localDateFilter]);
+    if (clientId) {
+      fetchGoogleAdsData();
+    }
+  }, [globalDateFrom, globalDateTo, useLocalFilter, localDateFilter, clientId]);
 
   const handleLocalFilterChange = (value: string) => {
     setLocalDateFilter(value);

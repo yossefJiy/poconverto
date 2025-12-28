@@ -276,6 +276,7 @@ export default function Analytics() {
             <GoogleAdsCard
               globalDateFrom={dateRange.dateFrom}
               globalDateTo={dateRange.dateTo}
+              clientId={selectedClient?.id}
               onRefresh={handleRefreshAll}
             />
           </div>
