@@ -228,38 +228,39 @@ serve(async (req) => {
         analyticsData = await fetchShopifyAnalytics(storeDomain, accessToken, date_from, date_to);
       }
       
-      // Include ALL orders for gross revenue (including refunded/cancelled)
-      // Filter only cancelled orders (they were never paid)
-      const paidOrders = allOrders.filter((o: any) => o.cancelled_at === null);
+      // Calculate ALL revenue metrics for comparison
+      // Note: Shopify "Total sales over time" typically uses ALL orders including cancelled
       
-      console.log(`[Shopify API] Total orders: ${allOrders.length}, Paid orders (not cancelled): ${paidOrders.length}`);
+      console.log(`[Shopify API] Total orders fetched: ${allOrders.length}`);
       
       // Log sample order to see available fields
       if (allOrders.length > 0) {
         const sample = allOrders[0];
-        console.log(`[Shopify API] Sample order fields: subtotal_price=${sample.subtotal_price}, total_price=${sample.total_price}, current_subtotal_price=${sample.current_subtotal_price}, current_total_price=${sample.current_total_price}`);
+        console.log(`[Shopify API] Sample order: subtotal=${sample.subtotal_price}, total=${sample.total_price}, current_subtotal=${sample.current_subtotal_price}, current_total=${sample.current_total_price}, cancelled=${sample.cancelled_at}, financial_status=${sample.financial_status}`);
       }
       
-      // Calculate analytics metrics - use ALL paid orders (including those later refunded)
-      const totalOrders = paidOrders.length;
+      // Different order sets for different calculations
+      const notCancelledOrders = allOrders.filter((o: any) => o.cancelled_at === null);
+      const cancelledOrders = allOrders.filter((o: any) => o.cancelled_at !== null);
       
-      // Calculate different revenue metrics for comparison - using ORIGINAL total_price (gross revenue before refunds)
-      const subtotalRevenue = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.subtotal_price || '0'), 0);
-      const totalPriceRevenue = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total_price || '0'), 0);
+      console.log(`[Shopify API] Order breakdown: ${notCancelledOrders.length} active, ${cancelledOrders.length} cancelled`);
       
-      // Also calculate current values (after refunds) for comparison
-      const currentSubtotalRevenue = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_subtotal_price || o.subtotal_price || '0'), 0);
-      const currentTotalRevenue = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
+      // Calculate ALL possible revenue metrics
+      const allOrdersSubtotal = allOrders.reduce((sum: number, o: any) => sum + parseFloat(o.subtotal_price || '0'), 0);
+      const allOrdersTotal = allOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total_price || '0'), 0);
+      const notCancelledSubtotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.subtotal_price || '0'), 0);
+      const notCancelledTotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total_price || '0'), 0);
+      const currentSubtotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_subtotal_price || o.subtotal_price || '0'), 0);
+      const currentTotal = notCancelledOrders.reduce((sum: number, o: any) => sum + parseFloat(o.current_total_price || o.total_price || '0'), 0);
       
-      console.log(`[Shopify API] Gross Revenue (before refunds):`);
-      console.log(`  - subtotal_price (products only): ₪${subtotalRevenue.toFixed(2)}`);
-      console.log(`  - total_price (products + shipping + tax): ₪${totalPriceRevenue.toFixed(2)}`);
-      console.log(`[Shopify API] Net Revenue (after refunds):`);
-      console.log(`  - current_subtotal_price: ₪${currentSubtotalRevenue.toFixed(2)}`);
-      console.log(`  - current_total_price: ₪${currentTotalRevenue.toFixed(2)}`);
+      console.log(`[Shopify API] === REVENUE COMPARISON ===`);
+      console.log(`  ALL orders (incl cancelled) - subtotal: ₪${allOrdersSubtotal.toFixed(2)}, total: ₪${allOrdersTotal.toFixed(2)}`);
+      console.log(`  NOT cancelled - subtotal: ₪${notCancelledSubtotal.toFixed(2)}, total: ₪${notCancelledTotal.toFixed(2)}`);
+      console.log(`  CURRENT (after refunds) - subtotal: ₪${currentSubtotal.toFixed(2)}, total: ₪${currentTotal.toFixed(2)}`);
       
-      // Use total_price as the primary revenue (GROSS revenue including shipping, before refunds)
-      const totalRevenue = totalPriceRevenue;
+      // Use notCancelledTotal as the primary revenue (matches Shopify "Total sales")
+      const totalOrders = notCancelledOrders.length;
+      const totalRevenue = notCancelledTotal;
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
       // Calculate items sold
