@@ -238,7 +238,7 @@ export function GoogleAdsCard({
     setIsRefreshing(true);
     await fetchGoogleAdsData();
     setIsRefreshing(false);
-    if (onRefresh) onRefresh();
+    // Only refresh this component's data, not all components
   };
 
   if (isLoading && !data) {
