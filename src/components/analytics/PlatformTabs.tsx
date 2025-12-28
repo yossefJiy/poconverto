@@ -8,8 +8,11 @@ import {
   Target,
   Users,
   Calendar,
-  ArrowUpRight,
-  ArrowDownRight
+  Globe,
+  Smartphone,
+  Monitor,
+  Tablet,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -28,6 +31,34 @@ import {
   Pie,
   Cell
 } from "recharts";
+
+interface TrafficSource {
+  source: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
+
+interface TopPage {
+  path: string;
+  pageviews: number;
+  avgDuration: string;
+  bounceRate: number;
+}
+
+interface DeviceData {
+  device: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
+
+interface CountryData {
+  country: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
 
 interface PlatformData {
   platform: string;
@@ -66,8 +97,11 @@ interface AnalyticsData {
   pageviews: number;
   bounceRate: number;
   avgSessionDuration: string;
-  trafficSources: Array<{ source: string; sessions: number; percentage: number }>;
-  dailyData: Array<{ date: string; sessions: number; users: number; pageviews: number }>;
+  trafficSources: TrafficSource[];
+  topPages: TopPage[];
+  devices: DeviceData[];
+  countries: CountryData[];
+  dailyData: Array<{ date: string; sessions: number; users: number; pageviews: number; bounceRate: number; avgDuration: number }>;
 }
 
 interface PlatformTabsProps {
@@ -82,7 +116,13 @@ function formatNumber(num: number): string {
   return num.toLocaleString("he-IL");
 }
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444'];
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+const deviceIcons: Record<string, React.ReactNode> = {
+  desktop: <Monitor className="w-4 h-4" />,
+  mobile: <Smartphone className="w-4 h-4" />,
+  tablet: <Tablet className="w-4 h-4" />,
+};
 
 export function PlatformTabs({ platforms, analyticsData, isLoading }: PlatformTabsProps) {
   if (isLoading) {
@@ -115,6 +155,7 @@ export function PlatformTabs({ platforms, analyticsData, isLoading }: PlatformTa
 
       {/* Google Analytics Tab */}
       <TabsContent value="analytics" className="space-y-6">
+        {/* Key Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <MetricBox 
             label="סשנים" 
@@ -148,8 +189,9 @@ export function PlatformTabs({ platforms, analyticsData, isLoading }: PlatformTa
           />
         </div>
 
+        {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Daily Chart */}
+          {/* Daily Sessions Chart */}
           <div className="lg:col-span-2 glass rounded-xl p-6">
             <h4 className="font-bold mb-4">תנועה יומית</h4>
             <div className="h-[300px]">
@@ -159,6 +201,10 @@ export function PlatformTabs({ platforms, analyticsData, isLoading }: PlatformTa
                     <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorPageviews" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -196,41 +242,192 @@ export function PlatformTabs({ platforms, analyticsData, isLoading }: PlatformTa
           {/* Traffic Sources */}
           <div className="glass rounded-xl p-6">
             <h4 className="font-bold mb-4">מקורות תנועה</h4>
-            <div className="h-[200px]">
+            {analyticsData.trafficSources.length > 0 ? (
+              <>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analyticsData.trafficSources}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        dataKey="sessions"
+                        nameKey="source"
+                      >
+                        {analyticsData.trafficSources.map((entry, index) => (
+                          <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-2 mt-2">
+                  {analyticsData.trafficSources.map((source, index) => (
+                    <div key={source.source} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                        <span className="truncate max-w-[100px]">{source.source}</span>
+                      </div>
+                      <span className="font-medium">{source.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                אין נתונים
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Charts Row 2 - Pageviews & Devices */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pageviews Chart */}
+          <div className="glass rounded-xl p-6">
+            <h4 className="font-bold mb-4">צפיות עמוד יומיות</h4>
+            <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analyticsData.trafficSources}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    dataKey="sessions"
-                    nameKey="source"
-                    label={({ source }) => source}
-                  >
-                    {analyticsData.trafficSources.map((entry, index) => (
-                      <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
+                <BarChart data={analyticsData.dailyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "0.5rem"
+                    }}
+                  />
+                  <Bar 
+                    dataKey="pageviews" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                    name="צפיות"
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-2 mt-4">
-              {analyticsData.trafficSources.map((source, index) => (
-                <div key={source.source} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                    <span>{source.source}</span>
+          </div>
+
+          {/* Devices Breakdown */}
+          <div className="glass rounded-xl p-6">
+            <h4 className="font-bold mb-4">התפלגות מכשירים</h4>
+            {analyticsData.devices.length > 0 ? (
+              <div className="space-y-4">
+                {analyticsData.devices.map((device, index) => (
+                  <div key={device.device} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center",
+                          index === 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                        )}>
+                          {deviceIcons[device.device.toLowerCase()] || <Monitor className="w-4 h-4" />}
+                        </div>
+                        <span className="font-medium capitalize">{device.device}</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="font-bold">{formatNumber(device.sessions)}</span>
+                        <span className="text-muted-foreground text-sm mr-2">({device.percentage}%)</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${device.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="font-medium">{source.percentage}%</span>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                אין נתונים
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Charts Row 3 - Top Pages & Countries */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Pages */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="w-5 h-5 text-primary" />
+              <h4 className="font-bold">דפים פופולריים</h4>
             </div>
+            {analyticsData.topPages.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-right py-2 font-medium">עמוד</th>
+                      <th className="text-right py-2 font-medium">צפיות</th>
+                      <th className="text-right py-2 font-medium">זמן ממוצע</th>
+                      <th className="text-right py-2 font-medium">Bounce</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analyticsData.topPages.slice(0, 8).map((page, index) => (
+                      <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="py-2">
+                          <span className="truncate block max-w-[180px]" title={page.path}>
+                            {page.path}
+                          </span>
+                        </td>
+                        <td className="py-2 font-medium">{formatNumber(page.pageviews)}</td>
+                        <td className="py-2">{page.avgDuration}</td>
+                        <td className="py-2">{page.bounceRate.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                אין נתונים
+              </div>
+            )}
+          </div>
+
+          {/* Countries */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Globe className="w-5 h-5 text-primary" />
+              <h4 className="font-bold">מדינות</h4>
+            </div>
+            {analyticsData.countries.length > 0 ? (
+              <div className="space-y-3">
+                {analyticsData.countries.slice(0, 8).map((country, index) => (
+                  <div key={country.country} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{getCountryFlag(country.country)}</span>
+                      <span className="font-medium">{country.country}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${country.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium w-12 text-left">{country.percentage}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                אין נתונים
+              </div>
+            )}
           </div>
         </div>
       </TabsContent>
@@ -374,4 +571,31 @@ function MetricBox({ label, value, icon, color }: { label: string; value: string
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
+}
+
+// Helper function to get country flag emoji
+function getCountryFlag(country: string): string {
+  const countryFlags: Record<string, string> = {
+    "Israel": "🇮🇱",
+    "United States": "🇺🇸",
+    "United Kingdom": "🇬🇧",
+    "Germany": "🇩🇪",
+    "France": "🇫🇷",
+    "Canada": "🇨🇦",
+    "Australia": "🇦🇺",
+    "India": "🇮🇳",
+    "Brazil": "🇧🇷",
+    "Russia": "🇷🇺",
+    "China": "🇨🇳",
+    "Japan": "🇯🇵",
+    "Spain": "🇪🇸",
+    "Italy": "🇮🇹",
+    "Netherlands": "🇳🇱",
+    "Poland": "🇵🇱",
+    "South Africa": "🇿🇦",
+    "Mexico": "🇲🇽",
+    "Argentina": "🇦🇷",
+    "Turkey": "🇹🇷",
+  };
+  return countryFlags[country] || "🌍";
 }

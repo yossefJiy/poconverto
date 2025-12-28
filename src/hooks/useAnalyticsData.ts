@@ -1,14 +1,54 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface TrafficSource {
+  source: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
+
+interface TopPage {
+  path: string;
+  pageviews: number;
+  avgDuration: string;
+  bounceRate: number;
+}
+
+interface DeviceData {
+  device: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
+
+interface CountryData {
+  country: string;
+  sessions: number;
+  users: number;
+  percentage: number;
+}
+
+interface DailyData {
+  date: string;
+  sessions: number;
+  users: number;
+  pageviews: number;
+  bounceRate: number;
+  avgDuration: number;
+}
+
 interface AnalyticsData {
   sessions: number;
   users: number;
   pageviews: number;
   bounceRate: number;
   avgSessionDuration: string;
-  trafficSources: Array<{ source: string; sessions: number; percentage: number }>;
-  dailyData: Array<{ date: string; sessions: number; users: number; pageviews: number }>;
+  trafficSources: TrafficSource[];
+  topPages: TopPage[];
+  devices: DeviceData[];
+  countries: CountryData[];
+  dailyData: DailyData[];
 }
 
 interface PlatformData {
@@ -42,66 +82,159 @@ interface PlatformData {
   }>;
 }
 
+// Format seconds to mm:ss
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 // Parse GA4 response to our format
 function parseGAResponse(gaData: any): AnalyticsData {
-  if (!gaData.rows || gaData.rows.length === 0) {
-    return {
-      sessions: 0,
-      users: 0,
-      pageviews: 0,
-      bounceRate: 0,
-      avgSessionDuration: "0:00",
-      trafficSources: [],
-      dailyData: [],
-    };
+  const emptyResult: AnalyticsData = {
+    sessions: 0,
+    users: 0,
+    pageviews: 0,
+    bounceRate: 0,
+    avgSessionDuration: "0:00",
+    trafficSources: [],
+    topPages: [],
+    devices: [],
+    countries: [],
+    dailyData: [],
+  };
+
+  if (!gaData || gaData.error) {
+    console.error("GA data error:", gaData?.error);
+    return emptyResult;
   }
 
+  // Parse daily metrics
   let totalSessions = 0;
   let totalUsers = 0;
   let totalPageviews = 0;
   let totalBounceRate = 0;
-  const dailyData: Array<{ date: string; sessions: number; users: number; pageviews: number }> = [];
+  let totalAvgDuration = 0;
+  const dailyData: DailyData[] = [];
 
-  for (const row of gaData.rows) {
-    const date = row.dimensionValues?.[0]?.value || "";
-    const formattedDate = date ? `${date.slice(6, 8)}/${date.slice(4, 6)}` : "";
+  if (gaData.dailyMetrics?.rows) {
+    for (const row of gaData.dailyMetrics.rows) {
+      const date = row.dimensionValues?.[0]?.value || "";
+      const formattedDate = date ? `${date.slice(6, 8)}/${date.slice(4, 6)}` : "";
+      
+      const users = parseInt(row.metricValues?.[0]?.value || "0");
+      const sessions = parseInt(row.metricValues?.[1]?.value || "0");
+      const pageviews = parseInt(row.metricValues?.[2]?.value || "0");
+      const bounceRate = parseFloat(row.metricValues?.[4]?.value || "0") * 100;
+      const avgDuration = parseFloat(row.metricValues?.[5]?.value || "0");
+
+      totalUsers += users;
+      totalSessions += sessions;
+      totalPageviews += pageviews;
+      totalBounceRate += bounceRate;
+      totalAvgDuration += avgDuration;
+
+      dailyData.push({
+        date: formattedDate,
+        sessions,
+        users,
+        pageviews,
+        bounceRate,
+        avgDuration,
+      });
+    }
+  }
+
+  const rowCount = gaData.dailyMetrics?.rows?.length || 1;
+
+  // Parse traffic sources
+  const trafficSources: TrafficSource[] = [];
+  if (gaData.trafficSources?.rows) {
+    const totalTrafficSessions = gaData.trafficSources.rows.reduce(
+      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      0
+    );
     
-    const users = parseInt(row.metricValues?.[0]?.value || "0");
-    const sessions = parseInt(row.metricValues?.[1]?.value || "0");
-    const pageviews = parseInt(row.metricValues?.[2]?.value || "0");
-    const bounceRate = parseFloat(row.metricValues?.[4]?.value || "0");
+    for (const row of gaData.trafficSources.rows.slice(0, 6)) {
+      const sessions = parseInt(row.metricValues?.[0]?.value || "0");
+      const users = parseInt(row.metricValues?.[1]?.value || "0");
+      trafficSources.push({
+        source: row.dimensionValues?.[0]?.value || "Unknown",
+        sessions,
+        users,
+        percentage: totalTrafficSessions > 0 ? Math.round((sessions / totalTrafficSessions) * 100) : 0,
+      });
+    }
+  }
 
-    totalUsers += users;
-    totalSessions += sessions;
-    totalPageviews += pageviews;
-    totalBounceRate += bounceRate;
+  // Parse top pages
+  const topPages: TopPage[] = [];
+  if (gaData.topPages?.rows) {
+    for (const row of gaData.topPages.rows.slice(0, 10)) {
+      topPages.push({
+        path: row.dimensionValues?.[0]?.value || "/",
+        pageviews: parseInt(row.metricValues?.[0]?.value || "0"),
+        avgDuration: formatDuration(parseFloat(row.metricValues?.[1]?.value || "0")),
+        bounceRate: parseFloat(row.metricValues?.[2]?.value || "0") * 100,
+      });
+    }
+  }
 
-    dailyData.push({
-      date: formattedDate,
-      sessions,
-      users,
-      pageviews,
-    });
+  // Parse devices
+  const devices: DeviceData[] = [];
+  if (gaData.devices?.rows) {
+    const totalDeviceSessions = gaData.devices.rows.reduce(
+      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      0
+    );
+    
+    for (const row of gaData.devices.rows) {
+      const sessions = parseInt(row.metricValues?.[0]?.value || "0");
+      const users = parseInt(row.metricValues?.[1]?.value || "0");
+      devices.push({
+        device: row.dimensionValues?.[0]?.value || "Unknown",
+        sessions,
+        users,
+        percentage: totalDeviceSessions > 0 ? Math.round((sessions / totalDeviceSessions) * 100) : 0,
+      });
+    }
+  }
+
+  // Parse countries
+  const countries: CountryData[] = [];
+  if (gaData.countries?.rows) {
+    const totalCountrySessions = gaData.countries.rows.reduce(
+      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      0
+    );
+    
+    for (const row of gaData.countries.rows.slice(0, 10)) {
+      const sessions = parseInt(row.metricValues?.[0]?.value || "0");
+      const users = parseInt(row.metricValues?.[1]?.value || "0");
+      countries.push({
+        country: row.dimensionValues?.[0]?.value || "Unknown",
+        sessions,
+        users,
+        percentage: totalCountrySessions > 0 ? Math.round((sessions / totalCountrySessions) * 100) : 0,
+      });
+    }
   }
 
   return {
     sessions: totalSessions,
     users: totalUsers,
     pageviews: totalPageviews,
-    bounceRate: gaData.rows.length > 0 ? totalBounceRate / gaData.rows.length : 0,
-    avgSessionDuration: "3:24", // GA4 requires separate query for this
-    trafficSources: [
-      { source: "Organic", sessions: Math.floor(totalSessions * 0.36), percentage: 36 },
-      { source: "Paid", sessions: Math.floor(totalSessions * 0.31), percentage: 31 },
-      { source: "Direct", sessions: Math.floor(totalSessions * 0.17), percentage: 17 },
-      { source: "Social", sessions: Math.floor(totalSessions * 0.10), percentage: 10 },
-      { source: "Referral", sessions: Math.floor(totalSessions * 0.06), percentage: 6 },
-    ],
+    bounceRate: rowCount > 0 ? totalBounceRate / rowCount : 0,
+    avgSessionDuration: formatDuration(rowCount > 0 ? totalAvgDuration / rowCount : 0),
+    trafficSources,
+    topPages,
+    devices,
+    countries,
     dailyData,
   };
 }
 
-// Generate mock data for ad platforms (can be replaced with real API calls later)
+// Generate mock data for ad platforms
 function generateMockPlatformData(platform: string, name: string, logo: string, color: string): PlatformData {
   const dates = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
@@ -144,7 +277,7 @@ function generateMockPlatformData(platform: string, name: string, logo: string, 
   };
 }
 
-export function useAnalyticsData(clientId: string | undefined) {
+export function useAnalyticsData(clientId: string | undefined, dateRange: string = "30") {
   // Fetch connected integrations
   const { data: integrations = [] } = useQuery({
     queryKey: ["integrations", clientId],
@@ -166,14 +299,15 @@ export function useAnalyticsData(clientId: string | undefined) {
   const propertyId = (gaIntegration?.settings as any)?.property_id;
 
   // Fetch real analytics data from GA4
-  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useQuery({
-    queryKey: ["analytics-data", clientId, propertyId],
+  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery({
+    queryKey: ["analytics-data", clientId, propertyId, dateRange],
     queryFn: async () => {
-      // Calculate date range (last 30 days)
+      // Calculate date range
       const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const daysAgo = parseInt(dateRange) || 30;
+      const startDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      console.log("Fetching GA data:", { propertyId, startDate, endDate });
+      console.log("Fetching GA data:", { propertyId, startDate, endDate, dateRange });
 
       const { data, error } = await supabase.functions.invoke("google-analytics", {
         body: {
@@ -264,6 +398,9 @@ export function useAnalyticsData(clientId: string | undefined) {
       bounceRate: 0,
       avgSessionDuration: "0:00",
       trafficSources: [],
+      topPages: [],
+      devices: [],
+      countries: [],
       dailyData: [],
     },
     platformsData: platformsData || [],
@@ -275,5 +412,6 @@ export function useAnalyticsData(clientId: string | undefined) {
       ["google_ads", "facebook_ads", "instagram", "tiktok", "linkedin"].includes(i.platform)
     ),
     analyticsError,
+    refetchAnalytics,
   };
 }
