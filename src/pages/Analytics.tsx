@@ -5,6 +5,7 @@ import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
+import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -158,6 +159,7 @@ export default function Analytics() {
   
   if (hasShopify || selectedClient.is_ecommerce) dataSources.push("Shopify");
   if (hasAnalytics) dataSources.push("Google Analytics");
+  dataSources.push("Google Ads"); // Always show Google Ads
 
   return (
     <MainLayout>
@@ -257,6 +259,13 @@ export default function Analytics() {
                 onRefresh={handleRefreshAll}
               />
             )}
+
+            {/* Google Ads - Third */}
+            <GoogleAdsCard
+              globalDateFrom={dateRange.dateFrom}
+              globalDateTo={dateRange.dateTo}
+              onRefresh={handleRefreshAll}
+            />
           </div>
         )}
       </div>
