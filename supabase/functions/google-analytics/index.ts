@@ -96,9 +96,9 @@ serve(async (req) => {
     const { propertyId, startDate, endDate, metrics, dimensions } = await req.json();
     
     // Get service account from secrets
-    let serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_SERVICE_ACCOUNT');
+    let serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_READER');
     if (!serviceAccountJson) {
-      throw new Error('GOOGLE_ANALYTICS_SERVICE_ACCOUNT is not configured');
+      throw new Error('GOOGLE_ANALYTICS_READER is not configured');
     }
 
     // Handle potential escape issues in the JSON
