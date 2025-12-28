@@ -63,6 +63,13 @@ export type Database = {
             referencedRelation: "integrations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "analytics_snapshots_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       authorized_emails: {
@@ -554,7 +561,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      integrations_safe: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string | null
+          is_connected: boolean | null
+          last_sync_at: string | null
+          platform: string | null
+          settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform?: string | null
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform?: string | null
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       decrypt_integration_credentials: {
