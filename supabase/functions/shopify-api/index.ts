@@ -124,10 +124,10 @@ async function fetchShopifyAnalytics(
   
   console.log(`[Shopify API] ShopifyQL date range: ${fromDate} to ${toDate}`);
   
-  // Query for sessions data
+  // Query for sessions data - only use 'sessions' column which is available
   const sessionsQuery = `
     FROM sessions
-    SHOW sessions, visitors, sessions_converted
+    SHOW sessions
     SINCE ${fromDate}
     UNTIL ${toDate}
   `;
@@ -195,11 +195,9 @@ async function fetchShopifyAnalytics(
       for (const row of rows) {
         // New format: rows are objects with column names as keys
         if (row.sessions) totalSessions += parseInt(row.sessions) || 0;
-        if (row.visitors) totalVisitors += parseInt(row.visitors) || 0;
-        if (row.sessions_converted) totalConverted += parseInt(row.sessions_converted) || 0;
       }
       
-      console.log(`[Shopify API] Sessions data: sessions=${totalSessions}, visitors=${totalVisitors}, converted=${totalConverted}`);
+      console.log(`[Shopify API] Sessions data: sessions=${totalSessions}`);
     } else if (sessionsResult?.errors) {
       console.log('[Shopify API] Sessions query error:', sessionsResult.errors[0]?.message);
     } else if (sessionsResult?.data?.shopifyqlQuery?.parseErrors?.length > 0) {
