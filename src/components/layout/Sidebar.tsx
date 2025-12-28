@@ -11,12 +11,9 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Languages,
-  Shield,
   Plug,
   Bell,
   Palette,
-  ListTodo,
   BarChart3,
   ShoppingBag,
 } from "lucide-react";
@@ -61,11 +58,7 @@ const settingsItems = [
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
 ];
 
-const adminSettingsItems = [
-  { icon: Languages, label: "תרגומים", path: "/translations" },
-  { icon: ListTodo, label: "Backlog", path: "/backlog" },
-  { icon: Shield, label: "לוגים אבטחה", path: "/security-logs" },
-];
+
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -189,7 +182,7 @@ export function Sidebar() {
                 className={cn(
                   "w-full justify-start gap-3 h-10",
                   collapsed && "justify-center px-2",
-                  location.pathname === "/settings" || location.pathname === "/translations" || location.pathname === "/backlog"
+                  location.pathname === "/settings"
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 )}
@@ -209,20 +202,6 @@ export function Sidebar() {
                   </Link>
                 </DropdownMenuItem>
               ))}
-              {(role === "admin" || role === "manager") && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>ניהול מערכת</DropdownMenuLabel>
-                  {adminSettingsItems.map((item) => (
-                    <DropdownMenuItem key={item.label} asChild>
-                      <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
-                        <item.icon className="w-4 h-4" />
-                        {item.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
