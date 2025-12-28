@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,12 @@ serve(async (req) => {
   }
 
   try {
+    // Validate authentication
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      return unauthorizedResponse(auth.error);
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -20,7 +27,39 @@ serve(async (req) => {
     const endpoint = url.pathname.split('/').pop();
     const clientId = url.searchParams.get('client_id');
 
-    console.log(`API Request: ${endpoint}, client_id: ${clientId}`);
+    console.log(`[Data API] Request: ${endpoint}, client_id: ${clientId}, user: ${auth.user.id}`);
+
+    // Verify user has access to requested client (if client_id provided)
+    if (clientId) {
+      const { data: hasAccess } = await supabase.rpc('has_client_access', {
+        _client_id: clientId,
+        _user_id: auth.user.id
+      });
+
+      if (!hasAccess) {
+        console.warn(`[Data API] Access denied for user: ${auth.user.id}, client: ${clientId}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Access denied to this client' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // For endpoints without client_id, verify user has at least team_member role
+    if (!clientId && !['clients'].includes(endpoint || '')) {
+      const { data: hasRole } = await supabase.rpc('has_role_level', {
+        _user_id: auth.user.id,
+        _min_role: 'team_member'
+      });
+
+      if (!hasRole) {
+        console.warn(`[Data API] Insufficient role for user: ${auth.user.id}, endpoint: ${endpoint}`);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Insufficient permissions' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     let data: any = null;
 
