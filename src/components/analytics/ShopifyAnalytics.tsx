@@ -15,7 +15,8 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
-  MousePointer,
+  Mail,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ShopifyAnalyticsProps {
   globalDateFrom: string;
@@ -60,6 +63,7 @@ export function ShopifyAnalytics({
   const [useLocalFilter, setUseLocalFilter] = useState(false);
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Calculate local date range if using local filter
   const { dateFrom, dateTo } = useMemo(() => {
@@ -131,16 +135,46 @@ export function ShopifyAnalytics({
     setUseLocalFilter(false);
   };
 
+  const handleSendAdminEmail = async (issue: string) => {
+    setIsSendingEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-admin-alert', {
+        body: { 
+          issue,
+          context: 'Shopify Analytics',
+          timestamp: new Date().toISOString(),
+        }
+      });
+      
+      if (error) throw error;
+      toast.success('המייל נשלח למנהל האתר');
+    } catch (err) {
+      console.error('Failed to send email:', err);
+      toast.error('שגיאה בשליחת המייל');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   if (isError) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>שגיאה בטעינת נתוני Shopify</AlertTitle>
-        <AlertDescription>
+        <AlertDescription className="flex items-center gap-4">
           {error?.message || 'לא ניתן לטעון נתונים'}
-          <Button variant="outline" size="sm" className="mr-4" onClick={handleRefresh}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 ml-2" />
             נסה שוב
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => handleSendAdminEmail('שגיאה בטעינת נתוני Shopify: ' + (error?.message || 'לא ידוע'))}
+            disabled={isSendingEmail}
+          >
+            {isSendingEmail ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Mail className="w-4 h-4 ml-2" />}
+            דווח למנהל
           </Button>
         </AlertDescription>
       </Alert>
@@ -153,9 +187,9 @@ export function ShopifyAnalytics({
     avgOrderValue: 0,
     totalItemsSold: 0,
     uniqueCustomers: 0,
-    sessions: 0,
-    visitors: 0,
-    conversionRate: '0',
+    sessions: null,
+    visitors: null,
+    conversionRate: null,
     isRealSessionData: false,
   };
 
@@ -169,57 +203,91 @@ export function ShopifyAnalytics({
   const trafficSources = analyticsData?.trafficSources || [];
   const topProducts = analyticsData?.topProducts || [];
 
-  // Main dashboard metrics - now includes real session data from ShopifyQL Analytics API
+  // Only show real data - no estimates
+  const hasRealSessionData = summary.isRealSessionData && summary.sessions !== null;
+
+  // Main dashboard metrics - only real data from Shopify API
   const mainMetrics = [
     {
       label: "סה״כ מכירות",
       value: formatCurrency(summary.totalRevenue),
       icon: <DollarSign className="w-5 h-5" />,
       color: "bg-green-500/20 text-green-500",
+      available: true,
     },
     {
       label: "הזמנות",
       value: formatNumber(summary.totalOrders),
       icon: <ShoppingCart className="w-5 h-5" />,
       color: "bg-purple-500/20 text-purple-500",
+      available: true,
     },
     {
       label: "סשנים",
-      value: formatNumber(summary.sessions || 0),
+      value: hasRealSessionData ? formatNumber(summary.sessions!) : null,
       icon: <Eye className="w-5 h-5" />,
       color: "bg-indigo-500/20 text-indigo-500",
-      badge: summary.isRealSessionData ? "נתונים אמיתיים" : "הערכה",
-      badgeColor: summary.isRealSessionData ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500",
+      available: hasRealSessionData,
+      requiresAction: !hasRealSessionData,
+      actionIssue: 'נדרשת הרשאת read_reports ב-Shopify Access Token לקבלת נתוני סשנים אמיתיים',
     },
     {
       label: "יחס המרה",
-      value: summary.conversionRate + "%",
+      value: hasRealSessionData ? summary.conversionRate + "%" : null,
       icon: <Percent className="w-5 h-5" />,
       color: "bg-cyan-500/20 text-cyan-500",
-      badge: summary.isRealSessionData ? "נתונים אמיתיים" : "הערכה",
-      badgeColor: summary.isRealSessionData ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500",
+      available: hasRealSessionData,
+      requiresAction: !hasRealSessionData,
+      actionIssue: 'נדרשת הרשאת read_reports ב-Shopify Access Token לקבלת יחס המרה אמיתי',
     },
     {
       label: "ממוצע להזמנה",
       value: formatCurrency(summary.avgOrderValue),
       icon: <DollarSign className="w-5 h-5" />,
       color: "bg-blue-500/20 text-blue-500",
+      available: true,
     },
     {
       label: "פריטים שנמכרו",
       value: formatNumber(summary.totalItemsSold),
       icon: <Package className="w-5 h-5" />,
       color: "bg-orange-500/20 text-orange-500",
+      available: true,
     },
     {
       label: "לקוחות ייחודיים",
       value: formatNumber(summary.uniqueCustomers),
       icon: <Users className="w-5 h-5" />,
       color: "bg-pink-500/20 text-pink-500",
+      available: true,
     },
   ];
+
   return (
     <div className="space-y-6">
+      {/* Alert for missing session data */}
+      {!isLoading && !hasRealSessionData && (
+        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <AlertTitle className="text-yellow-600">נדרשת פעולה נוספת</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <span className="text-sm">
+              נתוני סשנים ויחס המרה דורשים הרשאת <code className="bg-muted px-1 rounded">read_reports</code> ב-Shopify Access Token
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleSendAdminEmail('נדרשת הוספת הרשאת read_reports ל-Shopify Access Token כדי לקבל נתוני סשנים ויחס המרה אמיתיים')}
+              disabled={isSendingEmail}
+              className="shrink-0"
+            >
+              {isSendingEmail ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Mail className="w-4 h-4 ml-2" />}
+              שלח למנהל האתר
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Analytics Card */}
       <div className="glass rounded-xl p-6 card-shadow">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -281,14 +349,30 @@ export function ShopifyAnalytics({
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", metric.color)}>
                     {metric.icon}
                   </div>
-                  {'badge' in metric && metric.badge && (
-                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", metric.badgeColor)}>
-                      {metric.badge}
-                    </span>
-                  )}
                 </div>
-                <p className="text-xl font-bold">{metric.value}</p>
-                <p className="text-xs text-muted-foreground">{metric.label}</p>
+                {metric.available ? (
+                  <>
+                    <p className="text-xl font-bold">{metric.value}</p>
+                    <p className="text-xs text-muted-foreground">{metric.label}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-yellow-600">נדרשת פעולה</p>
+                    <p className="text-xs text-muted-foreground">{metric.label}</p>
+                    {'actionIssue' in metric && metric.actionIssue && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="mt-1 h-6 text-xs p-1"
+                        onClick={() => handleSendAdminEmail(metric.actionIssue!)}
+                        disabled={isSendingEmail}
+                      >
+                        <Mail className="w-3 h-3 ml-1" />
+                        דווח
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             ))}
           </div>

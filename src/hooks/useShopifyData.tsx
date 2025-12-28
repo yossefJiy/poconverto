@@ -69,9 +69,9 @@ interface ShopifyAnalytics {
     avgOrderValue: number;
     totalItemsSold: number;
     uniqueCustomers: number;
-    sessions: number;
-    visitors: number;
-    conversionRate: string;
+    sessions: number | null;
+    visitors: number | null;
+    conversionRate: string | null;
     isRealSessionData: boolean;
   };
   orderStatus: {
