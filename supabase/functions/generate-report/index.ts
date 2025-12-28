@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,12 +21,32 @@ serve(async (req) => {
   }
 
   try {
+    // Validate authentication
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      return unauthorizedResponse(auth.error);
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: ReportRequest = await req.json();
-    console.log('[Report] Generating report:', body);
+    console.log('[Report] Generating report for user:', auth.user.id, 'client:', body.client_id);
+
+    // Verify user has access to this client
+    const { data: hasAccess } = await supabase.rpc('has_client_access', {
+      _client_id: body.client_id,
+      _user_id: auth.user.id
+    });
+
+    if (!hasAccess) {
+      console.warn('[Report] Access denied for user:', auth.user.id, 'client:', body.client_id);
+      return new Response(
+        JSON.stringify({ error: 'Access denied to this client' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch client data
     const { data: client } = await supabase
