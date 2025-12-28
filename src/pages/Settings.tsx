@@ -1,30 +1,38 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { 
   User, 
   Bell, 
   Palette,
   Save,
-  Loader2
+  Loader2,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { AuthorizedUsersManager } from "@/components/admin/AuthorizedUsersManager";
 
 const settingsSections = [
   { id: "profile", icon: User, title: "פרופיל", description: "ניהול פרטים אישיים" },
   { id: "notifications", icon: Bell, title: "התראות", description: "הגדרת התראות ועדכונים" },
   { id: "appearance", icon: Palette, title: "מראה", description: "התאמה אישית של הממשק" },
+  { id: "users", icon: Shield, title: "משתמשים", description: "ניהול משתמשים מורשים", adminOnly: true },
 ];
 
 export default function Settings() {
   const { user } = useAuth();
+  const { isAdmin } = usePermissions();
   const [activeSection, setActiveSection] = useState("profile");
   const [saving, setSaving] = useState(false);
+
+  const visibleSections = settingsSections.filter(
+    section => !section.adminOnly || isAdmin
+  );
 
   const handleSave = async () => {
     setSaving(true);
@@ -52,7 +60,7 @@ export default function Settings() {
           <div className="lg:col-span-1">
             <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
               <div className="p-2">
-                {settingsSections.map((section) => (
+                {visibleSections.map((section) => (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
@@ -143,6 +151,10 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeSection === "users" && isAdmin && (
+              <AuthorizedUsersManager />
             )}
           </div>
         </div>

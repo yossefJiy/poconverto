@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { z } from "zod";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { PhoneSignIn } from "@/components/auth/PhoneSignIn";
-import { Mail, Phone } from "lucide-react";
+import { Mail, Phone, ShieldCheck } from "lucide-react";
 
 const emailSchema = z.string().email("אימייל לא תקין");
 const passwordSchema = z.string().min(6, "הסיסמה חייבת להכיל לפחות 6 תווים");
@@ -20,7 +20,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
@@ -88,45 +87,23 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateInputs()) return;
-    
-    setLoading(true);
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-
-    if (error) {
-      if (error.message.includes("already registered")) {
-        toast.error("המשתמש כבר רשום במערכת");
-      } else {
-        toast.error(error.message);
-      }
-    } else {
-      toast.success("נרשמת בהצלחה! מתחבר...");
-      navigate("/");
-    }
-    setLoading(false);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">מערכת ניהול שיווק</CardTitle>
-          <CardDescription>התחבר או הירשם כדי להמשיך</CardDescription>
+          <CardDescription>התחבר כדי להמשיך</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Authorized Users Info */}
+          <Alert className="border-primary/30 bg-primary/5">
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle>גישה מורשית בלבד</AlertTitle>
+            <AlertDescription className="text-sm">
+              רק משתמשים מורשים יכולים להתחבר למערכת. פנה למנהל המערכת לקבלת גישה.
+            </AlertDescription>
+          </Alert>
+
           {/* Social Login */}
           <div className="space-y-3">
             <GoogleSignInButton />
@@ -166,88 +143,36 @@ const Auth = () => {
           {authMethod === "phone" ? (
             <PhoneSignIn />
           ) : (
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">התחברות</TabsTrigger>
-                <TabsTrigger value="signup">הרשמה</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">אימייל</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      dir="ltr"
-                    />
-                    {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">סיסמה</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      dir="ltr"
-                    />
-                    {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "מתחבר..." : "התחברות"}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">שם מלא</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="ישראל ישראלי"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">אימייל</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      dir="ltr"
-                    />
-                    {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">סיסמה</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      dir="ltr"
-                    />
-                    {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "נרשם..." : "הרשמה"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-email">אימייל</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  dir="ltr"
+                />
+                {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">סיסמה</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  dir="ltr"
+                />
+                {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "מתחבר..." : "התחברות"}
+              </Button>
+            </form>
           )}
         </CardContent>
       </Card>
