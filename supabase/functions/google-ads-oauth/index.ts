@@ -8,9 +8,11 @@ const corsHeaders = {
 
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_ADS_CLIENT_ID') || '';
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET') || '';
+const GOOGLE_DEVELOPER_TOKEN = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') || '';
+const MCC_CUSTOMER_ID = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID') || '';
 
 interface OAuthRequest {
-  action: 'get_auth_url' | 'exchange_code' | 'refresh_token';
+  action: 'get_auth_url' | 'exchange_code' | 'refresh_token' | 'list_mcc_accounts';
   client_id?: string;
   code?: string;
   redirect_uri?: string;
@@ -34,6 +36,97 @@ function getAuthUrl(redirectUri: string, state: string): string {
   });
 
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+// Get access token using global refresh token (for MCC account listing)
+async function getAccessTokenFromRefreshToken(refreshToken: string): Promise<string> {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await response.json();
+  
+  if (data.error) {
+    throw new Error(data.error_description || data.error);
+  }
+
+  return data.access_token;
+}
+
+// List all client accounts under the MCC
+async function listMccAccounts(accessToken: string): Promise<Array<{ id: string; name: string; currency: string }>> {
+  const cleanMccId = MCC_CUSTOMER_ID.replace(/-/g, '');
+  
+  console.log('[Google Ads OAuth] Listing accounts under MCC:', cleanMccId);
+  
+  // Query to get all accessible customer accounts
+  const query = `
+    SELECT
+      customer_client.id,
+      customer_client.descriptive_name,
+      customer_client.currency_code,
+      customer_client.manager,
+      customer_client.status
+    FROM customer_client
+    WHERE customer_client.status = 'ENABLED'
+      AND customer_client.manager = false
+  `;
+  
+  const url = `https://googleads.googleapis.com/v22/customers/${cleanMccId}/googleAds:searchStream`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'developer-token': GOOGLE_DEVELOPER_TOKEN,
+      'Content-Type': 'application/json',
+      'login-customer-id': cleanMccId,
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[Google Ads OAuth] MCC listing error:', response.status, errorText);
+    throw new Error(`Failed to list MCC accounts: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const accounts: Array<{ id: string; name: string; currency: string }> = [];
+
+  if (Array.isArray(data)) {
+    for (const chunk of data) {
+      if (chunk.results) {
+        for (const result of chunk.results) {
+          const customerId = result.customerClient?.id;
+          const name = result.customerClient?.descriptiveName || `Account ${customerId}`;
+          const currency = result.customerClient?.currencyCode || 'ILS';
+          
+          if (customerId) {
+            // Format customer ID with dashes
+            const formattedId = customerId.toString().replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+            accounts.push({
+              id: formattedId,
+              name,
+              currency,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  console.log('[Google Ads OAuth] Found', accounts.length, 'accounts under MCC');
+  return accounts;
 }
 
 // Exchange authorization code for tokens
@@ -125,6 +218,27 @@ serve(async (req) => {
     const { action, client_id, code, redirect_uri, integration_id } = await req.json() as OAuthRequest;
 
     console.log(`[Google Ads OAuth] Action: ${action}`);
+
+    if (action === 'list_mcc_accounts') {
+      // List all accounts under the MCC using global refresh token
+      const globalRefreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
+      
+      if (!globalRefreshToken) {
+        throw new Error('MCC refresh token not configured');
+      }
+      
+      if (!MCC_CUSTOMER_ID) {
+        throw new Error('MCC Customer ID not configured');
+      }
+      
+      const accessToken = await getAccessTokenFromRefreshToken(globalRefreshToken);
+      const accounts = await listMccAccounts(accessToken);
+      
+      return new Response(
+        JSON.stringify({ success: true, accounts }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (action === 'get_auth_url') {
       // Generate OAuth URL with state containing client_id
