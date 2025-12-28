@@ -43,35 +43,25 @@ async function getAccessToken(clientId: string, clientSecret: string, refreshTok
   return tokenData.access_token;
 }
 
-// Execute Google Ads Query Language (GAQL) query using search (not searchStream)
+// Execute Google Ads Query Language (GAQL) query
 async function executeGoogleAdsQuery(
   accessToken: string,
   developerToken: string,
   customerId: string,
-  query: string,
-  loginCustomerId?: string
+  query: string
 ): Promise<any> {
-  // Use search instead of searchStream for better compatibility
-  const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}/googleAds:search`;
+  const url = `${GOOGLE_ADS_API_BASE}/customers/${customerId}/googleAds:searchStream`;
   
   console.log(`[Google Ads] Executing query for customer ${customerId}`);
   console.log(`[Google Ads] Query: ${query}`);
   
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${accessToken}`,
-    "developer-token": developerToken,
-    "Content-Type": "application/json"
-  };
-  
-  // If using MCC, add login-customer-id header
-  if (loginCustomerId && loginCustomerId !== customerId) {
-    headers["login-customer-id"] = loginCustomerId;
-    console.log(`[Google Ads] Using login-customer-id: ${loginCustomerId}`);
-  }
-  
   const response = await fetch(url, {
     method: "POST",
-    headers,
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "developer-token": developerToken,
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({ query })
   });
 
@@ -83,40 +73,6 @@ async function executeGoogleAdsQuery(
 
   const data = await response.json();
   return data;
-}
-
-// Test API access by listing accessible customers
-async function testApiAccess(
-  accessToken: string,
-  developerToken: string
-): Promise<{ success: boolean; customers?: string[]; error?: string }> {
-  const url = `${GOOGLE_ADS_API_BASE}/customers:listAccessibleCustomers`;
-  
-  console.log('[Google Ads] Testing API access with listAccessibleCustomers...');
-  
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "developer-token": developerToken,
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Google Ads] listAccessibleCustomers error: ${response.status}`, errorText);
-      return { success: false, error: `${response.status}: ${errorText}` };
-    }
-
-    const data = await response.json();
-    console.log('[Google Ads] Accessible customers:', data);
-    return { success: true, customers: data.resourceNames };
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[Google Ads] listAccessibleCustomers exception:', errorMessage);
-    return { success: false, error: errorMessage };
-  }
 }
 
 serve(async (req) => {
@@ -155,8 +111,6 @@ serve(async (req) => {
     }
 
     console.log('[Google Ads] All credentials loaded successfully');
-    console.log('[Google Ads] Developer Token (first 10 chars):', developerToken.substring(0, 10) + '...');
-    console.log('[Google Ads] Customer ID:', customerId);
 
     // Parse request body
     const { startDate, endDate, reportType } = await req.json();
@@ -168,19 +122,14 @@ serve(async (req) => {
     const requestStartDate = startDate || thirtyDaysAgo.toISOString().split('T')[0];
     const requestEndDate = endDate || today.toISOString().split('T')[0];
 
+    // Format dates for Google Ads API (YYYY-MM-DD)
+    const formattedStartDate = requestStartDate.replace(/-/g, '');
+    const formattedEndDate = requestEndDate.replace(/-/g, '');
+
     console.log(`[Google Ads] Date range: ${requestStartDate} to ${requestEndDate}`);
 
     // Get access token using refresh token flow
     const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
-
-    // Test API access first
-    const accessTest = await testApiAccess(accessToken, developerToken);
-    if (!accessTest.success) {
-      console.error('[Google Ads] API access test failed:', accessTest.error);
-      throw new Error(`Google Ads API access denied: ${accessTest.error}. Please check your Developer Token has Standard Access approval.`);
-    }
-    
-    console.log('[Google Ads] API access confirmed. Accessible customers:', accessTest.customers);
 
     // Clean customer ID (remove dashes if present)
     const cleanCustomerId = customerId.replace(/-/g, '');
