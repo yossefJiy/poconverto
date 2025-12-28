@@ -10,10 +10,10 @@ const corsHeaders = {
 const GOOGLE_ADS_API_VERSION = 'v18';
 const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
-// Generate access token using OAuth2
-async function getAccessToken(clientId: string, clientToken: string): Promise<string> {
-  // The client token is expected to be a refresh token
-  // We exchange it for an access token
+// Generate access token using OAuth2 Refresh Token flow
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  console.log('[Google Ads] Exchanging refresh token for access token...');
+  
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: {
@@ -21,20 +21,26 @@ async function getAccessToken(clientId: string, clientToken: string): Promise<st
     },
     body: new URLSearchParams({
       client_id: clientId,
-      client_secret: clientToken,
-      grant_type: "client_credentials"
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token"
     })
   });
 
   const tokenData = await tokenResponse.json();
   
-  if (tokenData.access_token) {
-    return tokenData.access_token;
+  if (tokenData.error) {
+    console.error('[Google Ads] Token exchange error:', tokenData);
+    throw new Error(`OAuth token error: ${tokenData.error_description || tokenData.error}`);
   }
   
-  // If client credentials flow doesn't work, the token might already be an access token
-  console.log("Token exchange response:", tokenData);
-  return clientToken;
+  if (!tokenData.access_token) {
+    console.error('[Google Ads] No access token in response:', tokenData);
+    throw new Error('Failed to obtain access token');
+  }
+  
+  console.log('[Google Ads] Access token obtained successfully');
+  return tokenData.access_token;
 }
 
 // Execute Google Ads Query Language (GAQL) query
@@ -88,7 +94,8 @@ serve(async (req) => {
     const developerToken = Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN');
     const customerId = Deno.env.get('GOOGLE_ADS_CUSTOMER_ID');
     const clientId = Deno.env.get('GOOGLE_ADS_CLIENT_ID');
-    const clientToken = Deno.env.get('GOOGLE_ADS_CLIENT_TOKEN');
+    const clientSecret = Deno.env.get('GOOGLE_ADS_CLIENT_SECRET');
+    const refreshToken = Deno.env.get('GOOGLE_ADS_REFRESH_TOKEN');
 
     if (!developerToken) {
       throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN is not configured');
@@ -96,11 +103,14 @@ serve(async (req) => {
     if (!customerId) {
       throw new Error('GOOGLE_ADS_CUSTOMER_ID is not configured');
     }
-    if (!clientId || !clientToken) {
-      throw new Error('GOOGLE_ADS_CLIENT_ID or GOOGLE_ADS_CLIENT_TOKEN is not configured');
+    if (!clientId || !clientSecret) {
+      throw new Error('GOOGLE_ADS_CLIENT_ID or GOOGLE_ADS_CLIENT_SECRET is not configured');
+    }
+    if (!refreshToken) {
+      throw new Error('GOOGLE_ADS_REFRESH_TOKEN is not configured');
     }
 
-    console.log('[Google Ads] Credentials loaded successfully');
+    console.log('[Google Ads] All credentials loaded successfully');
 
     // Parse request body
     const { startDate, endDate, reportType } = await req.json();
@@ -118,9 +128,8 @@ serve(async (req) => {
 
     console.log(`[Google Ads] Date range: ${requestStartDate} to ${requestEndDate}`);
 
-    // Get access token
-    const accessToken = await getAccessToken(clientId, clientToken);
-    console.log('[Google Ads] Access token obtained');
+    // Get access token using refresh token flow
+    const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
 
     // Clean customer ID (remove dashes if present)
     const cleanCustomerId = customerId.replace(/-/g, '');
