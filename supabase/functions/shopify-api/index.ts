@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +22,14 @@ serve(async (req) => {
   }
 
   try {
+    // Validate user authentication
+    const auth = await validateAuth(req);
+    if (!auth.authenticated) {
+      console.error('[Shopify API] Auth failed:', auth.error);
+      return unauthorizedResponse(auth.error);
+    }
+    console.log('[Shopify API] Authenticated user:', auth.user.id);
+
     const accessToken = Deno.env.get('SHOPIFY_ACCESS_TOKEN');
     const storeDomain = Deno.env.get('SHOPIFY_STORE_DOMAIN');
 
