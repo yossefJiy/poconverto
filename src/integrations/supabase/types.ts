@@ -157,6 +157,7 @@ export type Database = {
           id: string
           industry: string | null
           instagram_url: string | null
+          is_ecommerce: boolean | null
           linkedin_url: string | null
           logo_url: string | null
           name: string
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram_url?: string | null
+          is_ecommerce?: boolean | null
           linkedin_url?: string | null
           logo_url?: string | null
           name: string
@@ -189,6 +191,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram_url?: string | null
+          is_ecommerce?: boolean | null
           linkedin_url?: string | null
           logo_url?: string | null
           name?: string

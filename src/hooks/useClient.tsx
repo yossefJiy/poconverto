@@ -9,6 +9,7 @@ interface Client {
   logo_url: string | null;
   description: string | null;
   website: string | null;
+  is_ecommerce: boolean | null;
 }
 
 interface ClientContextType {
