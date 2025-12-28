@@ -296,6 +296,7 @@ export type Database = {
           access_token_encrypted: string | null
           client_id: string
           created_at: string
+          encrypted_credentials: string | null
           external_account_id: string | null
           id: string
           is_connected: boolean
@@ -309,6 +310,7 @@ export type Database = {
           access_token_encrypted?: string | null
           client_id: string
           created_at?: string
+          encrypted_credentials?: string | null
           external_account_id?: string | null
           id?: string
           is_connected?: boolean
@@ -322,6 +324,7 @@ export type Database = {
           access_token_encrypted?: string | null
           client_id?: string
           created_at?: string
+          encrypted_credentials?: string | null
           external_account_id?: string | null
           id?: string
           is_connected?: boolean
@@ -653,9 +656,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      integrations_secure: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          external_account_id: string | null
+          has_encrypted_credentials: boolean | null
+          id: string | null
+          is_connected: boolean | null
+          last_sync_at: string | null
+          platform: string | null
+          settings_masked: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          external_account_id?: string | null
+          has_encrypted_credentials?: never
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform?: string | null
+          settings_masked?: never
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          external_account_id?: string | null
+          has_encrypted_credentials?: never
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          platform?: string | null
+          settings_masked?: never
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      decrypt_integration_credentials: {
+        Args: { encrypted_data: string }
+        Returns: Json
+      }
+      encrypt_integration_credentials: {
+        Args: { credentials: Json }
+        Returns: string
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
