@@ -242,6 +242,8 @@ export default function Analytics() {
                 globalDateFrom={dateRange.startDate}
                 globalDateTo={dateRange.endDate}
                 onRefresh={handleRefreshAll}
+                clientProfitMargin={(selectedClient as any).avg_profit_margin || 0}
+                clientJiyCommission={(selectedClient as any).jiy_commission_percent || 0}
               />
             )}
 

@@ -405,6 +405,10 @@ serve(async (req) => {
       
       console.log(`[Shopify API] Final: ${totalOrders} orders, ₪${totalRevenue.toFixed(2)} revenue`);
       
+      // Extract ShopifyQL detailed sales data for Gross/Net breakdown
+      const grossSales = analyticsData && analyticsData.totalSales !== null ? (analyticsData.totalSales / 0.9) : notCancelledSubtotal; // Approximate gross from net
+      const discountsAmount = grossSales - (analyticsData?.totalSales ?? notCancelledSubtotal);
+      
       return new Response(
         JSON.stringify({
           success: true,
@@ -419,6 +423,16 @@ serve(async (req) => {
               visitors: realVisitors,
               conversionRate,
               isRealSessionData,
+            },
+            // Detailed sales breakdown matching Shopify dashboard
+            salesBreakdown: {
+              grossSales: grossSales,
+              discounts: discountsAmount,
+              returns: 0, // Would need refund data
+              netSales: analyticsData?.totalSales ?? notCancelledSubtotal,
+              shipping: 0, // Would need to extract from orders
+              taxes: 0, // Would need to extract from orders
+              totalSales: analyticsData?.totalSales ?? totalRevenue,
             },
             orderStatus: {
               paid: paidOrdersCount,

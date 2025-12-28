@@ -116,6 +116,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          avg_profit_margin: number | null
           created_at: string
           description: string | null
           facebook_url: string | null
@@ -124,6 +125,7 @@ export type Database = {
           instagram_url: string | null
           is_ecommerce: boolean | null
           is_lead_gen: boolean | null
+          jiy_commission_percent: number | null
           linkedin_url: string | null
           logo_url: string | null
           name: string
@@ -134,6 +136,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          avg_profit_margin?: number | null
           created_at?: string
           description?: string | null
           facebook_url?: string | null
@@ -142,6 +145,7 @@ export type Database = {
           instagram_url?: string | null
           is_ecommerce?: boolean | null
           is_lead_gen?: boolean | null
+          jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
           name: string
@@ -152,6 +156,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          avg_profit_margin?: number | null
           created_at?: string
           description?: string | null
           facebook_url?: string | null
@@ -160,6 +165,7 @@ export type Database = {
           instagram_url?: string | null
           is_ecommerce?: boolean | null
           is_lead_gen?: boolean | null
+          jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
           name?: string
