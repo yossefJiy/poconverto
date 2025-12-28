@@ -22,6 +22,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import ClientProfile from "./pages/ClientProfile";
 import ApiDocs from "./pages/ApiDocs";
 import Analytics from "./pages/Analytics";
+import Ecommerce from "./pages/Ecommerce";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/backlog" element={<ProtectedRoute><Backlog /></ProtectedRoute>} />
                 <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

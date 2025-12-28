@@ -18,7 +18,8 @@ import {
   Palette,
   ListTodo,
   Plug,
-  BarChart3
+  BarChart3,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +40,7 @@ import logoText from "@/assets/logo-text.svg";
 const menuItems = [
   { icon: LayoutDashboard, label: "דשבורד", path: "/" },
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics" },
+  { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce" },
   { icon: Users, label: "לקוחות", path: "/clients" },
   { icon: Target, label: "שיווק", path: "/marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns" },
