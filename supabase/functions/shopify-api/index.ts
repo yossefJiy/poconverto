@@ -16,19 +16,19 @@ interface ShopifyRequest {
 }
 
 // Helper to extract YYYY-MM-DD from various date formats
+// IMPORTANT: Parse dates in LOCAL timezone, not UTC, to match what user sees in UI
 function extractDateOnly(dateStr: string): string {
-  // If already in YYYY-MM-DD format
+  // If already in YYYY-MM-DD format, use as-is
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr;
   }
-  // Extract date part from ISO string or other formats
-  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (match) {
-    return match[1];
-  }
-  // Fallback: try to parse and format
+  
+  // Parse the date and format using LOCAL date parts
   const date = new Date(dateStr);
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Function to fetch ALL orders with pagination
