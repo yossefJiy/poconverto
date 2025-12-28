@@ -162,6 +162,7 @@ export default function Integrations() {
   const [selectedPlatform, setSelectedPlatform] = useState<typeof platformOptions[0] | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [credential, setCredential] = useState("");
+  const [loginCustomerId, setLoginCustomerId] = useState("");
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
 
@@ -184,12 +185,22 @@ export default function Integrations() {
     mutationFn: async () => {
       if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
       
+      // Build credentials object
+      const credentialsData: Record<string, string> = { 
+        [selectedPlatform.credentialKey]: credential 
+      };
+      
+      // Add login_customer_id for Google Ads if provided
+      if (selectedPlatform.id === 'google_ads' && loginCustomerId) {
+        credentialsData.login_customer_id = loginCustomerId;
+      }
+      
       const { data, error } = await supabase.functions.invoke('connect-integration', {
         body: {
           action: "connect",
           platform: selectedPlatform.id,
           client_id: selectedClient.id,
-          credentials: { [selectedPlatform.credentialKey]: credential },
+          credentials: credentialsData,
           notify_email: NOTIFY_EMAIL,
         }
       });
@@ -220,12 +231,22 @@ export default function Integrations() {
     mutationFn: async () => {
       if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
       
+      // Build credentials object
+      const credentialsData: Record<string, string> = { 
+        [selectedPlatform.credentialKey]: credential 
+      };
+      
+      // Add login_customer_id for Google Ads if provided
+      if (selectedPlatform.id === 'google_ads' && loginCustomerId) {
+        credentialsData.login_customer_id = loginCustomerId;
+      }
+      
       const { data, error } = await supabase.functions.invoke('connect-integration', {
         body: {
           action: "test",
           platform: selectedPlatform.id,
           client_id: selectedClient.id,
-          credentials: { [selectedPlatform.credentialKey]: credential },
+          credentials: credentialsData,
           notify_email: NOTIFY_EMAIL,
         }
       });
@@ -278,6 +299,7 @@ export default function Integrations() {
     setSelectedPlatform(platform);
     setCurrentStep(0);
     setCredential("");
+    setLoginCustomerId("");
     setConnectionStatus("idle");
     setConnectionMessage("");
   };
@@ -297,6 +319,7 @@ export default function Integrations() {
     setSelectedPlatform(null);
     setCurrentStep(0);
     setCredential("");
+    setLoginCustomerId("");
     setConnectionStatus("idle");
     setConnectionMessage("");
   };
@@ -498,19 +521,41 @@ export default function Integrations() {
               </div>
 
               {/* Input */}
-              <div className="space-y-2">
-                <Label>הזן את המזהה:</Label>
-                <Input
-                  value={credential}
-                  onChange={(e) => {
-                    setCredential(e.target.value);
-                    setCurrentStep(2);
-                    setConnectionStatus("idle");
-                  }}
-                  placeholder={selectedPlatform.placeholder}
-                  dir="ltr"
-                  className="text-left"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{selectedPlatform.id === 'google_ads' ? 'Customer ID (החשבון שרוצים לקרוא):' : 'הזן את המזהה:'}</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      setCredential(e.target.value);
+                      setCurrentStep(2);
+                      setConnectionStatus("idle");
+                    }}
+                    placeholder={selectedPlatform.placeholder}
+                    dir="ltr"
+                    className="text-left"
+                  />
+                </div>
+
+                {/* Login Customer ID for Google Ads MCC */}
+                {selectedPlatform.id === 'google_ads' && (
+                  <div className="space-y-2">
+                    <Label>Login Customer ID (MCC - אופציונלי):</Label>
+                    <Input
+                      value={loginCustomerId}
+                      onChange={(e) => {
+                        setLoginCustomerId(e.target.value);
+                        setConnectionStatus("idle");
+                      }}
+                      placeholder="123-456-7890"
+                      dir="ltr"
+                      className="text-left"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      אם החשבון מנוהל תחת MCC, הזן את מזהה ה-MCC. אם לא, השאר ריק.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Features */}

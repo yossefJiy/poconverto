@@ -88,10 +88,19 @@ interface GoogleAdsData {
   };
 }
 
+interface GoogleAdsIntegration {
+  id: string;
+  settings: {
+    customer_id?: string;
+    login_customer_id?: string;
+  } | null;
+}
+
 interface GoogleAdsCardProps {
   globalDateFrom: string;
   globalDateTo: string;
   onRefresh?: () => void;
+  integration?: GoogleAdsIntegration;
 }
 
 function formatNumber(num: number): string {
@@ -144,6 +153,7 @@ export function GoogleAdsCard({
   globalDateFrom,
   globalDateTo,
   onRefresh,
+  integration,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useLocalFilter, setUseLocalFilter] = useState(false);
@@ -165,8 +175,17 @@ export function GoogleAdsCard({
         ? new Date().toISOString().split('T')[0] 
         : globalDateTo.split('T')[0];
 
+      // Get customer ID from integration settings or use env fallback
+      const customerId = (integration?.settings as any)?.customer_id;
+      const loginCustomerId = (integration?.settings as any)?.login_customer_id;
+
       const { data: responseData, error: functionError } = await supabase.functions.invoke('google-ads', {
-        body: { startDate, endDate }
+        body: { 
+          startDate, 
+          endDate,
+          customerId,
+          loginCustomerId
+        }
       });
 
       if (functionError) {
@@ -223,7 +242,7 @@ export function GoogleAdsCard({
 
   useEffect(() => {
     fetchGoogleAdsData();
-  }, [globalDateFrom, globalDateTo, useLocalFilter, localDateFilter]);
+  }, [globalDateFrom, globalDateTo, useLocalFilter, localDateFilter, integration?.id]);
 
   const handleLocalFilterChange = (value: string) => {
     setLocalDateFilter(value);
