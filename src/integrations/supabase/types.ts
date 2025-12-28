@@ -14,41 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      brand_messages: {
-        Row: {
-          category: string | null
-          client_id: string
-          created_at: string
-          id: string
-          is_active: boolean | null
-          message: string
-        }
-        Insert: {
-          category?: string | null
-          client_id: string
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          message: string
-        }
-        Update: {
-          category?: string | null
-          client_id?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          message?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brand_messages_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       campaigns: {
         Row: {
           budget: number | null
@@ -206,94 +171,8 @@ export type Database = {
         }
         Relationships: []
       }
-      competitors: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          name: string
-          notes: string | null
-          strengths: string[] | null
-          weaknesses: string[] | null
-          website: string | null
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          name: string
-          notes?: string | null
-          strengths?: string[] | null
-          weaknesses?: string[] | null
-          website?: string | null
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          notes?: string | null
-          strengths?: string[] | null
-          weaknesses?: string[] | null
-          website?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "competitors_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      goals: {
-        Row: {
-          client_id: string
-          created_at: string
-          current_value: number | null
-          id: string
-          name: string
-          period: string | null
-          target_value: number
-          unit: string | null
-          updated_at: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          current_value?: number | null
-          id?: string
-          name: string
-          period?: string | null
-          target_value: number
-          unit?: string | null
-          updated_at?: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          current_value?: number | null
-          id?: string
-          name?: string
-          period?: string | null
-          target_value?: number
-          unit?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "goals_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       integrations: {
         Row: {
-          access_token_encrypted: string | null
           client_id: string
           created_at: string
           encrypted_credentials: string | null
@@ -302,12 +181,10 @@ export type Database = {
           is_connected: boolean
           last_sync_at: string | null
           platform: string
-          refresh_token_encrypted: string | null
           settings: Json | null
           updated_at: string
         }
         Insert: {
-          access_token_encrypted?: string | null
           client_id: string
           created_at?: string
           encrypted_credentials?: string | null
@@ -316,12 +193,10 @@ export type Database = {
           is_connected?: boolean
           last_sync_at?: string | null
           platform: string
-          refresh_token_encrypted?: string | null
           settings?: Json | null
           updated_at?: string
         }
         Update: {
-          access_token_encrypted?: string | null
           client_id?: string
           created_at?: string
           encrypted_credentials?: string | null
@@ -330,7 +205,6 @@ export type Database = {
           is_connected?: boolean
           last_sync_at?: string | null
           platform?: string
-          refresh_token_encrypted?: string | null
           settings?: Json | null
           updated_at?: string
         }
@@ -344,43 +218,40 @@ export type Database = {
           },
         ]
       }
-      personas: {
+      marketing_data: {
         Row: {
-          age_range: string | null
           client_id: string
           created_at: string
-          goals: string[] | null
+          data: Json
           id: string
-          interests: string[] | null
+          is_active: boolean | null
           name: string
-          occupation: string | null
-          pain_points: string[] | null
+          type: string
+          updated_at: string
         }
         Insert: {
-          age_range?: string | null
           client_id: string
           created_at?: string
-          goals?: string[] | null
+          data?: Json
           id?: string
-          interests?: string[] | null
+          is_active?: boolean | null
           name: string
-          occupation?: string | null
-          pain_points?: string[] | null
+          type: string
+          updated_at?: string
         }
         Update: {
-          age_range?: string | null
           client_id?: string
           created_at?: string
-          goals?: string[] | null
+          data?: Json
           id?: string
-          interests?: string[] | null
+          is_active?: boolean | null
           name?: string
-          occupation?: string | null
-          pain_points?: string[] | null
+          type?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "personas_client_id_fkey"
+            foreignKeyName: "marketing_data_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -418,168 +289,50 @@ export type Database = {
         }
         Relationships: []
       }
-      project_improvements: {
-        Row: {
-          category: string
-          created_at: string
-          description: string | null
-          estimated_effort: string | null
-          id: string
-          importance: number
-          priority: string
-          sprint_number: number | null
-          status: string
-          steps: Json | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          estimated_effort?: string | null
-          id?: string
-          importance?: number
-          priority?: string
-          sprint_number?: number | null
-          status?: string
-          steps?: Json | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          estimated_effort?: string | null
-          id?: string
-          importance?: number
-          priority?: string
-          sprint_number?: number | null
-          status?: string
-          steps?: Json | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      security_audit_logs: {
-        Row: {
-          action: string
-          created_at: string
-          details: Json | null
-          event_category: string
-          event_type: string
-          id: string
-          ip_address: string | null
-          resource_id: string | null
-          resource_type: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          details?: Json | null
-          event_category?: string
-          event_type: string
-          id?: string
-          ip_address?: string | null
-          resource_id?: string | null
-          resource_type?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          details?: Json | null
-          event_category?: string
-          event_type?: string
-          id?: string
-          ip_address?: string | null
-          resource_id?: string | null
-          resource_type?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       tasks: {
         Row: {
-          actual_hours: number | null
-          assigned_member_id: string | null
           assignee: string | null
           campaign_id: string | null
           client_id: string | null
-          completed_at: string | null
-          completion_notes: string | null
           created_at: string
           department: string | null
           description: string | null
           due_date: string | null
-          estimated_hours: number | null
           id: string
-          parent_task_id: string | null
           priority: string
-          reminder_date: string | null
-          reminder_sent: boolean | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
-          actual_hours?: number | null
-          assigned_member_id?: string | null
           assignee?: string | null
           campaign_id?: string | null
           client_id?: string | null
-          completed_at?: string | null
-          completion_notes?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
-          estimated_hours?: number | null
           id?: string
-          parent_task_id?: string | null
           priority?: string
-          reminder_date?: string | null
-          reminder_sent?: boolean | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
-          actual_hours?: number | null
-          assigned_member_id?: string | null
           assignee?: string | null
           campaign_id?: string | null
           client_id?: string | null
-          completed_at?: string | null
-          completion_notes?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
-          estimated_hours?: number | null
           id?: string
-          parent_task_id?: string | null
           priority?: string
-          reminder_date?: string | null
-          reminder_sent?: boolean | null
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tasks_assigned_member_id_fkey"
-            columns: ["assigned_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tasks_campaign_id_fkey"
             columns: ["campaign_id"]
@@ -594,16 +347,9 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tasks_parent_task_id_fkey"
-            columns: ["parent_task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
         ]
       }
-      team_members: {
+      team: {
         Row: {
           avatar_url: string | null
           created_at: string
@@ -612,9 +358,8 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
-          name_en: string | null
-          name_hi: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -624,9 +369,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
-          name_en?: string | null
-          name_hi?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -636,42 +380,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
-          name_en?: string | null
-          name_hi?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      translations: {
-        Row: {
-          context: string | null
-          created_at: string
-          en: string | null
-          he: string
-          hi: string | null
-          id: string
-          key: string
-          updated_at: string
-        }
-        Insert: {
-          context?: string | null
-          created_at?: string
-          en?: string | null
-          he: string
-          hi?: string | null
-          id?: string
-          key: string
-          updated_at?: string
-        }
-        Update: {
-          context?: string | null
-          created_at?: string
-          en?: string | null
-          he?: string
-          hi?: string | null
-          id?: string
-          key?: string
-          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
