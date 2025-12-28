@@ -408,53 +408,7 @@ export type Database = {
       }
     }
     Views: {
-      integrations_secure: {
-        Row: {
-          client_id: string | null
-          created_at: string | null
-          external_account_id: string | null
-          has_encrypted_credentials: boolean | null
-          id: string | null
-          is_connected: boolean | null
-          last_sync_at: string | null
-          platform: string | null
-          settings_masked: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string | null
-          external_account_id?: string | null
-          has_encrypted_credentials?: never
-          id?: string | null
-          is_connected?: boolean | null
-          last_sync_at?: string | null
-          platform?: string | null
-          settings_masked?: never
-          updated_at?: string | null
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string | null
-          external_account_id?: string | null
-          has_encrypted_credentials?: never
-          id?: string | null
-          is_connected?: boolean | null
-          last_sync_at?: string | null
-          platform?: string | null
-          settings_masked?: never
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "integrations_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       decrypt_integration_credentials: {

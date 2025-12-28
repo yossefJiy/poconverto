@@ -77,7 +77,7 @@ export default function ClientDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("*, team_members(name)")
+        .select("*")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(10);
@@ -95,19 +95,6 @@ export default function ClientDashboard() {
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(10);
-      return data || [];
-    },
-    enabled: !!clientId,
-  });
-
-  const { data: goals = [] } = useQuery({
-    queryKey: ["public-goals", clientId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!clientId,
@@ -177,30 +164,10 @@ export default function ClientDashboard() {
           <>
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <MetricCard
-                title="קמפיינים פעילים"
-                value={stats?.activeCampaigns || 0}
-                icon={<Megaphone className="w-5 h-5" />}
-                delay={0.1}
-              />
-              <MetricCard
-                title="משימות פתוחות"
-                value={stats?.openTasks || 0}
-                icon={<CheckSquare className="w-5 h-5" />}
-                delay={0.15}
-              />
-              <MetricCard
-                title="חשיפות"
-                value={formatNumber(stats?.totalImpressions || 0)}
-                icon={<Eye className="w-5 h-5" />}
-                delay={0.2}
-              />
-              <MetricCard
-                title="המרות"
-                value={stats?.totalConversions || 0}
-                icon={<TrendingUp className="w-5 h-5" />}
-                delay={0.25}
-              />
+              <MetricCard title="קמפיינים פעילים" value={stats?.activeCampaigns || 0} icon={<Megaphone className="w-5 h-5" />} delay={0.1} />
+              <MetricCard title="משימות פתוחות" value={stats?.openTasks || 0} icon={<CheckSquare className="w-5 h-5" />} delay={0.15} />
+              <MetricCard title="חשיפות" value={formatNumber(stats?.totalImpressions || 0)} icon={<Eye className="w-5 h-5" />} delay={0.2} />
+              <MetricCard title="המרות" value={stats?.totalConversions || 0} icon={<TrendingUp className="w-5 h-5" />} delay={0.25} />
             </div>
 
             {/* Budget & Performance */}
@@ -216,14 +183,9 @@ export default function ClientDashboard() {
                   </div>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${stats?.totalBudget ? (stats.totalSpent / stats.totalBudget) * 100 : 0}%` }}
-                  />
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${stats?.totalBudget ? (stats.totalSpent / stats.totalBudget) * 100 : 0}%` }} />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  ₪{formatNumber(stats?.totalSpent || 0)} מתוך ₪{formatNumber(stats?.totalBudget || 0)}
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">₪{formatNumber(stats?.totalSpent || 0)} מתוך ₪{formatNumber(stats?.totalBudget || 0)}</p>
               </div>
 
               <div className="bg-card rounded-xl p-6 border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: "0.35s", animationFillMode: "forwards" }}>
@@ -253,41 +215,10 @@ export default function ClientDashboard() {
                   </div>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-success rounded-full transition-all"
-                    style={{ width: `${stats?.openTasks || stats?.completedTasks ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }}
-                  />
+                  <div className="h-full bg-success rounded-full transition-all" style={{ width: `${stats?.openTasks || stats?.completedTasks ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }} />
                 </div>
               </div>
             </div>
-
-            {/* Goals */}
-            {goals.length > 0 && (
-              <div className="mb-8 opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
-                <h2 className="text-lg font-bold mb-4">יעדים</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {goals.map((goal: any) => (
-                    <div key={goal.id} className="bg-card rounded-xl p-4 border border-border shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium">{goal.name}</h3>
-                        <span className="text-xs text-muted-foreground">{goal.period}</span>
-                      </div>
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <span className="text-2xl font-bold">{goal.current_value || 0}</span>
-                        <span className="text-muted-foreground">/ {goal.target_value}</span>
-                        {goal.unit && <span className="text-sm text-muted-foreground">{goal.unit}</span>}
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${Math.min((goal.current_value / goal.target_value) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -306,15 +237,11 @@ export default function ClientDashboard() {
                           <div>
                             <p className="font-medium">{task.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {task.team_members?.name || task.assignee || "לא משויך"}
+                              {task.assignee || "לא משויך"}
                               {task.due_date && ` • ${format(new Date(task.due_date), "dd/MM/yyyy")}`}
                             </p>
                           </div>
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            statusConfig[task.status]?.color || "bg-muted",
-                            "text-foreground"
-                          )}>
+                          <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusConfig[task.status]?.color || "bg-muted", "text-foreground")}>
                             {statusConfig[task.status]?.label || task.status}
                           </span>
                         </div>
@@ -340,11 +267,7 @@ export default function ClientDashboard() {
                             <p className="font-medium">{campaign.name}</p>
                             <p className="text-xs text-muted-foreground">{campaign.platform}</p>
                           </div>
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            statusConfig[campaign.status]?.color || "bg-muted",
-                            "text-foreground"
-                          )}>
+                          <span className={cn("px-2 py-1 rounded-full text-xs font-medium", statusConfig[campaign.status]?.color || "bg-muted", "text-foreground")}>
                             {statusConfig[campaign.status]?.label || campaign.status}
                           </span>
                         </div>
@@ -372,7 +295,6 @@ export default function ClientDashboard() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border mt-12 py-6 text-center text-sm text-muted-foreground">
         <p>דוח זה נוצר אוטומטית • {format(new Date(), "dd/MM/yyyy HH:mm", { locale: he })}</p>
       </footer>
@@ -382,14 +304,9 @@ export default function ClientDashboard() {
 
 function MetricCard({ title, value, icon, delay }: { title: string; value: string | number; icon: React.ReactNode; delay: number }) {
   return (
-    <div 
-      className="bg-card rounded-xl p-5 border border-border shadow-sm opacity-0 animate-slide-up"
-      style={{ animationDelay: `${delay}s`, animationFillMode: "forwards" }}
-    >
+    <div className="bg-card rounded-xl p-5 border border-border shadow-sm opacity-0 animate-slide-up" style={{ animationDelay: `${delay}s`, animationFillMode: "forwards" }}>
       <div className="flex items-center justify-between mb-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-          {icon}
-        </div>
+        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">{icon}</div>
       </div>
       <p className="text-2xl font-bold">{value}</p>
       <p className="text-sm text-muted-foreground">{title}</p>
