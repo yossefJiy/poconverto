@@ -279,7 +279,7 @@ function generateMockPlatformData(platform: string, name: string, logo: string, 
 
 export function useAnalyticsData(clientId: string | undefined, dateRange: string = "30") {
   // Fetch connected integrations
-  const { data: integrations = [] } = useQuery({
+  const { data: integrations = [], refetch: refetchIntegrations } = useQuery({
     queryKey: ["integrations", clientId],
     queryFn: async () => {
       if (!clientId) return [];
@@ -292,6 +292,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       return data;
     },
     enabled: !!clientId,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Get GA property ID from integration settings
@@ -404,6 +405,9 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       ["google_ads", "facebook_ads", "instagram", "tiktok", "linkedin"].includes(i.platform)
     ),
     analyticsError,
-    refetchAnalytics,
+    refetchAll: async () => {
+      await refetchIntegrations();
+      await refetchAnalytics();
+    },
   };
 }
