@@ -4,7 +4,9 @@ import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 import { AnalyticsSummary } from "@/components/analytics/AnalyticsSummary";
 import { PlatformTabs } from "@/components/analytics/PlatformTabs";
+import { ShopifyDashboard } from "@/components/shopify/ShopifyDashboard";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plug, 
   ArrowRight, 
@@ -12,7 +14,9 @@ import {
   Calendar,
   Download,
   RefreshCw,
-  Loader2
+  Loader2,
+  BarChart3,
+  ShoppingBag,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +32,7 @@ import { useState } from "react";
 export default function Analytics() {
   const { selectedClient } = useClient();
   const [dateRange, setDateRange] = useState("30");
+  const [mainTab, setMainTab] = useState("analytics");
   
   const { 
     analyticsData, 
@@ -39,6 +44,9 @@ export default function Analytics() {
     hasAds,
     refetchAll
   } = useAnalyticsData(selectedClient?.id, dateRange);
+
+  // Check if client has Shopify integration
+  const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
 
   if (!selectedClient) {
     return (
@@ -130,33 +138,55 @@ export default function Analytics() {
           </Alert>
         )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            {/* Summary Section */}
-            <AnalyticsSummary 
-              websiteData={{
-                sessions: analyticsData.sessions,
-                users: analyticsData.users,
-                pageviews: analyticsData.pageviews,
-                bounceRate: analyticsData.bounceRate,
-              }}
-              adsData={aggregatedAdsData}
-            />
+        {/* Main Tabs - Show eCommerce tab if Shopify is connected or for demo */}
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              אנליטיקס ופרסום
+            </TabsTrigger>
+            <TabsTrigger value="ecommerce" className="gap-2">
+              <ShoppingBag className="w-4 h-4" />
+              חנות ומלאי
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Platform Tabs */}
+          <TabsContent value="analytics">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                {/* Summary Section */}
+                <AnalyticsSummary 
+                  websiteData={{
+                    sessions: analyticsData.sessions,
+                    users: analyticsData.users,
+                    pageviews: analyticsData.pageviews,
+                    bounceRate: analyticsData.bounceRate,
+                  }}
+                  adsData={aggregatedAdsData}
+                />
+
+                {/* Platform Tabs */}
+                <div className="glass rounded-xl p-6 card-shadow">
+                  <h2 className="text-xl font-bold mb-6">פירוט לפי פלטפורמה</h2>
+                  <PlatformTabs 
+                    platforms={platformsData}
+                    analyticsData={analyticsData}
+                  />
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="ecommerce">
             <div className="glass rounded-xl p-6 card-shadow">
-              <h2 className="text-xl font-bold mb-6">פירוט לפי פלטפורמה</h2>
-              <PlatformTabs 
-                platforms={platformsData}
-                analyticsData={analyticsData}
-              />
+              <ShopifyDashboard />
             </div>
-          </>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );
