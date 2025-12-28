@@ -17,12 +17,18 @@ import { useClient } from "@/hooks/useClient";
 
 interface CreateClientDialogProps {
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateClientDialog({ trigger }: CreateClientDialogProps) {
+export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange }: CreateClientDialogProps) {
   const queryClient = useQueryClient();
   const { setSelectedClient } = useClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  
   const [form, setForm] = useState({
     name: "",
     industry: "",
