@@ -226,8 +226,70 @@ async function syncTikTok(integration: any, supabase: any): Promise<CampaignData
   return campaigns;
 }
 
+// Save snapshot to database
+async function saveSnapshot(supabase: any, clientId: string, platform: string, integrationId: string | null, data: any, metrics: any) {
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { error } = await supabase
+    .from('analytics_snapshots')
+    .upsert({
+      client_id: clientId,
+      integration_id: integrationId,
+      platform,
+      snapshot_date: today,
+      data,
+      metrics,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'client_id,platform,snapshot_date',
+    });
+  
+  if (error) {
+    console.error(`[Snapshot] Error saving snapshot for ${platform}:`, error);
+  } else {
+    console.log(`[Snapshot] Saved snapshot for ${platform} on ${today}`);
+  }
+}
+
+// Update sync schedule
+async function updateSyncSchedule(supabase: any, clientId: string, platform: string | null, frequency: string = 'daily') {
+  const now = new Date();
+  let nextSync: Date;
+  
+  switch (frequency) {
+    case 'hourly':
+      nextSync = new Date(now.getTime() + 60 * 60 * 1000);
+      break;
+    case 'weekly':
+      nextSync = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'daily':
+    default:
+      nextSync = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      break;
+  }
+  
+  const { error } = await supabase
+    .from('sync_schedules')
+    .upsert({
+      client_id: clientId,
+      platform,
+      frequency,
+      last_sync_at: now.toISOString(),
+      next_sync_at: nextSync.toISOString(),
+      is_active: true,
+      updated_at: now.toISOString(),
+    }, {
+      onConflict: 'client_id,platform',
+    });
+  
+  if (error) {
+    console.error(`[Schedule] Error updating sync schedule:`, error);
+  }
+}
+
 // Main sync orchestrator
-async function syncIntegration(integration: any, supabase: any) {
+async function syncIntegration(integration: any, supabase: any, saveSnapshots: boolean = true) {
   console.log(`[Sync] Processing integration: ${integration.id} (${integration.platform})`);
   
   let campaigns: CampaignData[] = [];
@@ -305,6 +367,31 @@ async function syncIntegration(integration: any, supabase: any) {
   
   if (updateError) {
     console.error(`[Sync] Error updating integration:`, updateError);
+  }
+  
+  // Save snapshot for quick loading
+  if (saveSnapshots) {
+    const snapshotData = campaigns.length > 0 ? { campaigns } : metadata;
+    const snapshotMetrics = campaigns.length > 0 
+      ? {
+          total_impressions: campaigns.reduce((sum, c) => sum + c.impressions, 0),
+          total_clicks: campaigns.reduce((sum, c) => sum + c.clicks, 0),
+          total_conversions: campaigns.reduce((sum, c) => sum + c.conversions, 0),
+          total_spent: campaigns.reduce((sum, c) => sum + c.spent, 0),
+        }
+      : metadata;
+    
+    await saveSnapshot(
+      supabase, 
+      integration.client_id, 
+      integration.platform, 
+      integration.id, 
+      snapshotData, 
+      snapshotMetrics
+    );
+    
+    // Update sync schedule
+    await updateSyncSchedule(supabase, integration.client_id, integration.platform);
   }
   
   return {

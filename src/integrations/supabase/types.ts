@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_snapshots: {
+        Row: {
+          client_id: string
+          created_at: string
+          data: Json
+          id: string
+          integration_id: string | null
+          metrics: Json
+          platform: string
+          snapshot_date: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          data?: Json
+          id?: string
+          integration_id?: string | null
+          metrics?: Json
+          platform: string
+          snapshot_date?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          integration_id?: string | null
+          metrics?: Json
+          platform?: string
+          snapshot_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_snapshots_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           budget: number | null
@@ -294,6 +345,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sync_schedules: {
+        Row: {
+          client_id: string
+          created_at: string
+          frequency: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          next_sync_at: string | null
+          platform: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          next_sync_at?: string | null
+          platform?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          next_sync_at?: string | null
+          platform?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_schedules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
