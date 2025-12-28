@@ -13,16 +13,16 @@ import {
   User,
   Languages,
   Shield,
-  Link2,
+  Plug,
   Bell,
   Palette,
   ListTodo,
-  Plug,
   BarChart3,
   ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,15 +37,21 @@ import { ClientSwitcher } from "./ClientSwitcher";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "דשבורד", path: "/" },
-  { icon: BarChart3, label: "אנליטיקס", path: "/analytics" },
-  { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce" },
-  { icon: Users, label: "לקוחות", path: "/clients" },
-  { icon: Target, label: "שיווק", path: "/marketing" },
-  { icon: Megaphone, label: "קמפיינים", path: "/campaigns" },
-  { icon: CheckSquare, label: "משימות", path: "/tasks" },
-  { icon: Users, label: "צוות", path: "/team" },
+interface MenuItem {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  path: string;
+  moduleKey?: keyof ClientModules;
+}
+
+const menuItems: MenuItem[] = [
+  { icon: LayoutDashboard, label: "דשבורד", path: "/", moduleKey: "dashboard" },
+  { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
+  { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
+  { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
+  { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
+  { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
+  { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
 ];
 
 const settingsItems = [
@@ -65,6 +71,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { user, signOut, role } = useAuth();
+  const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
 
   const userEmail = user?.email || "";
   const userInitials = userEmail ? userEmail.substring(0, 2).toUpperCase() : "U";
@@ -81,6 +88,12 @@ export function Sidebar() {
     };
     return role ? labels[role] || role : "משתמש";
   };
+
+  // Filter menu items based on enabled modules
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!item.moduleKey) return true;
+    return isModuleEnabled(item.moduleKey);
+  });
 
   return (
     <aside 
@@ -117,7 +130,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
-        {menuItems.map((item, index) => {
+        {visibleMenuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
             <Link
@@ -145,6 +158,24 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Client Settings - Only for admins when client is selected */}
+        {selectedClient && isAdmin && (
+          <Link
+            to="/clients"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+              location.pathname === "/clients"
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            )}
+          >
+            <Settings className="w-5 h-5 shrink-0" />
+            {!collapsed && (
+              <span className="font-medium">הגדרות לקוח</span>
+            )}
+          </Link>
+        )}
       </nav>
 
       {/* Bottom Section */}

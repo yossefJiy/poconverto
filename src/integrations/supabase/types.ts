@@ -179,6 +179,7 @@ export type Database = {
           jiy_commission_percent: number | null
           linkedin_url: string | null
           logo_url: string | null
+          modules_enabled: Json | null
           name: string
           shopify_email: string | null
           tiktok_url: string | null
@@ -199,6 +200,7 @@ export type Database = {
           jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
+          modules_enabled?: Json | null
           name: string
           shopify_email?: string | null
           tiktok_url?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
+          modules_enabled?: Json | null
           name?: string
           shopify_email?: string | null
           tiktok_url?: string | null
@@ -356,6 +359,7 @@ export type Database = {
           last_sync_at: string | null
           next_sync_at: string | null
           platform: string | null
+          sync_frequency: string | null
           updated_at: string
         }
         Insert: {
@@ -367,6 +371,7 @@ export type Database = {
           last_sync_at?: string | null
           next_sync_at?: string | null
           platform?: string | null
+          sync_frequency?: string | null
           updated_at?: string
         }
         Update: {
@@ -378,6 +383,7 @@ export type Database = {
           last_sync_at?: string | null
           next_sync_at?: string | null
           platform?: string | null
+          sync_frequency?: string | null
           updated_at?: string
         }
         Relationships: [

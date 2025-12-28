@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
+import { useClientModules, ClientModules } from "@/hooks/useClientModules";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Building2, 
   Plus, 
@@ -40,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import { ClientSettingsSection } from "@/components/client/ClientSettingsSection";
+import { ClientModulesSettings } from "@/components/client/ClientModulesSettings";
 import { Link } from "react-router-dom";
 
 // TikTok icon component
@@ -84,6 +87,8 @@ const emptyForm: ClientForm = {
 export default function ClientProfile() {
   const queryClient = useQueryClient();
   const { selectedClient, setSelectedClient, clients, isLoading: clientsLoading } = useClient();
+  const { modules, isAdmin } = useClientModules();
+  const { role } = useAuth();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [form, setForm] = useState<ClientForm>(emptyForm);
@@ -140,6 +145,22 @@ export default function ClientProfile() {
         .from("integrations")
         .select("*")
         .eq("client_id", selectedClient.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedClient,
+  });
+
+  // Fetch sync schedule
+  const { data: syncSchedule } = useQuery({
+    queryKey: ["sync-schedule", selectedClient?.id],
+    queryFn: async () => {
+      if (!selectedClient) return null;
+      const { data, error } = await supabase
+        .from("sync_schedules")
+        .select("sync_frequency")
+        .eq("client_id", selectedClient.id)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -528,7 +549,7 @@ export default function ClientProfile() {
           </Card>
         </div>
 
-        {/* Client Settings Section */}
+        {/* Client Settings Section - Legacy */}
         <ClientSettingsSection
           clientId={selectedClient.id}
           clientName={selectedClient.name}
@@ -536,6 +557,15 @@ export default function ClientProfile() {
           isLeadGen={(clientData as any)?.is_lead_gen ?? true}
           integrations={integrations}
         />
+
+        {/* Modules Settings - Admin only */}
+        {isAdmin && (
+          <ClientModulesSettings
+            clientId={selectedClient.id}
+            modules={modules}
+            syncFrequency={syncSchedule?.sync_frequency || "daily"}
+          />
+        )}
       </div>
 
       {/* Edit Dialog */}
