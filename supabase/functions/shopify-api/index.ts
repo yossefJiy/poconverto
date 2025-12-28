@@ -144,12 +144,9 @@ async function fetchShopifyAnalytics(
     const graphqlQuery = `
       query {
         shopifyqlQuery(query: "${shopifyqlQuery.replace(/\n/g, ' ').replace(/"/g, '\\"').trim()}") {
-          __typename
-          ... on TableResponse {
-            tableData {
-              columns { name dataType }
-              rowData
-            }
+          tableData {
+            columns { name dataType }
+            rows
           }
           parseErrors { code message }
         }
@@ -187,40 +184,40 @@ async function fetchShopifyAnalytics(
     let totalConverted = 0;
     let totalSales: number | null = null;
     
-    // Parse sessions result
-    if (sessionsResult?.data?.shopifyqlQuery?.__typename === 'TableResponse') {
+    // Parse sessions result - new API format uses tableData.rows directly
+    if (sessionsResult?.data?.shopifyqlQuery?.tableData) {
       const tableData = sessionsResult.data.shopifyqlQuery.tableData;
       const columns = tableData?.columns || [];
-      const rows = tableData?.rowData || [];
+      const rows = tableData?.rows || [];
       
-      const sessionsIdx = columns.findIndex((c: any) => c.name === 'sessions');
-      const visitorsIdx = columns.findIndex((c: any) => c.name === 'visitors');
-      const convertedIdx = columns.findIndex((c: any) => c.name === 'sessions_converted');
+      console.log('[Shopify API] Sessions columns:', columns.map((c: any) => c.name));
       
       for (const row of rows) {
-        if (sessionsIdx >= 0 && row[sessionsIdx]) totalSessions += parseInt(row[sessionsIdx]) || 0;
-        if (visitorsIdx >= 0 && row[visitorsIdx]) totalVisitors += parseInt(row[visitorsIdx]) || 0;
-        if (convertedIdx >= 0 && row[convertedIdx]) totalConverted += parseInt(row[convertedIdx]) || 0;
+        // New format: rows are objects with column names as keys
+        if (row.sessions) totalSessions += parseInt(row.sessions) || 0;
+        if (row.visitors) totalVisitors += parseInt(row.visitors) || 0;
+        if (row.sessions_converted) totalConverted += parseInt(row.sessions_converted) || 0;
       }
       
       console.log(`[Shopify API] Sessions data: sessions=${totalSessions}, visitors=${totalVisitors}, converted=${totalConverted}`);
     } else if (sessionsResult?.errors) {
       console.log('[Shopify API] Sessions query error:', sessionsResult.errors[0]?.message);
+    } else if (sessionsResult?.data?.shopifyqlQuery?.parseErrors?.length > 0) {
+      console.log('[Shopify API] Sessions parse error:', sessionsResult.data.shopifyqlQuery.parseErrors);
     }
     
-    // Parse sales result
-    if (salesResult?.data?.shopifyqlQuery?.__typename === 'TableResponse') {
+    // Parse sales result - new API format
+    if (salesResult?.data?.shopifyqlQuery?.tableData) {
       const tableData = salesResult.data.shopifyqlQuery.tableData;
-      const columns = tableData?.columns || [];
-      const rows = tableData?.rowData || [];
+      const rows = tableData?.rows || [];
       
-      const salesIdx = columns.findIndex((c: any) => c.name === 'total_sales');
+      console.log('[Shopify API] Sales rows count:', rows.length);
       
       totalSales = 0;
       for (const row of rows) {
-        if (salesIdx >= 0 && row[salesIdx]) {
-          // total_sales can be formatted like "₪1,234.56" or just a number
-          const value = row[salesIdx].toString().replace(/[^\d.-]/g, '');
+        // New format: rows are objects with column names as keys
+        if (row.total_sales) {
+          const value = row.total_sales.toString().replace(/[^\d.-]/g, '');
           totalSales += parseFloat(value) || 0;
         }
       }
@@ -228,7 +225,7 @@ async function fetchShopifyAnalytics(
       console.log(`[Shopify API] ShopifyQL Total Sales: ₪${totalSales.toFixed(2)}`);
     } else if (salesResult?.errors) {
       console.log('[Shopify API] Sales query error:', salesResult.errors[0]?.message);
-    } else if (salesResult?.data?.shopifyqlQuery?.parseErrors) {
+    } else if (salesResult?.data?.shopifyqlQuery?.parseErrors?.length > 0) {
       console.log('[Shopify API] Sales query parse error:', salesResult.data.shopifyqlQuery.parseErrors);
     }
     
