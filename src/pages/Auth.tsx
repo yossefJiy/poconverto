@@ -49,17 +49,23 @@ const Auth = () => {
   useEffect(() => {
     // Check if user is already logged in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth] onAuthStateChange:", { event, hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
+      
       // Don't navigate if we're in the middle of 2FA flow
       if (is2FAInProgress.current) {
+        console.log("[Auth] Skipping navigation - 2FA in progress");
         return;
       }
       if (session?.user) {
+        console.log("[Auth] User session detected, navigating to home");
         navigate("/");
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("[Auth] Initial getSession:", { hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
       if (session?.user && !is2FAInProgress.current) {
+        console.log("[Auth] Existing session found, navigating to home");
         navigate("/");
       }
     });
@@ -113,15 +119,18 @@ const Auth = () => {
     setLoading(true);
     // Set flag to prevent navigation during 2FA
     is2FAInProgress.current = true;
+    console.log("[Auth][2FA] Starting credential verification for:", email);
     
     try {
       // First verify credentials are correct
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      console.log("[Auth][2FA] Calling signInWithPassword...");
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
+        console.error("[Auth][2FA] signInWithPassword failed:", signInError);
         is2FAInProgress.current = false;
         if (signInError.message.includes("Invalid login credentials")) {
           toast.error("אימייל או סיסמה שגויים");
@@ -132,18 +141,23 @@ const Auth = () => {
         return;
       }
 
+      console.log("[Auth][2FA] Credentials valid, session created:", { userId: signInData.user?.id });
+
       // Sign out immediately - we need 2FA verification
+      console.log("[Auth][2FA] Signing out for 2FA verification...");
       await supabase.auth.signOut();
+      console.log("[Auth][2FA] Signed out, sending 2FA code...");
 
       // Send 2FA code via our edge function
       await send2FACode();
+      console.log("[Auth][2FA] 2FA code sent successfully");
 
       toast.success("קוד אימות נשלח לאימייל שלך");
       setAuthStep("otp");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
     } catch (error: any) {
       is2FAInProgress.current = false;
-      console.error("2FA send error:", error);
+      console.error("[Auth][2FA] Error in handleSendOtp:", error);
       toast.error("שגיאה בשליחת קוד אימות: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
@@ -159,39 +173,57 @@ const Auth = () => {
     }
     
     setLoading(true);
+    console.log("[Auth][2FA] Starting OTP verification...");
     
     try {
       // Verify the code via our edge function
+      console.log("[Auth][2FA] Calling verify function...");
       const response = await supabase.functions.invoke("send-2fa-code", {
         body: { email, action: "verify", code: otpCode },
       });
 
+      console.log("[Auth][2FA] Verify response:", { hasError: !!response.error, data: response.data });
+
       if (response.error || !response.data?.valid) {
         const errorMessage = response.data?.error || response.error?.message || "Invalid code";
+        console.error("[Auth][2FA] OTP verification failed:", errorMessage);
         toast.error(errorMessage === "Invalid code" ? "קוד אימות שגוי" : errorMessage);
         setLoading(false);
         return;
       }
 
+      console.log("[Auth][2FA] OTP verified, signing in with password...");
+      
       // Code is valid - now sign in with password
       // Reset the 2FA flag so navigation works
       is2FAInProgress.current = false;
       
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: finalSignIn, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
+        console.error("[Auth][2FA] Final signIn failed:", signInError);
         toast.error("שגיאה בהתחברות: " + signInError.message);
         setLoading(false);
         return;
       }
 
+      console.log("[Auth][2FA] Login successful:", { userId: finalSignIn.user?.id, sessionExists: !!finalSignIn.session });
+      
+      // Log session details for debugging
+      const sessionCheck = await supabase.auth.getSession();
+      console.log("[Auth][2FA] Session check after login:", { 
+        hasSession: !!sessionCheck.data.session,
+        accessToken: sessionCheck.data.session?.access_token ? "present" : "missing",
+        expiresAt: sessionCheck.data.session?.expires_at
+      });
+
       toast.success("התחברת בהצלחה!");
       navigate("/");
     } catch (error: any) {
-      console.error("2FA verify error:", error);
+      console.error("[Auth][2FA] Error in handleVerifyOtp:", error);
       toast.error("שגיאה באימות: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
