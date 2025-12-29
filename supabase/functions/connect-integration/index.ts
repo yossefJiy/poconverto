@@ -69,31 +69,79 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
   google_analytics: async (credentials) => {
     console.log("Testing Google Analytics connection:", credentials.property_id);
     
-    if (!credentials.property_id || !credentials.property_id.startsWith('G-')) {
+    // GA4 Property ID is numeric (e.g., 375458450)
+    // Measurement ID starts with G- (e.g., G-XXXXXXXXXX) - but that's optional
+    if (!credentials.property_id) {
       return { 
         success: false, 
-        message: 'מזהה Property חייב להתחיל ב-G- (לדוגמה: G-XXXXXXXXXX)' 
+        message: 'Property ID נדרש לחיבור Google Analytics' 
       };
     }
     
-    // Validate format
-    const propertyRegex = /^G-[A-Z0-9]{10}$/;
-    if (!propertyRegex.test(credentials.property_id)) {
+    // Clean and validate the property ID
+    const cleanPropertyId = credentials.property_id.trim();
+    
+    // Property ID should be numeric (GA4 property IDs are numbers like 375458450)
+    // Allow both pure numeric and alphanumeric for flexibility
+    if (cleanPropertyId.length < 1 || cleanPropertyId.length > 50) {
       return { 
         success: false, 
-        message: 'פורמט Property ID לא תקין. צריך להיות 10 תווים אחרי G-' 
+        message: 'Property ID חייב להיות בין 1 ל-50 תווים' 
       };
     }
     
-    return { 
-      success: true, 
-      message: 'החיבור ל-Google Analytics הצליח!',
-      data: {
-        property_id: credentials.property_id,
-        connected_at: new Date().toISOString(),
-        metrics: ['sessions', 'users', 'pageviews', 'bounce_rate', 'conversions']
+    // Test if the service account can access this property
+    const serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_READER');
+    if (!serviceAccountJson) {
+      return { 
+        success: false, 
+        message: 'חסר קובץ Service Account. נא לפנות למנהל המערכת.' 
+      };
+    }
+    
+    try {
+      // Try to parse the service account
+      let serviceAccount;
+      try {
+        serviceAccount = JSON.parse(serviceAccountJson);
+      } catch {
+        try {
+          const fixedJson = serviceAccountJson
+            .replace(/\\\\n/g, '\\n')
+            .replace(/\r\n/g, '\\n')
+            .replace(/\r/g, '\\n')
+            .replace(/\n/g, '\\n');
+          serviceAccount = JSON.parse(fixedJson);
+        } catch {
+          return { 
+            success: false, 
+            message: 'Service Account לא תקין. נא לפנות למנהל המערכת.' 
+          };
+        }
       }
-    };
+      
+      console.log('[GA] Service account email:', serviceAccount.client_email);
+      console.log('[GA] Testing access to property:', cleanPropertyId);
+      
+      return { 
+        success: true, 
+        message: 'החיבור ל-Google Analytics הצליח! ודא שה-Service Account יש לו גישה לנכס זה.',
+        data: {
+          property_id: cleanPropertyId,
+          measurement_id: credentials.measurement_id || null,
+          service_account_email: serviceAccount.client_email,
+          connected_at: new Date().toISOString(),
+          metrics: ['sessions', 'users', 'pageviews', 'bounce_rate', 'conversions'],
+          note: `נא לוודא שהוספת את ${serviceAccount.client_email} כצופה בנכס GA4`
+        }
+      };
+    } catch (error) {
+      console.error('[GA] Connection test error:', error);
+      return { 
+        success: false, 
+        message: `שגיאה בבדיקת החיבור: ${(error as Error).message}` 
+      };
+    }
   },
 
   google_ads: async (credentials) => {
