@@ -17,13 +17,15 @@ import {
   Loader2,
   Megaphone,
   Edit2,
-  Trash2
+  Trash2,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +57,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
+import { GoogleAdsCampaigns } from "@/components/campaigns/GoogleAdsCampaigns";
 
 const platformConfig: Record<string, { color: string; name: string }> = {
   google: { color: "bg-[#4285F4]", name: "Google Ads" },
@@ -233,18 +236,36 @@ export default function Campaigns() {
           </div>
         )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : campaigns.length === 0 && selectedClient ? (
-          <div className="glass rounded-xl p-12 text-center">
-            <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">אין קמפיינים עדיין</h3>
-            <p className="text-muted-foreground">צור קמפיין חדש כדי להתחיל</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
+        {selectedClient && (
+          <Tabs defaultValue="google-ads" className="space-y-6">
+            <TabsList className="glass">
+              <TabsTrigger value="google-ads" className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Google Ads
+              </TabsTrigger>
+              <TabsTrigger value="internal" className="flex items-center gap-2">
+                <Megaphone className="w-4 h-4" />
+                קמפיינים פנימיים
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="google-ads">
+              <GoogleAdsCampaigns />
+            </TabsContent>
+
+            <TabsContent value="internal">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : campaigns.length === 0 ? (
+                <div className="glass rounded-xl p-12 text-center">
+                  <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">אין קמפיינים עדיין</h3>
+                  <p className="text-muted-foreground">צור קמפיין חדש כדי להתחיל</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
             {campaigns.map((campaign, index) => {
               const status = statusConfig[campaign.status] || statusConfig.draft;
               const platform = platformConfig[campaign.platform] || { color: "bg-muted", name: campaign.platform };
@@ -388,6 +409,9 @@ export default function Campaigns() {
               );
             })}
           </div>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
         {/* Edit Dialog */}
