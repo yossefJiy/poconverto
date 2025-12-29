@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('Shopify API');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +11,7 @@ const corsHeaders = {
 };
 
 interface ShopifyRequest {
-  action: 'get_products' | 'get_product' | 'get_orders' | 'get_inventory' | 'test_connection' | 'get_shop' | 'get_analytics';
+  action: 'get_products' | 'get_product' | 'get_orders' | 'get_inventory' | 'test_connection' | 'get_shop' | 'get_analytics' | 'health';
   product_id?: string;
   limit?: number;
   page_info?: string;
@@ -285,10 +289,16 @@ serve(async (req) => {
 
     const { action, product_id, limit = 50, page_info, date_from, date_to }: ShopifyRequest = await req.json();
 
-    console.log(`[Shopify API] Request: ${action}`);
+    log.info(`Request: ${action}`);
+
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.SHOPIFY);
+      return healthCheckResponse('shopify-api', SERVICE_VERSIONS.SHOPIFY_API, [envCheck]);
+    }
 
     if (action === 'get_analytics') {
-      console.log(`[Shopify API] Fetching analytics from ${date_from} to ${date_to}`);
+      log.info(`Fetching analytics from ${date_from} to ${date_to}`);
       
       // Fetch ALL orders with pagination
       const allOrders = await fetchAllOrders(baseUrl, accessToken, date_from, date_to);

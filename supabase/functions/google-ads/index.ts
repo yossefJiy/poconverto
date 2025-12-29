@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('Google Ads');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -173,16 +177,23 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body first to check for health action
+    const body = await req.json();
+    const { startDate, endDate, clientId, action } = body;
+
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.GOOGLE_ADS);
+      return healthCheckResponse('google-ads', SERVICE_VERSIONS.GOOGLE_ADS, [envCheck]);
+    }
+
     // Validate user authentication
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
-      console.error('[Google Ads] Auth failed:', auth.error);
+      log.error('Auth failed:', auth.error);
       return unauthorizedResponse(auth.error);
     }
-    console.log('[Google Ads] Authenticated user:', auth.user.id);
-
-    // Parse request body
-    const { startDate, endDate, clientId } = await req.json();
+    log.info('Authenticated user:', auth.user.id);
 
     // Create Supabase client
     const supabaseClient = createClient(

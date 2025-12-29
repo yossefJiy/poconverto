@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS } from "../_shared/constants.ts";
+
+const log = createLogger('AI Marketing');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,8 +11,8 @@ const corsHeaders = {
 };
 
 interface AIRequest {
-  type: 'content' | 'insights' | 'strategy' | 'optimize' | 'analyze';
-  context: {
+  type: 'content' | 'insights' | 'strategy' | 'optimize' | 'analyze' | 'health';
+  context?: {
     client_name?: string;
     industry?: string;
     platform?: string;
@@ -90,12 +94,18 @@ serve(async (req) => {
     }
 
     const body: AIRequest = await req.json();
-    console.log('[AI Marketing] Request:', body.type);
+    
+    // Health check endpoint
+    if (body.type === 'health') {
+      return healthCheckResponse('ai-marketing', SERVICE_VERSIONS.AI_MARKETING, []);
+    }
+    
+    log.info('Request:', body.type);
 
     const systemPrompt = systemPrompts[body.type] || systemPrompts.content;
     
     let userPrompt = '';
-    const ctx = body.context;
+    const ctx = body.context || {};
 
     switch (body.type) {
       case 'content':

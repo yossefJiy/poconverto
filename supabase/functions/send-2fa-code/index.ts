@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('2FA');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,8 +11,8 @@ const corsHeaders = {
 };
 
 interface TwoFactorRequest {
-  email: string;
-  action: "send" | "verify";
+  email?: string;
+  action: "send" | "verify" | "health";
   code?: string;
 }
 
@@ -24,7 +28,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, action, code }: TwoFactorRequest = await req.json();
+    const body = await req.json();
+    const { email, action, code }: TwoFactorRequest = body;
+
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.RESEND);
+      return healthCheckResponse('send-2fa-code', SERVICE_VERSIONS.SEND_2FA_CODE, [envCheck]);
+    }
 
     if (!email) {
       return new Response(

@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('Google Analytics');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

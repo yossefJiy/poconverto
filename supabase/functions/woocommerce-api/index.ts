@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('WooCommerce');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +12,8 @@ const corsHeaders = {
 };
 
 interface WooCommerceRequest {
-  action: 'get_analytics' | 'get_orders' | 'get_products' | 'get_customers' | 'sync_all';
-  client_id: string;
+  action: 'get_analytics' | 'get_orders' | 'get_products' | 'get_customers' | 'sync_all' | 'health';
+  client_id?: string;
   start_date?: string;
   end_date?: string;
   page?: number;
@@ -282,7 +286,20 @@ serve(async (req) => {
 
     const { action, client_id, start_date, end_date, page, per_page } = await req.json() as WooCommerceRequest;
 
-    console.log(`[WooCommerce] Action: ${action} for client: ${client_id}`);
+    // Health check endpoint
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.CORE);
+      return healthCheckResponse('woocommerce-api', SERVICE_VERSIONS.WOOCOMMERCE_API, [envCheck]);
+    }
+
+    log.info(`Action: ${action} for client: ${client_id}`);
+
+    if (!client_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'client_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get WooCommerce credentials
     const credentials = await getWooCommerceCredentials(supabaseClient, client_id);
