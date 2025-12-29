@@ -411,57 +411,93 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
             {/* MCC Account Selection for Google Ads */}
             {selectedPlatform.useMccSelection && (
               <div className="space-y-3">
-                <Label>בחר חשבון Google Ads:</Label>
+                <Label>בחר חשבון Google Ads או הזן מספר לקוח:</Label>
                 
-                {/* Search */}
+                {/* Search / Manual Input */}
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="חפש לפי שם או מספר חשבון..."
+                    placeholder="חפש לפי שם, או הזן מספר לקוח (123-456-7890)..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      // If user enters a valid customer ID format, use it directly
+                      const cleanId = e.target.value.replace(/\D/g, '');
+                      if (cleanId.length === 10) {
+                        const formattedId = cleanId.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+                        setSelectedMccAccount({ id: formattedId, name: 'חשבון ידני', currency: 'ILS' });
+                        setCurrentStep(1);
+                      } else if (!mccAccounts.find(a => a.id === e.target.value)) {
+                        setSelectedMccAccount(null);
+                      }
+                    }}
                     className="pr-10"
                     dir="rtl"
                   />
                 </div>
 
                 {isLoadingMcc ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <span className="mr-2 text-muted-foreground">טוען רשימת חשבונות...</span>
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <div className="text-center">
+                      <p className="font-medium text-foreground">טוען חשבונות מ-MCC...</p>
+                      <p className="text-sm text-muted-foreground">מתחבר ל-Google Ads API</p>
+                    </div>
                   </div>
-                ) : filteredAccounts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? "לא נמצאו חשבונות תואמים" : "לא נמצאו חשבונות ב-MCC"}
+                ) : filteredAccounts.length === 0 && !selectedMccAccount ? (
+                  <div className="text-center py-8 space-y-3">
+                    <div className="text-muted-foreground">
+                      {searchQuery ? "לא נמצאו חשבונות תואמים" : "לא נמצאו חשבונות ב-MCC"}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      💡 ניתן להזין מספר לקוח ידנית בפורמט: 123-456-7890
+                    </p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[250px] rounded-lg border">
                     <div className="p-2 space-y-2">
-                      {filteredAccounts.map((account) => (
-                        <button
-                          key={account.id}
-                          onClick={() => handleMccAccountSelect(account)}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-right",
-                            selectedMccAccount?.id === account.id 
-                              ? "border-primary bg-primary/10" 
-                              : "border-transparent bg-muted/50 hover:bg-muted"
-                          )}
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-[#4285F4]/20 flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-[#4285F4]" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{account.name}</p>
-                            <p className="text-xs text-muted-foreground">{account.id} • {account.currency}</p>
-                          </div>
-                          {selectedMccAccount?.id === account.id && (
-                            <Check className="w-5 h-5 text-primary" />
-                          )}
-                        </button>
-                      ))}
+                      {filteredAccounts.map((account) => {
+                        // Check if this account is already connected to another client
+                        const isConnectedToOther = false; // Will be checked via query
+                        return (
+                          <button
+                            key={account.id}
+                            onClick={() => handleMccAccountSelect(account)}
+                            disabled={isConnectedToOther}
+                            className={cn(
+                              "w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-right",
+                              selectedMccAccount?.id === account.id 
+                                ? "border-primary bg-primary/10" 
+                                : "border-transparent bg-muted/50 hover:bg-muted",
+                              isConnectedToOther && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-[#4285F4]/20 flex items-center justify-center">
+                              <Building2 className="w-5 h-5 text-[#4285F4]" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{account.name}</p>
+                              <p className="text-xs text-muted-foreground">{account.id} • {account.currency}</p>
+                            </div>
+                            {selectedMccAccount?.id === account.id && (
+                              <Check className="w-5 h-5 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
+                )}
+                
+                {/* Show selected manual account */}
+                {selectedMccAccount && !filteredAccounts.find(a => a.id === selectedMccAccount.id) && (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <AlertTitle>מספר לקוח נבחר</AlertTitle>
+                    <AlertDescription>
+                      חשבון: {selectedMccAccount.id}
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
             )}
