@@ -17,6 +17,7 @@ import {
   ChevronUp,
   Mail,
   AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
+import { useClient } from "@/hooks/useClient";
+import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
 
 interface ShopifyAnalyticsProps {
   globalDateFrom: string;
@@ -72,6 +75,10 @@ export function ShopifyAnalytics({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const navigate = useNavigate();
+  const { selectedClient } = useClient();
+
+  // Fetch snapshot fallback
+  const { data: snapshot } = useAnalyticsSnapshot(selectedClient?.id, 'shopify');
 
   // Calculate local date range if using local filter
   const { dateFrom, dateTo } = useMemo(() => {
@@ -196,7 +203,7 @@ export function ShopifyAnalytics({
     );
   }
 
-  if (isError) {
+  if (isError && !snapshot) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
@@ -221,7 +228,11 @@ export function ShopifyAnalytics({
     );
   }
 
-  const summary = analyticsData?.summary || {
+  // Determine if we're using snapshot fallback
+  const usingSnapshot = isError && !!snapshot;
+  const effectiveData = analyticsData || (snapshot?.data as typeof analyticsData | undefined);
+
+  const summary = effectiveData?.summary || {
     totalOrders: 0,
     totalRevenue: 0,
     avgOrderValue: 0,
@@ -233,16 +244,16 @@ export function ShopifyAnalytics({
     isRealSessionData: false,
   };
 
-  const orderStatus = analyticsData?.orderStatus || {
+  const orderStatus = effectiveData?.orderStatus || {
     paid: 0,
     fulfilled: 0,
     pending: 0,
     refunded: 0,
   };
 
-  const trafficSources = analyticsData?.trafficSources || [];
-  const topProducts = analyticsData?.topProducts || [];
-  const salesBreakdown = analyticsData?.salesBreakdown || {
+  const trafficSources = effectiveData?.trafficSources || [];
+  const topProducts = effectiveData?.topProducts || [];
+  const salesBreakdown = effectiveData?.salesBreakdown || {
     grossSales: 0,
     discounts: 0,
     returns: 0,
@@ -349,11 +360,19 @@ export function ShopifyAnalytics({
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <ShoppingCart className="w-4 h-4 text-purple-500" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">נתוני Shopify</h3>
-                <p className="text-sm text-muted-foreground">
-                  {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-                </p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <h3 className="font-bold text-lg">נתוני Shopify</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
+                  </p>
+                </div>
+                {usingSnapshot && snapshot && (
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    נתונים שמורים מ־{formatSnapshotDate(snapshot.updated_at)}
+                  </Badge>
+                )}
               </div>
             </div>
           </CollapsibleTrigger>

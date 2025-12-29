@@ -14,9 +14,11 @@ import {
   AlertCircle,
   Plus,
   Plug,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -45,6 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
+import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
 
 interface Campaign {
   id: string;
@@ -233,6 +236,9 @@ export function GoogleAdsCard({
     retry: 1,
   });
 
+  // Fetch snapshot fallback
+  const { data: snapshot } = useAnalyticsSnapshot(clientId, 'google_ads');
+
   const handleLocalFilterChange = (value: string) => {
     setLocalDateFilter(value);
     setUseLocalFilter(true);
@@ -320,32 +326,40 @@ export function GoogleAdsCard({
       );
     }
 
-    return (
-      <div className="glass rounded-xl p-6 card-shadow">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-            <Target className="w-4 h-4 text-orange-500" />
+    // If we have a snapshot, use it as fallback instead of showing error
+    if (!snapshot) {
+      return (
+        <div className="glass rounded-xl p-6 card-shadow">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <Target className="w-4 h-4 text-orange-500" />
+            </div>
+            <h3 className="font-bold text-lg">Google Ads</h3>
           </div>
-          <h3 className="font-bold text-lg">Google Ads</h3>
-        </div>
-        <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-destructive" />
-          <div>
-            <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
+              <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
+              <RefreshCw className="w-4 h-4 ml-2" />
+              נסה שוב
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
-            <RefreshCw className="w-4 h-4 ml-2" />
-            נסה שוב
-          </Button>
         </div>
-      </div>
-    );
+      );
+    }
+    // Fall through to use snapshot data
   }
 
-  const account = data?.account;
-  const campaigns = data?.campaigns || [];
-  const dailyData = data?.daily || [];
+  // Determine if we're using snapshot fallback
+  const usingSnapshot = !data && !!snapshot;
+  const effectiveData = data || (snapshot?.data as GoogleAdsData | undefined);
+
+  const account = effectiveData?.account;
+  const campaigns = effectiveData?.campaigns || [];
+  const dailyData = effectiveData?.daily || [];
 
   // Calculate summary metrics
   const totalImpressions = account?.totalImpressions || campaigns.reduce((sum, c) => sum + c.impressions, 0);
@@ -392,11 +406,19 @@ export function GoogleAdsCard({
               <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
                 <Target className="w-4 h-4 text-orange-500" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Google Ads</h3>
-                <p className="text-sm text-muted-foreground">
-                  {account?.name || (useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי")}
-                </p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <h3 className="font-bold text-lg">Google Ads</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {account?.name || (useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי")}
+                  </p>
+                </div>
+                {usingSnapshot && snapshot && (
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    נתונים שמורים מ־{formatSnapshotDate(snapshot.updated_at)}
+                  </Badge>
+                )}
               </div>
             </div>
           </CollapsibleTrigger>

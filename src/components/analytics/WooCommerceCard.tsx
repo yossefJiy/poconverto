@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { 
   Store, 
   ShoppingCart, 
@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Plus,
   Plug,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/table";
 import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
+import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
 
 interface WooCommerceCardProps {
   globalDateFrom: string;
@@ -211,6 +213,9 @@ export function WooCommerceCard({
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
+  // Fetch snapshot fallback
+  const { data: snapshot } = useAnalyticsSnapshot(clientId, 'woocommerce');
+
   const handleLocalFilterChange = (value: string) => {
     setLocalDateFilter(value);
     setUseLocalFilter(true);
@@ -306,34 +311,42 @@ export function WooCommerceCard({
       );
     }
 
-    return (
-      <div className="glass rounded-xl p-6 card-shadow">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
-            <Store className="w-4 h-4 text-[#96588A]" />
+    // If we have a snapshot, use it as fallback instead of showing error
+    if (!snapshot) {
+      return (
+        <div className="glass rounded-xl p-6 card-shadow">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
+              <Store className="w-4 h-4 text-[#96588A]" />
+            </div>
+            <h3 className="font-bold text-lg">WooCommerce</h3>
           </div>
-          <h3 className="font-bold text-lg">WooCommerce</h3>
-        </div>
-        <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-destructive" />
-          <div>
-            <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
+              <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
+              <RefreshCw className="w-4 h-4 ml-2" />
+              נסה שוב
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
-            <RefreshCw className="w-4 h-4 ml-2" />
-            נסה שוב
-          </Button>
         </div>
-      </div>
-    );
+      );
+    }
+    // Fall through to use snapshot data
   }
 
-  const summary = data?.summary || {};
-  const dailySales = data?.dailySales || [];
-  const topProducts = data?.topProducts || [];
-  const recentOrders = data?.recentOrders || [];
-  const statusBreakdown = data?.statusBreakdown || {};
+  // Determine if we're using snapshot fallback
+  const usingSnapshot = !data && !!snapshot;
+  const effectiveData = data || (snapshot?.data as typeof data | undefined);
+
+  const summary = effectiveData?.summary || {};
+  const dailySales = effectiveData?.dailySales || [];
+  const topProducts = effectiveData?.topProducts || [];
+  const recentOrders = effectiveData?.recentOrders || [];
+  const statusBreakdown = effectiveData?.statusBreakdown || {};
 
   const summaryMetrics = [
     {
@@ -371,11 +384,19 @@ export function WooCommerceCard({
               <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
                 <Store className="w-4 h-4 text-[#96588A]" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">WooCommerce</h3>
-                <p className="text-sm text-muted-foreground">
-                  {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-                </p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <h3 className="font-bold text-lg">WooCommerce</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
+                  </p>
+                </div>
+                {usingSnapshot && snapshot && (
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    נתונים שמורים מ־{formatSnapshotDate(snapshot.updated_at)}
+                  </Badge>
+                )}
               </div>
             </div>
           </CollapsibleTrigger>
