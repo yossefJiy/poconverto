@@ -204,7 +204,8 @@ export function WooCommerceCard({
       return data.data;
     },
     enabled: !!clientId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
   const handleLocalFilterChange = (value: string) => {

@@ -30,8 +30,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Scheduled refresh times (24h format)
-const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
+// Scheduled refresh times (24h format) - limited to 3 times per day
+const SCHEDULED_REFRESH_TIMES = [9, 13, 18];
 
 export default function Analytics() {
   const { selectedClient } = useClient();

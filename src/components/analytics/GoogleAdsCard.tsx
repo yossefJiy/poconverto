@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { 
   Target, 
   TrendingUp, 
@@ -40,6 +40,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -156,43 +157,7 @@ export function GoogleAdsCard({
   const [isOpen, setIsOpen] = useState(false);
   const [useLocalFilter, setUseLocalFilter] = useState(false);
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<GoogleAdsData | null>(null);
-
-  const fetchGoogleAdsData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const startDate = useLocalFilter 
-        ? getLocalStartDate(localDateFilter) 
-        : globalDateFrom.split('T')[0];
-      const endDate = useLocalFilter 
-        ? new Date().toISOString().split('T')[0] 
-        : globalDateTo.split('T')[0];
-
-      const { data: responseData, error: functionError } = await supabase.functions.invoke('google-ads', {
-        body: { startDate, endDate, clientId }
-      });
-
-      if (functionError) {
-        throw new Error(functionError.message || 'Failed to fetch Google Ads data');
-      }
-
-      if (responseData?.error) {
-        throw new Error(responseData.error);
-      }
-
-      setData(responseData);
-    } catch (err) {
-      console.error('[GoogleAdsCard] Error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getLocalStartDate = (filter: string): string => {
     const now = new Date();
@@ -229,11 +194,41 @@ export function GoogleAdsCard({
     return start.toISOString().split('T')[0];
   };
 
-  useEffect(() => {
-    if (clientId) {
-      fetchGoogleAdsData();
+  const effectiveDates = useMemo(() => {
+    if (useLocalFilter) {
+      return {
+        startDate: getLocalStartDate(localDateFilter),
+        endDate: new Date().toISOString().split('T')[0],
+      };
     }
-  }, [globalDateFrom, globalDateTo, useLocalFilter, localDateFilter, clientId]);
+    return {
+      startDate: globalDateFrom.split('T')[0],
+      endDate: globalDateTo.split('T')[0],
+    };
+  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["google-ads", clientId, effectiveDates.startDate, effectiveDates.endDate],
+    queryFn: async () => {
+      const { data: responseData, error: functionError } = await supabase.functions.invoke('google-ads', {
+        body: { startDate: effectiveDates.startDate, endDate: effectiveDates.endDate, clientId }
+      });
+
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to fetch Google Ads data');
+      }
+
+      if (responseData?.error) {
+        throw new Error(responseData.error);
+      }
+
+      return responseData as GoogleAdsData;
+    },
+    enabled: !!clientId,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    retry: 1,
+  });
 
   const handleLocalFilterChange = (value: string) => {
     setLocalDateFilter(value);
@@ -246,9 +241,8 @@ export function GoogleAdsCard({
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchGoogleAdsData();
+    await refetch();
     setIsRefreshing(false);
-    // Only refresh this component's data, not all components
   };
 
   if (isLoading && !data) {
@@ -271,7 +265,8 @@ export function GoogleAdsCard({
 
   if (error) {
     // Check if error is about missing integration
-    const isIntegrationError = error.includes('לא מוגדר') || error.includes('חסר');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isIntegrationError = errorMessage.includes('לא מוגדר') || errorMessage.includes('חסר');
     
     if (isIntegrationError && isAdmin && onAddIntegration) {
       return (
@@ -309,7 +304,7 @@ export function GoogleAdsCard({
           <AlertCircle className="w-5 h-5 text-destructive" />
           <div>
             <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <p className="text-sm text-muted-foreground">{errorMessage}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
             <RefreshCw className="w-4 h-4 ml-2" />
