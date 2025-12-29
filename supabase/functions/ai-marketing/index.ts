@@ -80,7 +80,14 @@ serve(async (req) => {
   }
 
   try {
-    // Validate user authentication
+    const body: AIRequest = await req.json();
+    
+    // Health check endpoint - no auth required
+    if (body.type === 'health') {
+      return healthCheckResponse('ai-marketing', SERVICE_VERSIONS.AI_MARKETING, []);
+    }
+    
+    // Validate user authentication for all other actions
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       console.error('[AI Marketing] Auth failed:', auth.error);
@@ -91,13 +98,6 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
-    }
-
-    const body: AIRequest = await req.json();
-    
-    // Health check endpoint
-    if (body.type === 'health') {
-      return healthCheckResponse('ai-marketing', SERVICE_VERSIONS.AI_MARKETING, []);
     }
     
     log.info('Request:', body.type);
