@@ -15,6 +15,10 @@ import {
   Info,
   Building2,
   Search,
+  ShoppingBag,
+  BarChart3,
+  Target,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,10 +42,46 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const NOTIFY_EMAIL = "yossef@jiy.co.il";
 
+// Platform Icons as SVG components
+const ShopifyIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+    <path d="M15.337 3.415c-.088-.006-.183-.006-.271-.006-.183 0-.366.006-.543.025a1.073 1.073 0 00-.872.771l-.348 1.212c-.012.044-.024.082-.036.119a4.156 4.156 0 00-1.462-.256c-2.055 0-3.839 1.559-4.282 3.778-.177.89-.106 1.73.206 2.423.32.716.852 1.189 1.486 1.372l-.543 1.889c-.088.301.082.614.382.702l2.38.696c.3.088.614-.082.702-.382l.902-3.137c.088-.301-.082-.614-.382-.702l-.602-.176c-.196-.057-.325-.183-.368-.354a1.023 1.023 0 01.075-.565c.196-.496.615-.921 1.141-1.128.113-.044.232-.075.354-.094l-.614 2.137c-.088.301.082.614.382.702l2.38.696c.3.088.614-.082.702-.382l1.446-5.034c.225-.778-.088-1.609-.765-2.029a2.51 2.51 0 00-1.448-.471zm.271 2.549l-.755 2.625-.908-.265.755-2.625.908.265z"/>
+  </svg>
+);
+
+const GoogleAnalyticsIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fillOpacity="0"/>
+    <rect x="4" y="14" width="4" height="6" rx="1" fill="#F9AB00"/>
+    <rect x="10" y="10" width="4" height="10" rx="1" fill="#E37400"/>
+    <rect x="16" y="4" width="4" height="16" rx="1" fill="#F9AB00"/>
+  </svg>
+);
+
+const GoogleAdsIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5">
+    <circle cx="6" cy="18" r="3" fill="#FBBC04"/>
+    <path d="M14.5 4l-8 14h5l8-14h-5z" fill="#4285F4"/>
+    <path d="M21 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z" fill="#34A853"/>
+  </svg>
+);
+
+const FacebookAdsIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#1877F2">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </svg>
+);
+
+const WooCommerceIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#96588A">
+    <path d="M2.227 4.857A2.228 2.228 0 000 7.094v7.457c0 1.236 1.001 2.237 2.237 2.237h3.09l-.396 3.063 3.558-3.063h11.283c1.236 0 2.228-1.001 2.228-2.237V7.094c0-1.236-1.001-2.237-2.237-2.237H2.227zm4.012 1.821c.61 0 1.063.198 1.359.594.247.331.38.775.399 1.332l-.658.064c-.019-.401-.096-.7-.231-.899-.172-.254-.418-.38-.738-.38-.439 0-.778.237-.997.711-.187.389-.282.896-.282 1.521 0 .654.095 1.167.282 1.539.22.465.558.697.997.697.32 0 .566-.135.738-.406.135-.198.212-.488.231-.868l.658.064c-.019.538-.152.973-.399 1.305-.296.405-.749.608-1.359.608-.724 0-1.285-.29-1.682-.871-.33-.484-.495-1.128-.495-1.932 0-.834.165-1.49.495-1.969.397-.581.958-.871 1.682-.871zm3.563.113h.723l.952 3.73.952-3.73h.732l.952 3.73.952-3.73h.706l-1.275 4.871h-.788l-.952-3.609-.952 3.609h-.788l-1.275-4.871zm6.556 0h2.56v.593h-1.877v1.454h1.748v.593h-1.748v1.639h1.932v.593h-2.615v-4.872z"/>
+  </svg>
+);
+
 interface PlatformOption {
   id: string;
   name: string;
-  logo: string;
+  icon: React.ComponentType<{ className?: string }>;
   color: string;
   description: string;
   credentialKey: string;
@@ -62,7 +102,7 @@ const platformOptions: PlatformOption[] = [
   { 
     id: "shopify", 
     name: "Shopify", 
-    logo: "🛍️", 
+    icon: () => <ShoppingBag className="w-5 h-5" />,
     color: "bg-[#96BF48]",
     description: "סנכרון נתוני מכירות, מוצרים והזמנות",
     credentialKey: "store_url",
@@ -76,9 +116,25 @@ const platformOptions: PlatformOption[] = [
     features: ["הזמנות בזמן אמת", "מלאי מוצרים", "נתוני לקוחות", "דוחות מכירות"],
   },
   { 
+    id: "woocommerce", 
+    name: "WooCommerce", 
+    icon: () => <Store className="w-5 h-5" />,
+    color: "bg-[#96588A]",
+    description: "סנכרון נתוני חנות WordPress + WooCommerce",
+    credentialKey: "store_url",
+    placeholder: "https://mystore.com",
+    steps: [
+      { title: "היכנס לאזור הניהול של WordPress", description: "עבור ל-WooCommerce > Settings > Advanced > REST API" },
+      { title: "צור מפתח API חדש", description: "לחץ על 'Add key' והגדר הרשאות Read" },
+      { title: "הזן את כתובת האתר למטה", description: "הזן את כתובת האתר הראשית" },
+    ],
+    helpUrl: "https://woocommerce.com/document/woocommerce-rest-api/",
+    features: ["הזמנות", "מוצרים", "לקוחות", "דוחות מכירות"],
+  },
+  { 
     id: "google_analytics", 
     name: "Google Analytics", 
-    logo: "📊", 
+    icon: () => <BarChart3 className="w-5 h-5" />,
     color: "bg-[#F9AB00]",
     description: "נתוני תנועה והתנהגות גולשים",
     credentialKey: "property_id",
@@ -94,7 +150,7 @@ const platformOptions: PlatformOption[] = [
   { 
     id: "google_ads", 
     name: "Google Ads", 
-    logo: "G", 
+    icon: () => <Target className="w-5 h-5" />,
     color: "bg-[#4285F4]",
     description: "סנכרון קמפיינים ונתוני ביצועים",
     credentialKey: "customer_id",
@@ -110,7 +166,7 @@ const platformOptions: PlatformOption[] = [
   { 
     id: "facebook_ads", 
     name: "Facebook Ads", 
-    logo: "f", 
+    icon: () => <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
     color: "bg-[#1877F2]",
     description: "קבלת נתוני קמפיינים מ-Facebook Business",
     credentialKey: "ad_account_id",
@@ -321,8 +377,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                   return (
                     <div key={integration.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                       <div className="flex items-center gap-3">
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold", platform?.color)}>
-                          {platform?.logo}
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white", platform?.color)}>
+                          {platform && <platform.icon />}
                         </div>
                         <div>
                           <p className="font-medium">{platform?.name}</p>
@@ -366,8 +422,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                       )}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg font-bold", platform.color)}>
-                          {platform.logo}
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white", platform.color)}>
+                          <platform.icon />
                         </div>
                         <div className="flex-1">
                           <p className="font-bold text-sm">{platform.name}</p>

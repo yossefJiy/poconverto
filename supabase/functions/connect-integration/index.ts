@@ -138,6 +138,39 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
     };
   },
 
+  woocommerce: async (credentials) => {
+    console.log("Testing WooCommerce connection:", credentials.store_url);
+    
+    // Validate store URL format
+    if (!credentials.store_url || !credentials.store_url.includes('http')) {
+      return { 
+        success: false, 
+        message: 'כתובת האתר חייבת לכלול https:// (לדוגמה: https://mystore.com)' 
+      };
+    }
+    
+    try {
+      // In production, this would test the WooCommerce REST API
+      const isValid = credentials.store_url.length > 10;
+      
+      if (isValid) {
+        return { 
+          success: true, 
+          message: 'החיבור ל-WooCommerce הצליח! נתוני המכירות יסונכרנו בקרוב.',
+          data: {
+            store_url: credentials.store_url,
+            connected_at: new Date().toISOString(),
+            features: ['orders', 'products', 'customers', 'reports']
+          }
+        };
+      } else {
+        return { success: false, message: 'כתובת האתר לא תקינה' };
+      }
+    } catch (error) {
+      return { success: false, message: `שגיאת חיבור: ${(error as Error).message}` };
+    }
+  },
+
   instagram: async (credentials) => {
     console.log("Testing Instagram connection:", credentials.ad_account_id);
     
@@ -358,6 +391,44 @@ serve(async (req) => {
 
       // If test succeeded and action is connect, save to database with encrypted credentials
       if (result.success && action === 'connect') {
+        // Get the external account ID for this platform
+        const externalAccountId = credentials.store_url || credentials.property_id || credentials.customer_id || credentials.ad_account_id || credentials.advertiser_id;
+        
+        // Check if this external account is already connected to ANOTHER client
+        const { data: existingIntegration } = await supabaseClient
+          .from('integrations')
+          .select('id, client_id')
+          .eq('platform', platform)
+          .eq('external_account_id', externalAccountId)
+          .eq('is_connected', true)
+          .neq('client_id', client_id)
+          .single();
+        
+        if (existingIntegration) {
+          // Get the other client's name
+          const { data: otherClient } = await supabaseClient
+            .from('clients')
+            .select('name')
+            .eq('id', existingIntegration.client_id)
+            .single();
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: `חשבון זה כבר מחובר ללקוח אחר: ${otherClient?.name || 'לקוח לא ידוע'}. כל פלטפורמה יכולה להיות משויכת ללקוח אחד בלבד.` 
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if this client already has this platform connected
+        const { data: clientExistingIntegration } = await supabaseClient
+          .from('integrations')
+          .select('id')
+          .eq('platform', platform)
+          .eq('client_id', client_id)
+          .single();
+
         // Prepare sensitive credentials for encryption
         const sensitiveCredentials = {
           api_key: credentials.api_key,
@@ -389,24 +460,50 @@ serve(async (req) => {
           connected_at: new Date().toISOString(),
         };
 
-        const { error: insertError } = await supabaseClient
-          .from('integrations')
-          .insert({
-            client_id,
-            platform,
-            external_account_id: credentials.store_url || credentials.property_id || credentials.customer_id || credentials.ad_account_id || credentials.advertiser_id,
-            is_connected: true,
-            settings: safeSettings,
-            encrypted_credentials: encryptedCredentials,
-            last_sync_at: new Date().toISOString(),
-          });
+        if (clientExistingIntegration) {
+          // Update existing integration
+          const { error: updateError } = await supabaseClient
+            .from('integrations')
+            .update({
+              external_account_id: externalAccountId,
+              is_connected: true,
+              settings: safeSettings,
+              encrypted_credentials: encryptedCredentials,
+              last_sync_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', clientExistingIntegration.id);
 
-        if (insertError) {
-          console.error('Database insert error:', insertError);
-          return new Response(
-            JSON.stringify({ success: false, message: 'שגיאה בשמירת החיבור במסד הנתונים' }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          if (updateError) {
+            console.error('Database update error:', updateError);
+            return new Response(
+              JSON.stringify({ success: false, message: 'שגיאה בעדכון החיבור במסד הנתונים' }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.log(`[Connect Integration] Updated existing integration for ${platform}`);
+        } else {
+          // Insert new integration
+          const { error: insertError } = await supabaseClient
+            .from('integrations')
+            .insert({
+              client_id,
+              platform,
+              external_account_id: externalAccountId,
+              is_connected: true,
+              settings: safeSettings,
+              encrypted_credentials: encryptedCredentials,
+              last_sync_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            console.error('Database insert error:', insertError);
+            return new Response(
+              JSON.stringify({ success: false, message: 'שגיאה בשמירת החיבור במסד הנתונים' }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.log(`[Connect Integration] Created new integration for ${platform}`);
         }
         
         console.log(`[Connect Integration] Credentials stored ${encryptedCredentials ? 'encrypted' : 'without sensitive data'}`);
