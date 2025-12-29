@@ -76,7 +76,14 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error(`Health check failed: ${healthResponse.status}`);
     }
 
-    const healthData: HealthCheckResponse = await healthResponse.json();
+    const responseJson = await healthResponse.json();
+    // The health-check function wraps response in { success: true, data: {...} }
+    const healthData: HealthCheckResponse = responseJson.data || responseJson;
+    
+    if (!healthData || !healthData.services) {
+      throw new Error("Invalid health check response: missing services");
+    }
+    
     console.log("[Health Monitor] Health check completed:", healthData.summary);
 
     // Step 2: Get the latest status for each service from the database
