@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.sync-analytics-background]
 verify_jwt = false
+
+[functions.woocommerce-api]
+verify_jwt = false
