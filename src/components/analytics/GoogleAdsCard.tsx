@@ -43,6 +43,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isAuthError } from "@/lib/authError";
+import { useNavigate } from "react-router-dom";
 
 interface Campaign {
   id: string;
@@ -158,6 +160,7 @@ export function GoogleAdsCard({
   const [useLocalFilter, setUseLocalFilter] = useState(false);
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
 
   const getLocalStartDate = (filter: string): string => {
     const now = new Date();
@@ -264,8 +267,33 @@ export function GoogleAdsCard({
   }
 
   if (error) {
-    // Check if error is about missing integration
     const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check if error is auth-related
+    if (isAuthError(error)) {
+      return (
+        <div className="glass rounded-xl p-6 card-shadow">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <Target className="w-4 h-4 text-orange-500" />
+            </div>
+            <h3 className="font-bold text-lg">Google Ads</h3>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-600">פג תוקף ההתחברות</p>
+              <p className="text-sm text-muted-foreground">יש להתחבר מחדש כדי לצפות בנתונים</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
+              התחבר מחדש
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Check if error is about missing integration
     const isIntegrationError = errorMessage.includes('לא מוגדר') || errorMessage.includes('חסר');
     
     if (isIntegrationError && isAdmin && onAddIntegration) {
