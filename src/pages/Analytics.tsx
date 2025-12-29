@@ -8,6 +8,7 @@ import { usePermissions } from "@/hooks/useAuth";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
 import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
+import { WooCommerceCard } from "@/components/analytics/WooCommerceCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { Button } from "@/components/ui/button";
@@ -293,6 +294,15 @@ export default function Analytics() {
                 globalDateFrom={dateRange.dateFrom}
                 globalDateTo={dateRange.dateTo}
                 onRefresh={handleRefreshAll}
+              />
+            )}
+
+            {/* WooCommerce Analytics - Only show if connected */}
+            {hasWooCommerce && (
+              <WooCommerceCard
+                clientId={selectedClient?.id}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
               />
             )}
 
