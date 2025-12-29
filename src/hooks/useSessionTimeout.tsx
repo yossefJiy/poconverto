@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 const WARNING_BEFORE_TIMEOUT = 60 * 1000; // 1 minute warning
@@ -11,12 +12,16 @@ interface UseSessionTimeoutReturn {
 }
 
 export const useSessionTimeout = (): UseSessionTimeoutReturn => {
+  const { role } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(60);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+
+  // Admin users are exempt from session timeout
+  const isAdmin = role === 'admin';
 
   const clearAllTimeouts = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -44,6 +49,12 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
   }, []);
 
   const resetTimers = useCallback(() => {
+    // Skip timeout for admin users
+    if (isAdmin) {
+      console.log("[SessionTimeout] Admin user detected - timeout disabled");
+      return;
+    }
+
     clearAllTimeouts();
     setShowWarning(false);
     lastActivityRef.current = Date.now();
@@ -58,7 +69,7 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
         logout();
       }, WARNING_BEFORE_TIMEOUT);
     }, INACTIVITY_TIMEOUT - WARNING_BEFORE_TIMEOUT);
-  }, [clearAllTimeouts, logout, startCountdown]);
+  }, [clearAllTimeouts, logout, startCountdown, isAdmin]);
 
   const extendSession = useCallback(() => {
     setShowWarning(false);
@@ -67,6 +78,13 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
   }, [resetTimers]);
 
   useEffect(() => {
+    // Skip timeout setup for admin users
+    if (isAdmin) {
+      console.log("[SessionTimeout] Admin user - no timeout will be set");
+      clearAllTimeouts();
+      return;
+    }
+
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 
     const handleActivity = () => {
@@ -90,7 +108,7 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
         document.removeEventListener(event, handleActivity);
       });
     };
-  }, [resetTimers, clearAllTimeouts, showWarning]);
+  }, [resetTimers, clearAllTimeouts, showWarning, isAdmin]);
 
   return { showWarning, remainingTime, extendSession };
 };
