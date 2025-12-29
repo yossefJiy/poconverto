@@ -41,7 +41,7 @@ const SERVICES = [
   { name: 'woocommerce-api', displayName: 'WooCommerce API', action: { action: 'health' } },
   { name: 'send-2fa-code', displayName: '2FA Service', action: { action: 'health' } },
   { name: 'ai-marketing', displayName: 'AI Marketing', action: { type: 'health' } },
-  { name: 'generate-report', displayName: 'Report Generator', action: { type: 'health' } },
+  { name: 'generate-report', displayName: 'Report Generator', action: { action: 'health' } },
 ];
 
 const TIMEOUT_MS = 5000;

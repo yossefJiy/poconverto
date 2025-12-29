@@ -128,15 +128,23 @@ serve(async (req) => {
   }
 
   try {
-    // Validate user authentication
+    // Clone request to read body for health check
+    const body = await req.json();
+    const { propertyId, startDate, endDate, reportType, action } = body;
+    
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.GOOGLE_ANALYTICS);
+      return healthCheckResponse('google-analytics', SERVICE_VERSIONS.GOOGLE_ANALYTICS, [envCheck]);
+    }
+    
+    // Validate user authentication for all other actions
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       console.error('[Google Analytics] Auth failed:', auth.error);
       return unauthorizedResponse(auth.error);
     }
     console.log('[Google Analytics] Authenticated user:', auth.user.id);
-
-    const { propertyId, startDate, endDate, reportType } = await req.json();
     
     // Get service account from secrets
     let serviceAccountJson = Deno.env.get('GOOGLE_ANALYTICS_READER');

@@ -273,6 +273,15 @@ serve(async (req) => {
   }
 
   try {
+    const { action, client_id, start_date, end_date, page, per_page } = await req.json() as WooCommerceRequest;
+
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.CORE);
+      return healthCheckResponse('woocommerce-api', SERVICE_VERSIONS.WOOCOMMERCE_API, [envCheck]);
+    }
+    
+    // Validate user authentication for all other actions
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       console.error('[WooCommerce] Auth failed:', auth.error);
@@ -283,14 +292,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    const { action, client_id, start_date, end_date, page, per_page } = await req.json() as WooCommerceRequest;
-
-    // Health check endpoint
-    if (action === 'health') {
-      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.CORE);
-      return healthCheckResponse('woocommerce-api', SERVICE_VERSIONS.WOOCOMMERCE_API, [envCheck]);
-    }
 
     log.info(`Action: ${action} for client: ${client_id}`);
 

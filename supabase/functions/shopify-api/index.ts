@@ -266,6 +266,17 @@ serve(async (req) => {
   }
 
   try {
+    const { action, product_id, limit = 50, page_info, date_from, date_to }: ShopifyRequest = await req.json();
+
+    log.info(`Request: ${action}`);
+
+    // Health check endpoint - no auth required
+    if (action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.SHOPIFY);
+      return healthCheckResponse('shopify-api', SERVICE_VERSIONS.SHOPIFY_API, [envCheck]);
+    }
+
+    // Validate user authentication for all other actions
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       console.error('[Shopify API] Auth failed:', auth.error);
@@ -286,16 +297,6 @@ serve(async (req) => {
 
     const cleanDomain = storeDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const baseUrl = `https://${cleanDomain}/admin/api/2024-01`;
-
-    const { action, product_id, limit = 50, page_info, date_from, date_to }: ShopifyRequest = await req.json();
-
-    log.info(`Request: ${action}`);
-
-    // Health check endpoint - no auth required
-    if (action === 'health') {
-      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.SHOPIFY);
-      return healthCheckResponse('shopify-api', SERVICE_VERSIONS.SHOPIFY_API, [envCheck]);
-    }
 
     if (action === 'get_analytics') {
       log.info(`Fetching analytics from ${date_from} to ${date_to}`);
