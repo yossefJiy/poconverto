@@ -694,6 +694,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
       decrypt_integration_credentials: {
         Args: { encrypted_data: string }
         Returns: Json
