@@ -13,54 +13,82 @@ export interface AuthResult {
  */
 export async function validateAuth(req: Request): Promise<AuthResult> {
   try {
-    const authHeader = req.headers.get('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return {
         authenticated: false,
         user: null,
-        error: 'Missing or invalid Authorization header'
+        error: "Missing or invalid Authorization header",
       };
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Create Supabase client with the user's JWT
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '';
-    
+    const token = authHeader.slice("Bearer ".length).trim();
+
+    if (!token) {
+      return {
+        authenticated: false,
+        user: null,
+        error: "Missing JWT token",
+      };
+    }
+
+    const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").trim();
+    const supabaseAnonKey = (
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      ""
+    ).trim();
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("[Auth] Missing backend env vars: SUPABASE_URL / SUPABASE_ANON_KEY");
+      return {
+        authenticated: false,
+        user: null,
+        error: "Server authentication is not configured",
+      };
+    }
+
+    // Create Supabase client (server-side) and validate the JWT explicitly.
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
       global: {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
+          Authorization: `Bearer ${token}`,
+        },
+      },
     });
 
-    // Validate the token by getting the user
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // IMPORTANT: Pass the token explicitly to avoid relying on persisted session state.
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error('[Auth] Token validation failed:', error?.message);
+      console.error("[Auth] Token validation failed:", error?.message);
       return {
         authenticated: false,
         user: null,
-        error: error?.message || 'Invalid token'
+        error: error?.message || "Invalid token",
       };
     }
 
-    console.log('[Auth] User authenticated:', user.id);
-    
+    console.log("[Auth] User authenticated:", user.id);
+
     return {
       authenticated: true,
-      user
+      user,
     };
   } catch (error) {
-    console.error('[Auth] Unexpected error:', error);
+    console.error("[Auth] Unexpected error:", error);
     return {
       authenticated: false,
       user: null,
-      error: 'Authentication failed'
+      error: "Authentication failed",
     };
   }
 }
