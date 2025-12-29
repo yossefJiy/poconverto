@@ -300,9 +300,12 @@ export default function Analytics() {
             {/* WooCommerce Analytics - Only show if connected */}
             {hasWooCommerce && (
               <WooCommerceCard
+                globalDateFrom={dateRange.dateFrom}
+                globalDateTo={dateRange.dateTo}
                 clientId={selectedClient?.id}
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
+                isAdmin={isAdmin}
+                onAddIntegration={() => setShowIntegrationsDialog(true)}
+                onRefresh={handleRefreshAll}
               />
             )}
 
