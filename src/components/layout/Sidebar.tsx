@@ -16,6 +16,7 @@ import {
   Palette,
   BarChart3,
   ShoppingBag,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,7 @@ const settingsItems = [
   { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
+  { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
 ];
 
 
@@ -200,7 +202,9 @@ export function Sidebar() {
             <DropdownMenuContent align="end" side="top" className="w-56">
               <DropdownMenuLabel>הגדרות</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {settingsItems.map((item) => (
+              {settingsItems
+                .filter(item => !item.adminOnly || isAdmin)
+                .map((item) => (
                 <DropdownMenuItem key={item.label} asChild>
                   <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
                     <item.icon className="w-4 h-4" />
