@@ -4,13 +4,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
-import { usePermissions } from "@/hooks/useAuth";
+import { usePermissions, useAuth } from "@/hooks/useAuth";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
 import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
 import { WooCommerceCard } from "@/components/analytics/WooCommerceCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
+import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
+import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -21,6 +23,7 @@ import {
   RefreshCw,
   Loader2,
   Settings,
+  Activity,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,11 +36,13 @@ const SCHEDULED_REFRESH_TIMES = [9, 12, 15, 18];
 export default function Analytics() {
   const { selectedClient } = useClient();
   const { isAdmin } = usePermissions();
+  const { loading: authLoading, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [showConnectionStatusDialog, setShowConnectionStatusDialog] = useState(false);
   const lastRefreshHourRef = useRef<number | null>(null);
   const toastIdRef = useRef<string | number | null>(null);
   
@@ -73,6 +78,8 @@ export default function Analytics() {
     analyticsData, 
     integrations,
     isLoading,
+    isAuthLoading,
+    hasSession,
     hasAnalytics,
     refetchAll
   } = useAnalyticsData(selectedClient?.id, getDaysFromFilter());
@@ -220,10 +227,16 @@ export default function Analytics() {
           
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <Button variant="outline" onClick={() => setShowIntegrationsDialog(true)}>
-                <Settings className="w-4 h-4 ml-2" />
-                ניהול אינטגרציות
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setShowConnectionStatusDialog(true)}>
+                  <Activity className="w-4 h-4 ml-2" />
+                  סטטוס חיבורים
+                </Button>
+                <Button variant="outline" onClick={() => setShowIntegrationsDialog(true)}>
+                  <Settings className="w-4 h-4 ml-2" />
+                  ניהול אינטגרציות
+                </Button>
+              </>
             )}
 
             <GlobalDateFilter
@@ -268,7 +281,10 @@ export default function Analytics() {
           </Alert>
         )}
 
-        {isLoading ? (
+        {/* Auth Loading State */}
+        {isAuthLoading ? (
+          <AuthLoadingState />
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
@@ -327,6 +343,13 @@ export default function Analytics() {
         <IntegrationsDialog
           open={showIntegrationsDialog}
           onOpenChange={setShowIntegrationsDialog}
+        />
+        
+        {/* Connection Status Dialog */}
+        <ConnectionStatusDialog
+          open={showConnectionStatusDialog}
+          onOpenChange={setShowConnectionStatusDialog}
+          clientId={selectedClient?.id}
         />
       </div>
     </MainLayout>

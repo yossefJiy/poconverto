@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ShopifyProduct {
   id: number;
@@ -115,6 +116,8 @@ async function callShopifyApi(action: string, params: Record<string, any> = {}) 
 }
 
 export function useShopifyData(): ShopifyDataResult {
+  const { session, loading: authLoading } = useAuth();
+  
   const { 
     data: shopData, 
     isLoading: isLoadingShop,
@@ -125,6 +128,7 @@ export function useShopifyData(): ShopifyDataResult {
     queryFn: () => callShopifyApi('get_shop'),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 
   const { 
@@ -138,6 +142,7 @@ export function useShopifyData(): ShopifyDataResult {
     queryFn: () => callShopifyApi('get_products', { limit: 250 }),
     staleTime: 2 * 60 * 1000, // 2 minutes
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 
   const { 
@@ -151,6 +156,7 @@ export function useShopifyData(): ShopifyDataResult {
     queryFn: () => callShopifyApi('get_orders', { limit: 50 }),
     staleTime: 2 * 60 * 1000, // 2 minutes
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 
   const refetch = () => {
@@ -162,7 +168,7 @@ export function useShopifyData(): ShopifyDataResult {
     products: productsData?.products || [],
     orders: ordersData?.orders || [],
     shop: shopData?.shop || null,
-    isLoading: isLoadingShop || isLoadingProducts || isLoadingOrders,
+    isLoading: authLoading || isLoadingShop || isLoadingProducts || isLoadingOrders,
     isError: isShopError || isProductsError || isOrdersError,
     error: shopError || productsError || ordersError,
     refetch,
@@ -170,6 +176,8 @@ export function useShopifyData(): ShopifyDataResult {
 }
 
 export function useShopifyAnalytics(dateFrom?: string, dateTo?: string) {
+  const { session, loading: authLoading } = useAuth();
+  
   return useQuery({
     queryKey: ['shopify-analytics', dateFrom, dateTo],
     queryFn: () => callShopifyApi('get_analytics', { 
@@ -178,32 +186,42 @@ export function useShopifyAnalytics(dateFrom?: string, dateTo?: string) {
     }),
     staleTime: 2 * 60 * 1000,
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 }
 
 export function useShopifyProducts(limit = 50) {
+  const { session, loading: authLoading } = useAuth();
+  
   return useQuery({
     queryKey: ['shopify-products', limit],
     queryFn: () => callShopifyApi('get_products', { limit }),
     staleTime: 2 * 60 * 1000,
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 }
 
 export function useShopifyOrders(limit = 50) {
+  const { session, loading: authLoading } = useAuth();
+  
   return useQuery({
     queryKey: ['shopify-orders', limit],
     queryFn: () => callShopifyApi('get_orders', { limit }),
     staleTime: 2 * 60 * 1000,
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 }
 
 export function useShopifyShop() {
+  const { session, loading: authLoading } = useAuth();
+  
   return useQuery({
     queryKey: ['shopify-shop'],
     queryFn: () => callShopifyApi('get_shop'),
     staleTime: 5 * 60 * 1000,
     retry: 1,
+    enabled: !authLoading && !!session,
   });
 }
