@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TrafficSource {
   source: string;
@@ -316,7 +317,9 @@ function generateMockPlatformData(platform: string, name: string, logo: string, 
 }
 
 export function useAnalyticsData(clientId: string | undefined, dateRange: string = "30") {
-  // Fetch connected integrations
+  const { session, loading: authLoading } = useAuth();
+  
+  // Fetch connected integrations - only after auth is ready
   const { data: integrations = [], refetch: refetchIntegrations } = useQuery({
     queryKey: ["integrations", clientId],
     queryFn: async () => {
@@ -329,7 +332,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       if (error) throw error;
       return data;
     },
-    enabled: !!clientId,
+    enabled: !!clientId && !authLoading && !!session,
     staleTime: 0, // Always fetch fresh data
   });
 
@@ -337,7 +340,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
   const gaIntegration = integrations.find((i) => i.platform === "google_analytics");
   const propertyId = (gaIntegration?.settings as any)?.property_id;
 
-  // Fetch real analytics data from GA4
+  // Fetch real analytics data from GA4 - only after auth is ready
   const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery({
     queryKey: ["analytics-data", clientId, propertyId, dateRange],
     queryFn: async () => {
@@ -369,7 +372,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       console.log("GA data received:", data);
       return parseGAResponse(data);
     },
-    enabled: !!clientId && !!propertyId,
+    enabled: !!clientId && !!propertyId && !authLoading && !!session,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -398,7 +401,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
 
       return platforms;
     },
-    enabled: !!clientId,
+    enabled: !!clientId && !authLoading && !!session,
   });
 
   // Calculate aggregated ads data
@@ -438,7 +441,9 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
     platformsData: platformsData || [],
     aggregatedAdsData,
     integrations,
-    isLoading: analyticsLoading || platformsLoading,
+    isLoading: authLoading || analyticsLoading || platformsLoading,
+    isAuthLoading: authLoading,
+    hasSession: !!session,
     hasAnalytics: integrations.some((i) => i.platform === "google_analytics"),
     hasAds: integrations.some((i) => 
       ["google_ads", "facebook_ads", "instagram", "tiktok", "linkedin"].includes(i.platform)
