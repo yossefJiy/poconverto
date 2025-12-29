@@ -267,7 +267,7 @@ export default function Analytics() {
         </div>
 
         {/* No Integrations Warning */}
-        {noIntegrations && !selectedClient.is_ecommerce && isAdmin && (
+        {noIntegrations && isAdmin && (
           <Alert className="border-warning/50 bg-warning/10">
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertTitle>אין חיבורים פעילים</AlertTitle>

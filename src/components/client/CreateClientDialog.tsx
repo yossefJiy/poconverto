@@ -49,7 +49,6 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
         description: form.description || null,
         logo_url: form.logo_url || null,
         modules_enabled: JSON.parse(JSON.stringify(modules)),
-        is_ecommerce: modules.ecommerce,
       }]).select().single();
       if (error) throw error;
       return data;
