@@ -195,7 +195,7 @@ export default function Analytics() {
   const noIntegrations = integrations.length === 0;
   const dataSources = [];
   
-  if (hasShopify || selectedClient.is_ecommerce) dataSources.push("Shopify");
+  if (hasShopify) dataSources.push("Shopify");
   if (hasWooCommerce) dataSources.push("WooCommerce");
   if (hasAnalytics) dataSources.push("Google Analytics");
   if (hasGoogleAds) dataSources.push("Google Ads");
@@ -290,8 +290,8 @@ export default function Analytics() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Shopify Analytics - First */}
-            {(hasShopify || selectedClient.is_ecommerce) && (
+            {/* Shopify Analytics - Only show if Shopify integration is connected */}
+            {hasShopify && (
               <ShopifyAnalytics
                 // Use date-only strings to avoid timezone shifts when talking to Shopify
                 globalDateFrom={dateRange.startDate}

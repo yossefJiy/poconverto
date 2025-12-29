@@ -109,8 +109,23 @@ async function callShopifyApi(action: string, params: Record<string, any> = {}) 
     body: { action, ...params }
   });
 
-  if (error) throw error;
-  if (!data.success) throw new Error(data.error || 'Shopify API error');
+  // Handle auth session missing silently - return empty data instead of throwing
+  if (error) {
+    if (error.message?.includes('Auth session missing') || error.message?.includes('401')) {
+      console.warn('[Shopify API] Auth session missing - returning empty data');
+      return { products: [], orders: [], shop: null, summary: null };
+    }
+    throw error;
+  }
+  
+  if (!data?.success) {
+    // Handle auth errors gracefully
+    if (data?.error?.includes('Auth session missing') || data?.error?.includes('401')) {
+      console.warn('[Shopify API] Auth error - returning empty data');
+      return { products: [], orders: [], shop: null, summary: null };
+    }
+    throw new Error(data?.error || 'Shopify API error');
+  }
   
   return data.data;
 }
