@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Client {
   id: string;
@@ -24,6 +25,15 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
   const [selectedClient, setSelectedClientState] = useState<Client | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Refetch clients when user changes
+  useEffect(() => {
+    if (user) {
+      queryClient.invalidateQueries({ queryKey: ["all-clients"] });
+    }
+  }, [user, queryClient]);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["all-clients"],
@@ -35,6 +45,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       return data as Client[];
     },
+    enabled: !authLoading && !!user,
   });
 
   // Load from localStorage on mount
@@ -58,7 +69,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ClientContext.Provider value={{ selectedClient, setSelectedClient, clients, isLoading }}>
+    <ClientContext.Provider value={{ selectedClient, setSelectedClient, clients, isLoading: isLoading || authLoading }}>
       {children}
     </ClientContext.Provider>
   );
