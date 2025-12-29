@@ -395,6 +395,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_logs: {
+        Row: {
+          action: string | null
+          created_at: string
+          details: Json | null
+          event_category: string
+          event_type: string
+          id: string
+          resource_id: string | null
+          resource_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          details?: Json | null
+          event_category: string
+          event_type: string
+          id?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          details?: Json | null
+          event_category?: string
+          event_type?: string
+          id?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sync_schedules: {
         Row: {
           client_id: string
