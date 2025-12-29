@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
+import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+
+const log = createLogger('Report');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +12,9 @@ const corsHeaders = {
 };
 
 interface ReportRequest {
-  client_id: string;
-  report_type: 'monthly' | 'weekly' | 'campaign';
+  action?: 'health';
+  client_id?: string;
+  report_type?: 'monthly' | 'weekly' | 'campaign';
   date_from?: string;
   date_to?: string;
   campaign_id?: string;
@@ -21,6 +26,14 @@ serve(async (req) => {
   }
 
   try {
+    const body: ReportRequest = await req.json();
+    
+    // Health check endpoint
+    if (body.action === 'health') {
+      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.CORE);
+      return healthCheckResponse('generate-report', SERVICE_VERSIONS.GENERATE_REPORT, [envCheck]);
+    }
+
     // Validate authentication
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
@@ -31,8 +44,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body: ReportRequest = await req.json();
-    console.log('[Report] Generating report for user:', auth.user.id, 'client:', body.client_id);
+    log.info('Generating report for user:', auth.user.id, 'client:', body.client_id);
 
     // Verify user has access to this client
     const { data: hasAccess } = await supabase.rpc('has_client_access', {
