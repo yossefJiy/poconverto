@@ -27,7 +27,7 @@ export async function validateAuth(req: Request): Promise<AuthResult> {
     
     // Create Supabase client with the user's JWT
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '';
     
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
