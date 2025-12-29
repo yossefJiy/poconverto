@@ -1,4 +1,4 @@
-import { Building2, ChevronDown, Check, X, Plus } from "lucide-react";
+import { Building2, ChevronDown, Check, X, Plus, Loader2 } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
 import { cn } from "@/lib/utils";
 import {
@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
+import logoIcon from "@/assets/logo-icon.svg";
 
 interface ClientSwitcherProps {
   collapsed?: boolean;
@@ -21,7 +21,27 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
   const { selectedClient, setSelectedClient, clients, isLoading } = useClient();
 
   if (isLoading) {
-    return <Skeleton className="h-10 w-full" />;
+    return (
+      <div className={cn(
+        "w-full h-12 px-3 bg-muted/30 border border-border/50 rounded-md flex items-center gap-3",
+        collapsed && "px-2 justify-center"
+      )}>
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center animate-pulse">
+          <img src={logoIcon} alt="" className="w-5 h-5 animate-fade-in" />
+        </div>
+        {!collapsed && (
+          <div className="flex flex-col gap-1 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">טוען...</span>
+              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+            </div>
+            <span className="text-xs text-muted-foreground/60">
+              קמפיינים, משימות, צוות ולקוחות
+            </span>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
