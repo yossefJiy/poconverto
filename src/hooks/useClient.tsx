@@ -10,8 +10,6 @@ interface Client {
   logo_url: string | null;
   description: string | null;
   website: string | null;
-  is_ecommerce: boolean | null;
-  is_lead_gen: boolean | null;
 }
 
 interface ClientContextType {
