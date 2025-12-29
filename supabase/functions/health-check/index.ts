@@ -38,6 +38,7 @@ const SERVICES = [
   { name: 'shopify-api', displayName: 'Shopify API', action: { action: 'health' } },
   { name: 'google-ads', displayName: 'Google Ads', action: { action: 'health' } },
   { name: 'google-analytics', displayName: 'Google Analytics', action: { action: 'health' } },
+  { name: 'facebook-ads', displayName: 'Facebook Ads', action: { action: 'health' } },
   { name: 'woocommerce-api', displayName: 'WooCommerce API', action: { action: 'health' } },
   { name: 'send-2fa-code', displayName: '2FA Service', action: { action: 'health' } },
   { name: 'ai-marketing', displayName: 'AI Marketing', action: { type: 'health' } },
