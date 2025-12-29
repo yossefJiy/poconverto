@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
+
+[functions.health-monitor]
+verify_jwt = false

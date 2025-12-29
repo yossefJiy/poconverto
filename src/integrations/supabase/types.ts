@@ -425,6 +425,39 @@ export type Database = {
         }
         Relationships: []
       }
+      service_health_history: {
+        Row: {
+          alert_sent: boolean | null
+          checked_at: string
+          created_at: string
+          id: string
+          latency_ms: number | null
+          message: string | null
+          service_name: string
+          status: string
+        }
+        Insert: {
+          alert_sent?: boolean | null
+          checked_at?: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          message?: string | null
+          service_name: string
+          status: string
+        }
+        Update: {
+          alert_sent?: boolean | null
+          checked_at?: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          message?: string | null
+          service_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sync_schedules: {
         Row: {
           client_id: string
