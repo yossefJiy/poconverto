@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isAuthError } from "@/lib/authError";
+import { useNavigate } from "react-router-dom";
 
 interface ShopifyAnalyticsProps {
   globalDateFrom: string;
@@ -69,6 +71,7 @@ export function ShopifyAnalytics({
   const [localDateFilter, setLocalDateFilter] = useState("mtd");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const navigate = useNavigate();
 
   // Calculate local date range if using local filter
   const { dateFrom, dateTo } = useMemo(() => {
@@ -172,6 +175,26 @@ export function ShopifyAnalytics({
       setIsSendingEmail(false);
     }
   };
+
+  // Check if error is auth-related
+  const errorIsAuthRelated = isError && error && isAuthError(error);
+  
+  if (isError && errorIsAuthRelated) {
+    return (
+      <div className="glass rounded-xl p-6 card-shadow">
+        <div className="flex items-center gap-3 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <div className="flex-1">
+            <p className="font-medium text-yellow-600">פג תוקף ההתחברות</p>
+            <p className="text-sm text-muted-foreground">יש להתחבר מחדש כדי לצפות בנתונים</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
+            התחבר מחדש
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isError) {
     return (

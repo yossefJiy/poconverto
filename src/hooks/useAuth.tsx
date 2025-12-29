@@ -14,6 +14,43 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Clean up a potentially invalid session from localStorage
+ */
+const cleanupInvalidSession = async () => {
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Fallback: clear localStorage directly
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+    if (projectId) {
+      try {
+        localStorage.removeItem(`sb-${projectId}-auth-token`);
+        localStorage.removeItem(`sb-${projectId}-auth-token-code-verifier`);
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }
+};
+
+/**
+ * Check if an error indicates an invalid session
+ */
+const isSessionInvalidError = (error: any): boolean => {
+  if (!error) return false;
+  const message = error.message || String(error);
+  const lowerMessage = message.toLowerCase();
+  return (
+    lowerMessage.includes('session not found') ||
+    lowerMessage.includes('session_not_found') ||
+    lowerMessage.includes('auth session missing') ||
+    lowerMessage.includes('jwt expired') ||
+    lowerMessage.includes('invalid refresh token') ||
+    lowerMessage.includes('refresh_token_not_found')
+  );
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -23,14 +60,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         
         // Defer role fetching to avoid deadlock
-        if (session?.user) {
+        if (currentSession?.user) {
           setTimeout(() => {
-            fetchUserRole(session.user.id);
+            fetchUserRole(currentSession.user.id);
           }, 0);
         } else {
           setRole(null);
@@ -40,17 +77,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserRole(session.user.id);
+    // THEN check for existing session and validate it against the server
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: localSession } } = await supabase.auth.getSession();
+        
+        if (localSession) {
+          // Validate session against server with getUser()
+          const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError || !validatedUser) {
+            // Session exists locally but is invalid on server
+            console.warn('Invalid session detected, cleaning up...');
+            await cleanupInvalidSession();
+            setSession(null);
+            setUser(null);
+            setRole(null);
+          } else {
+            // Session is valid
+            setSession(localSession);
+            setUser(validatedUser);
+            fetchUserRole(validatedUser.id);
+          }
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error validating session:', error);
+        if (isSessionInvalidError(error)) {
+          await cleanupInvalidSession();
+        }
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);

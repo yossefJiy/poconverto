@@ -30,8 +30,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Scheduled refresh times (24h format) - limited to 3 times per day
-const SCHEDULED_REFRESH_TIMES = [9, 13, 18];
+// Note: Scheduled refresh is now handled by backend cron jobs
+// Client-side refresh was removed to prevent auth errors from stale sessions
 
 export default function Analytics() {
   const { selectedClient } = useClient();
@@ -43,7 +43,6 @@ export default function Analytics() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [showConnectionStatusDialog, setShowConnectionStatusDialog] = useState(false);
-  const lastRefreshHourRef = useRef<number | null>(null);
   const toastIdRef = useRef<string | number | null>(null);
   
   // Open integrations dialog if URL param is set
@@ -143,33 +142,8 @@ export default function Analytics() {
     }
   }, [queryClient, refetchAll, selectedClient?.id]);
 
-  // Scheduled refresh effect
-  useEffect(() => {
-    const checkScheduledRefresh = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      
-      // Check if current hour is in scheduled times and we haven't refreshed this hour yet
-      // Also check if we're within the first minute of the hour to avoid multiple refreshes
-      if (
-        SCHEDULED_REFRESH_TIMES.includes(currentHour) &&
-        currentMinute === 0 &&
-        lastRefreshHourRef.current !== currentHour
-      ) {
-        lastRefreshHourRef.current = currentHour;
-        handleRefreshAll(true);
-      }
-    };
-
-    // Check every minute
-    const intervalId = setInterval(checkScheduledRefresh, 60 * 1000);
-    
-    // Also check immediately on mount
-    checkScheduledRefresh();
-
-    return () => clearInterval(intervalId);
-  }, [handleRefreshAll]);
+  // Note: Client-side scheduled refresh has been removed.
+  // Backend cron jobs handle automatic data sync to prevent auth errors from stale sessions.
 
   if (!selectedClient) {
     return (
