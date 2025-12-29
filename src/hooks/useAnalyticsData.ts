@@ -333,7 +333,8 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       return data;
     },
     enabled: !!clientId && !authLoading && !!session,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours
   });
 
   // Get GA property ID from integration settings
@@ -374,7 +375,8 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
     },
     enabled: !!clientId && !!propertyId && !authLoading && !!session,
     retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours
   });
 
   // Generate platform data based on connected integrations only
@@ -402,6 +404,8 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       return platforms;
     },
     enabled: !!clientId && !authLoading && !!session,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
   // Calculate aggregated ads data

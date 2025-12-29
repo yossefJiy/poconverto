@@ -119,7 +119,8 @@ export function useShopifyComparison(dateFrom?: string, dateTo?: string) {
       };
     },
     enabled: !!dateFrom && !!dateTo,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
   });
 }

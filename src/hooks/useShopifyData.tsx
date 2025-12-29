@@ -126,7 +126,8 @@ export function useShopifyData(): ShopifyDataResult {
   } = useQuery({
     queryKey: ['shopify-shop'],
     queryFn: () => callShopifyApi('get_shop'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -140,7 +141,8 @@ export function useShopifyData(): ShopifyDataResult {
   } = useQuery({
     queryKey: ['shopify-products'],
     queryFn: () => callShopifyApi('get_products', { limit: 250 }),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -154,7 +156,8 @@ export function useShopifyData(): ShopifyDataResult {
   } = useQuery({
     queryKey: ['shopify-orders'],
     queryFn: () => callShopifyApi('get_orders', { limit: 50 }),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -184,7 +187,8 @@ export function useShopifyAnalytics(dateFrom?: string, dateTo?: string) {
       date_from: dateFrom, 
       date_to: dateTo 
     }),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -196,7 +200,8 @@ export function useShopifyProducts(limit = 50) {
   return useQuery({
     queryKey: ['shopify-products', limit],
     queryFn: () => callShopifyApi('get_products', { limit }),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -208,7 +213,8 @@ export function useShopifyOrders(limit = 50) {
   return useQuery({
     queryKey: ['shopify-orders', limit],
     queryFn: () => callShopifyApi('get_orders', { limit }),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
@@ -220,7 +226,8 @@ export function useShopifyShop() {
   return useQuery({
     queryKey: ['shopify-shop'],
     queryFn: () => callShopifyApi('get_shop'),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 8 * 60 * 60 * 1000, // 8 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
     retry: 1,
     enabled: !authLoading && !!session,
   });
