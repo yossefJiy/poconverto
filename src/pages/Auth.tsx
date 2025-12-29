@@ -21,6 +21,14 @@ type AuthStep = "credentials" | "otp";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
+// Development mode - skip 2FA for these domains
+const isDevelopmentMode = () => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || 
+         hostname.includes('lovableproject.com') ||
+         hostname.includes('127.0.0.1');
+};
+
 const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -129,6 +137,14 @@ const Auth = () => {
           toast.error(signInError.message);
         }
         setLoading(false);
+        return;
+      }
+
+      // In development mode - skip 2FA and stay logged in
+      if (isDevelopmentMode()) {
+        is2FAInProgress.current = false;
+        toast.success("התחברת בהצלחה! (מצב פיתוח - 2FA מושבת)");
+        navigate("/");
         return;
       }
 
