@@ -88,6 +88,7 @@ interface PlatformOption {
   placeholder: string;
   useMccSelection?: boolean;
   useApiCredentials?: boolean; // For platforms needing consumer key/secret
+  useGACredentials?: boolean; // For Google Analytics with property ID + measurement ID
   steps: { title: string; description: string }[];
   helpUrl: string;
   features: string[];
@@ -151,11 +152,12 @@ const platformOptions: PlatformOption[] = [
     color: "bg-[#F9AB00]",
     description: "נתוני תנועה והתנהגות גולשים",
     credentialKey: "property_id",
-    placeholder: "G-XXXXXXXXXX",
+    placeholder: "123456789",
+    useGACredentials: true,
     steps: [
       { title: "היכנס ל-Google Analytics", description: "עבור ל-analytics.google.com" },
-      { title: "בחר את ה-Property הרצוי", description: "לחץ על Admin > Property Settings" },
-      { title: "העתק את Property ID", description: "המזהה מתחיל ב-G- ומכיל 10 תווים" },
+      { title: "עבור להגדרות הנכס", description: "לחץ על Admin > Property Settings" },
+      { title: "העתק Property ID ו-Measurement ID", description: "Property ID הוא מספר (לדוגמה: 123456789), Measurement ID מתחיל ב-G-" },
     ],
     helpUrl: "https://support.google.com/analytics/answer/9539598",
     features: ["סשנים וצפיות", "מקורות תנועה", "המרות", "התנהגות גולשים"],
@@ -208,6 +210,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [credential, setCredential] = useState("");
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
+  const [measurementId, setMeasurementId] = useState(""); // For Google Analytics Measurement ID (G-XXXXXX)
   const [selectedMccAccount, setSelectedMccAccount] = useState<MccAccount | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
@@ -276,6 +279,12 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           store_url: credential,
           consumer_key: consumerKey,
           consumer_secret: consumerSecret,
+        };
+      } else if (selectedPlatform.useGACredentials) {
+        // Google Analytics with property ID + measurement ID
+        credentials = {
+          property_id: credential,
+          measurement_id: measurementId || "",
         };
       } else {
         credentials[selectedPlatform.credentialKey] = credential;
@@ -350,6 +359,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setCredential("");
     setConsumerKey("");
     setConsumerSecret("");
+    setMeasurementId("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -383,6 +393,24 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
         return;
       }
     }
+
+    // Validate Google Analytics
+    if (selectedPlatform?.useGACredentials) {
+      if (!credential) {
+        setValidationError("יש להזין Property ID");
+        return;
+      }
+      // Property ID should be numeric
+      if (!/^\d+$/.test(credential)) {
+        setValidationError("Property ID צריך להיות מספרי בלבד (ללא G-)");
+        return;
+      }
+      // Measurement ID should start with G- if provided
+      if (measurementId && !measurementId.startsWith('G-')) {
+        setValidationError("Measurement ID צריך להתחיל ב-G-");
+        return;
+      }
+    }
     
     setValidationError("");
     setConnectionStatus("testing");
@@ -396,6 +424,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setCredential("");
     setConsumerKey("");
     setConsumerSecret("");
+    setMeasurementId("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -411,7 +440,9 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     ? !!selectedMccAccount 
     : selectedPlatform?.useApiCredentials 
       ? !!credential && !!consumerKey && !!consumerSecret
-      : !!credential;
+      : selectedPlatform?.useGACredentials
+        ? !!credential
+        : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -610,8 +641,49 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Manual Input for other platforms (not MCC or API credentials) */}
-            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && (
+            {/* Google Analytics with Property ID + Measurement ID */}
+            {selectedPlatform.useGACredentials && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Property ID (מספרי - חובה):</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      setCredential(e.target.value);
+                      setCurrentStep(e.target.value ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="123456789"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    נמצא ב-Admin → Property Settings → Property ID
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Measurement ID (אופציונלי):</Label>
+                  <Input
+                    value={measurementId}
+                    onChange={(e) => {
+                      setMeasurementId(e.target.value);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="G-XXXXXXXXXX"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    נמצא ב-Data Streams → Web → Measurement ID
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Manual Input for other platforms (not MCC, API credentials, or GA) */}
+            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && (
               <div className="space-y-2">
                 <Label>הזן את המזהה:</Label>
                 <Input
