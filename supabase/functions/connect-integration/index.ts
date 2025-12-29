@@ -23,6 +23,8 @@ interface IntegrationRequest {
     customer_id?: string;
     ad_account_id?: string;
     advertiser_id?: string;
+    consumer_key?: string;
+    consumer_secret?: string;
   };
   notify_email?: string;
 }
@@ -175,31 +177,76 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
     console.log("Testing WooCommerce connection:", credentials.store_url);
     
     // Validate store URL format
-    if (!credentials.store_url || !credentials.store_url.includes('http')) {
+    if (!credentials.store_url || !credentials.store_url.startsWith('http')) {
       return { 
         success: false, 
-        message: 'כתובת האתר חייבת לכלול https:// (לדוגמה: https://mystore.com)' 
+        message: 'כתובת האתר חייבת להתחיל ב-https:// (לדוגמה: https://mystore.com)' 
+      };
+    }
+    
+    // Validate consumer key
+    if (!credentials.consumer_key || !credentials.consumer_key.startsWith('ck_')) {
+      return { 
+        success: false, 
+        message: 'Consumer Key חייב להתחיל ב-ck_' 
+      };
+    }
+    
+    // Validate consumer secret
+    if (!credentials.consumer_secret || !credentials.consumer_secret.startsWith('cs_')) {
+      return { 
+        success: false, 
+        message: 'Consumer Secret חייב להתחיל ב-cs_' 
       };
     }
     
     try {
-      // In production, this would test the WooCommerce REST API
-      const isValid = credentials.store_url.length > 10;
+      // Test the WooCommerce REST API connection
+      const cleanUrl = credentials.store_url.replace(/\/$/, '');
+      const testUrl = `${cleanUrl}/wp-json/wc/v3/system_status`;
       
-      if (isValid) {
-        return { 
-          success: true, 
-          message: 'החיבור ל-WooCommerce הצליח! נתוני המכירות יסונכרנו בקרוב.',
-          data: {
-            store_url: credentials.store_url,
-            connected_at: new Date().toISOString(),
-            features: ['orders', 'products', 'customers', 'reports']
-          }
-        };
-      } else {
-        return { success: false, message: 'כתובת האתר לא תקינה' };
+      const authString = btoa(`${credentials.consumer_key}:${credentials.consumer_secret}`);
+      
+      console.log('[WooCommerce] Testing API connection to:', testUrl);
+      
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[WooCommerce] API test failed:', response.status, errorText);
+        
+        if (response.status === 401) {
+          return { success: false, message: 'מפתחות ה-API שגויים. בדוק את ה-Consumer Key וה-Consumer Secret' };
+        }
+        if (response.status === 404) {
+          return { success: false, message: 'לא נמצא WooCommerce באתר. ודא ש-WooCommerce מותקן ופעיל' };
+        }
+        
+        return { success: false, message: `שגיאת API: ${response.status}` };
       }
+      
+      const data = await response.json();
+      console.log('[WooCommerce] Connection successful, store info:', data.environment?.site_url);
+      
+      return { 
+        success: true, 
+        message: 'החיבור ל-WooCommerce הצליח! נתוני המכירות יסונכרנו בקרוב.',
+        data: {
+          store_url: credentials.store_url,
+          store_name: data.environment?.site_url || credentials.store_url,
+          wc_version: data.environment?.version || 'unknown',
+          connected_at: new Date().toISOString(),
+          features: ['orders', 'products', 'customers', 'reports']
+        }
+      };
     } catch (error) {
+      console.error('[WooCommerce] Connection error:', error);
       return { success: false, message: `שגיאת חיבור: ${(error as Error).message}` };
     }
   },
@@ -480,11 +527,20 @@ serve(async (req) => {
           }
         }
         
+        // For WooCommerce, store consumer key and secret
+        if (platform === 'woocommerce') {
+          sensitiveCredentials = {
+            consumer_key: credentials.consumer_key,
+            consumer_secret: credentials.consumer_secret,
+          };
+        }
+        
         // Encrypt sensitive credentials using database function
         let encryptedCredentials = null;
         const hasCredentialsToEncrypt = sensitiveCredentials.api_key || 
                                          sensitiveCredentials.access_token || 
-                                         sensitiveCredentials.refresh_token;
+                                         sensitiveCredentials.refresh_token ||
+                                         sensitiveCredentials.consumer_key;
         
         if (hasCredentialsToEncrypt) {
           const { data: encryptedData, error: encryptError } = await supabaseClient

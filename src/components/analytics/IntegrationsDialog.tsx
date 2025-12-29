@@ -87,6 +87,7 @@ interface PlatformOption {
   credentialKey: string;
   placeholder: string;
   useMccSelection?: boolean;
+  useApiCredentials?: boolean; // For platforms needing consumer key/secret
   steps: { title: string; description: string }[];
   helpUrl: string;
   features: string[];
@@ -97,6 +98,16 @@ interface MccAccount {
   name: string;
   currency: string;
 }
+
+// Validation helpers
+const validateCustomerId = (value: string): { valid: boolean; formatted: string } => {
+  const cleanId = value.replace(/\D/g, '');
+  if (cleanId.length === 10) {
+    const formatted = cleanId.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+    return { valid: true, formatted };
+  }
+  return { valid: false, formatted: value };
+};
 
 const platformOptions: PlatformOption[] = [
   { 
@@ -123,10 +134,12 @@ const platformOptions: PlatformOption[] = [
     description: "סנכרון נתוני חנות WordPress + WooCommerce",
     credentialKey: "store_url",
     placeholder: "https://mystore.com",
+    useApiCredentials: true,
     steps: [
       { title: "היכנס לאזור הניהול של WordPress", description: "עבור ל-WooCommerce > Settings > Advanced > REST API" },
-      { title: "צור מפתח API חדש", description: "לחץ על 'Add key' והגדר הרשאות Read" },
-      { title: "הזן את כתובת האתר למטה", description: "הזן את כתובת האתר הראשית" },
+      { title: "צור מפתח API חדש", description: "לחץ על 'Add key' והגדר הרשאות Read/Write" },
+      { title: "העתק Consumer Key ו-Consumer Secret", description: "שמור אותם במקום בטוח" },
+      { title: "הזן את הפרטים למטה", description: "כתובת אתר + מפתחות ה-API" },
     ],
     helpUrl: "https://woocommerce.com/document/woocommerce-rest-api/",
     features: ["הזמנות", "מוצרים", "לקוחות", "דוחות מכירות"],
@@ -193,10 +206,13 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformOption | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [credential, setCredential] = useState("");
+  const [consumerKey, setConsumerKey] = useState("");
+  const [consumerSecret, setConsumerSecret] = useState("");
   const [selectedMccAccount, setSelectedMccAccount] = useState<MccAccount | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   // Auto-select platform if defaultPlatform is provided
   useEffect(() => {
@@ -249,17 +265,28 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     mutationFn: async () => {
       if (!selectedClient || !selectedPlatform) throw new Error("Missing data");
       
-      // For Google Ads with MCC selection
-      const credentialValue = selectedPlatform.useMccSelection && selectedMccAccount 
-        ? selectedMccAccount.id 
-        : credential;
+      // Build credentials based on platform type
+      let credentials: Record<string, string> = {};
+      
+      if (selectedPlatform.useMccSelection && selectedMccAccount) {
+        credentials[selectedPlatform.credentialKey] = selectedMccAccount.id;
+      } else if (selectedPlatform.useApiCredentials) {
+        // WooCommerce with consumer key/secret
+        credentials = {
+          store_url: credential,
+          consumer_key: consumerKey,
+          consumer_secret: consumerSecret,
+        };
+      } else {
+        credentials[selectedPlatform.credentialKey] = credential;
+      }
       
       const { data, error } = await supabase.functions.invoke('connect-integration', {
         body: {
           action: "connect",
           platform: selectedPlatform.id,
           client_id: selectedClient.id,
-          credentials: { [selectedPlatform.credentialKey]: credentialValue },
+          credentials,
           notify_email: NOTIFY_EMAIL,
         }
       });
@@ -321,10 +348,13 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setSelectedPlatform(platform);
     setCurrentStep(0);
     setCredential("");
+    setConsumerKey("");
+    setConsumerSecret("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
     setSearchQuery("");
+    setValidationError("");
   };
 
   const handleMccAccountSelect = (account: MccAccount) => {
@@ -333,6 +363,28 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   };
 
   const handleConnect = () => {
+    // Validate Google Ads customer ID
+    if (selectedPlatform?.useMccSelection && selectedMccAccount) {
+      const { valid } = validateCustomerId(selectedMccAccount.id);
+      if (!valid) {
+        setValidationError("מספר לקוח לא תקין. יש להזין 10 ספרות בפורמט: 123-456-7890");
+        return;
+      }
+    }
+    
+    // Validate WooCommerce
+    if (selectedPlatform?.useApiCredentials) {
+      if (!credential || !consumerKey || !consumerSecret) {
+        setValidationError("יש למלא את כל השדות");
+        return;
+      }
+      if (!credential.startsWith('http')) {
+        setValidationError("כתובת האתר חייבת להתחיל ב-https://");
+        return;
+      }
+    }
+    
+    setValidationError("");
     setConnectionStatus("testing");
     connectMutation.mutate();
   };
@@ -342,10 +394,13 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setSelectedPlatform(null);
     setCurrentStep(0);
     setCredential("");
+    setConsumerKey("");
+    setConsumerSecret("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
     setSearchQuery("");
+    setValidationError("");
   };
 
   if (!selectedClient) {
@@ -354,7 +409,9 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
 
   const canConnect = selectedPlatform?.useMccSelection 
     ? !!selectedMccAccount 
-    : !!credential;
+    : selectedPlatform?.useApiCredentials 
+      ? !!credential && !!consumerKey && !!consumerSecret
+      : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -503,8 +560,58 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Manual Input for other platforms */}
-            {!selectedPlatform.useMccSelection && (
+            {/* WooCommerce with API credentials */}
+            {selectedPlatform.useApiCredentials && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>כתובת האתר:</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      setCredential(e.target.value);
+                      setCurrentStep(e.target.value ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="https://mystore.com"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Consumer Key:</Label>
+                  <Input
+                    value={consumerKey}
+                    onChange={(e) => {
+                      setConsumerKey(e.target.value);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    dir="ltr"
+                    className="text-left font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Consumer Secret:</Label>
+                  <Input
+                    type="password"
+                    value={consumerSecret}
+                    onChange={(e) => {
+                      setConsumerSecret(e.target.value);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    dir="ltr"
+                    className="text-left font-mono text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Manual Input for other platforms (not MCC or API credentials) */}
+            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && (
               <div className="space-y-2">
                 <Label>הזן את המזהה:</Label>
                 <Input
@@ -519,6 +626,14 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                   className="text-left"
                 />
               </div>
+            )}
+
+            {/* Validation Error */}
+            {validationError && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
             )}
 
             {/* Features */}
