@@ -400,15 +400,21 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
         setValidationError("יש להזין Property ID");
         return;
       }
-      // Property ID should be numeric
-      if (!/^\d+$/.test(credential)) {
-        setValidationError("Property ID צריך להיות מספרי בלבד (ללא G-)");
+      // Property ID can be numeric or alphanumeric (some GA4 properties have different formats)
+      // Allow: pure numbers (123456789), or alphanumeric identifiers
+      const cleanPropertyId = credential.trim();
+      if (cleanPropertyId.length < 1 || cleanPropertyId.length > 50) {
+        setValidationError("Property ID חייב להיות בין 1 ל-50 תווים");
         return;
       }
-      // Measurement ID should start with G- if provided
-      if (measurementId && !measurementId.startsWith('G-')) {
-        setValidationError("Measurement ID צריך להתחיל ב-G-");
-        return;
+      // Measurement ID validation is optional and flexible
+      if (measurementId) {
+        const cleanMeasurementId = measurementId.trim();
+        // Accept G-XXXXX format or just the ID part
+        if (cleanMeasurementId.length > 0 && cleanMeasurementId.length > 30) {
+          setValidationError("Measurement ID ארוך מדי");
+          return;
+        }
       }
     }
     
