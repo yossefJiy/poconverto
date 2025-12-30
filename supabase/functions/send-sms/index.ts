@@ -6,8 +6,23 @@ const corsHeaders = {
 };
 
 interface SMSRequest {
-  to: string;
-  message: string;
+  to: string;         // destination phone number
+  message: string;    // SMS body
+  sender?: string;    // sender identity (optional, uses default from settings)
+}
+
+interface ExtraAPIResponse {
+  success: boolean;
+  id?: string;
+  messages_count?: {
+    sent: number;
+    charged: number;
+  };
+  errors?: Array<{
+    id: string;
+    code: string;
+    description: string;
+  }>;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -17,13 +32,12 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+    const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
+    const defaultSender = Deno.env.get("EXTRA_SMS_SENDER") || "ExtraMobile";
 
     // Check if SMS is configured
-    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
-      console.log("[SMS] Twilio credentials not configured");
+    if (!extraApiToken) {
+      console.log("[SMS] Extra API token not configured");
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -37,7 +51,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const { to, message }: SMSRequest = await req.json();
+    const { to, message, sender }: SMSRequest = await req.json();
 
     if (!to || !message) {
       return new Response(
@@ -49,47 +63,48 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`[SMS] Sending SMS to ${to}`);
+    console.log(`[SMS] Sending SMS to ${to} via Extra API`);
 
-    // Send SMS via Twilio
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-    
-    const formData = new URLSearchParams();
-    formData.append("To", to);
-    formData.append("From", twilioPhoneNumber);
-    formData.append("Body", message);
-
-    const twilioResponse = await fetch(twilioUrl, {
+    // Send SMS via Extra API
+    // API: POST https://www.exm.co.il/api/v1/sms/send/
+    const extraResponse = await fetch("https://www.exm.co.il/api/v1/sms/send/", {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Bearer ${extraApiToken}`,
+        "Content-Type": "application/json",
       },
-      body: formData.toString(),
+      body: JSON.stringify({
+        message: message,
+        destination: to,
+        sender: sender || defaultSender,
+      }),
     });
 
-    const twilioData = await twilioResponse.json();
+    const extraData: ExtraAPIResponse = await extraResponse.json();
 
-    if (!twilioResponse.ok) {
-      console.error("[SMS] Twilio error:", twilioData);
+    if (!extraResponse.ok || !extraData.success) {
+      console.error("[SMS] Extra API error:", extraData);
+      const errorMessage = extraData.errors?.[0]?.description || "Failed to send SMS";
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: twilioData.message || "Failed to send SMS" 
+          error: errorMessage,
+          details: extraData.errors 
         }),
         {
-          status: twilioResponse.status,
+          status: extraResponse.status >= 400 ? extraResponse.status : 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
 
-    console.log("[SMS] SMS sent successfully:", twilioData.sid);
+    console.log("[SMS] SMS sent successfully:", extraData.id);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        messageId: twilioData.sid,
+        messageId: extraData.id,
+        messagesCount: extraData.messages_count,
         configured: true 
       }),
       {
