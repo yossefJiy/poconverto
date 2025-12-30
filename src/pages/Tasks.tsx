@@ -27,7 +27,8 @@ import {
   ListTree,
   Copy,
   Upload,
-  LayoutDashboard
+  LayoutDashboard,
+  Settings2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { TeamDashboard } from "@/components/tasks/TeamDashboard";
 import { BulkTaskImport } from "@/components/tasks/BulkTaskImport";
+import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 
 interface Task {
   id: string;
@@ -138,6 +140,7 @@ export default function Tasks() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
+  const [integrationsDialogOpen, setIntegrationsDialogOpen] = useState(false);
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -619,16 +622,20 @@ export default function Tasks() {
           title={selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"}
           description="לפי עובד, לקוח ומחלקה"
           actions={
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setShowDashboard(true)}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setIntegrationsDialogOpen(true)}>
+                <Settings2 className="w-4 h-4 ml-2" />
+                אינטגרציות
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowDashboard(true)}>
                 <LayoutDashboard className="w-4 h-4 ml-2" />
                 הדשבורד שלי
               </Button>
-              <Button variant="outline" onClick={() => setBulkImportDialogOpen(true)}>
+              <Button variant="outline" size="sm" onClick={() => setBulkImportDialogOpen(true)}>
                 <Upload className="w-4 h-4 ml-2" />
                 ייבוא בכמות
               </Button>
-              <Button className="glow" onClick={() => openDialog()}>
+              <Button className="glow" size="sm" onClick={() => openDialog()}>
                 <Plus className="w-4 h-4 ml-2" />
                 משימה חדשה
               </Button>
@@ -957,6 +964,12 @@ export default function Tasks() {
         onImport={(tasks) => bulkImportMutation.mutate(tasks)}
         teamMembers={teamMembers.map(m => ({ id: m.id, name: m.name }))}
         isLoading={bulkImportMutation.isPending}
+      />
+
+      {/* Integrations Dialog */}
+      <IntegrationsDialog 
+        open={integrationsDialogOpen}
+        onOpenChange={setIntegrationsDialogOpen}
       />
 
       {/* Delete Confirmation */}
