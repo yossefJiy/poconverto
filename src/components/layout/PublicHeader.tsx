@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LogIn, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 
@@ -22,6 +23,9 @@ const navItems: NavItem[] = [
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+
+  const authHref = user ? "/dashboard" : "/auth";
 
   const isActive = (href: string) => {
     if (href.startsWith("#")) return false;
@@ -83,14 +87,14 @@ export function PublicHeader() {
           {/* Login Button */}
           <div className="flex items-center gap-3">
             <Button asChild variant="outline" size="sm" className="hidden sm:flex gap-2">
-              <Link to="/auth">
+              <Link to={authHref}>
                 <LogIn className="h-4 w-4" />
-                כניסה למערכת
+                {user ? "למערכת" : "כניסה למערכת"}
               </Link>
             </Button>
             <Button asChild size="sm" className="hidden sm:flex bg-gradient-to-r from-primary to-accent hover:opacity-90">
-              <Link to="/auth">
-                התחילו בחינם
+              <Link to={authHref}>
+                {user ? "למערכת" : "התחילו בחינם"}
               </Link>
             </Button>
 
@@ -144,14 +148,14 @@ export function PublicHeader() {
               ))}
               <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/50">
                 <Button asChild variant="outline" className="w-full gap-2">
-                  <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to={authHref} onClick={() => setMobileMenuOpen(false)}>
                     <LogIn className="h-4 w-4" />
-                    כניסה למערכת
+                    {user ? "למערכת" : "כניסה למערכת"}
                   </Link>
                 </Button>
                 <Button asChild className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                    התחילו בחינם
+                  <Link to={authHref} onClick={() => setMobileMenuOpen(false)}>
+                    {user ? "למערכת" : "התחילו בחינם"}
                   </Link>
                 </Button>
               </div>

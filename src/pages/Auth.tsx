@@ -59,16 +59,16 @@ const Auth = () => {
         return;
       }
       if (session?.user) {
-        console.log("[Auth] User session detected, navigating to home");
-        navigate("/");
+        console.log("[Auth] User session detected, navigating to dashboard");
+        navigate("/dashboard");
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("[Auth] Initial getSession:", { hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
       if (session?.user && !is2FAInProgress.current) {
-        console.log("[Auth] Existing session found, navigating to home");
-        navigate("/");
+        console.log("[Auth] Existing session found, navigating to dashboard");
+        navigate("/dashboard");
       }
     });
 
@@ -200,7 +200,7 @@ const Auth = () => {
         console.log("[Auth][2FA] Device is trusted, skipping 2FA");
         is2FAInProgress.current = false;
         toast.success("התחברת בהצלחה!");
-        navigate("/");
+        navigate("/dashboard");
         return;
       }
 
@@ -294,7 +294,7 @@ const Auth = () => {
       });
 
       toast.success("התחברת בהצלחה! המכשיר יזכר ל-30 יום");
-      navigate("/");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("[Auth][2FA] Error in handleVerifyOtp:", error);
       toast.error("שגיאה באימות: " + (error.message || "Unknown error"));
