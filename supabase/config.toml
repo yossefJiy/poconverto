@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.sync-analytics-scheduled]
 verify_jwt = false
+
+[functions.send-lead-notification]
+verify_jwt = false
