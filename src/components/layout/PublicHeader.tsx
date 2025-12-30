@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
+import byJiyLogo from "@/assets/by-jiy-logo.svg";
 
 interface NavItem {
   label: string;
@@ -42,19 +43,23 @@ export function PublicHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <img 
-              src={logoIcon} 
-              alt="Converto" 
-              className="h-8 w-auto group-hover:scale-105 transition-transform" 
-            />
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:flex flex-col items-end">
               <img 
                 src={logoText} 
                 alt="Converto" 
                 className="h-5 w-auto" 
               />
-              <span className="text-xs text-muted-foreground">by JIY</span>
+              <img 
+                src={byJiyLogo} 
+                alt="by JIY" 
+                className="h-2.5 w-auto mt-0.5 opacity-70" 
+              />
             </div>
+            <img 
+              src={logoIcon} 
+              alt="Converto" 
+              className="h-8 w-auto group-hover:scale-105 transition-transform" 
+            />
           </Link>
 
           {/* Desktop Navigation */}

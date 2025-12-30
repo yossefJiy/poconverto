@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientSwitcher } from "./ClientSwitcher";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
+import byJiyLogo from "@/assets/by-jiy-logo.svg";
 
 interface MenuItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -109,10 +110,20 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <img src={logoIcon} alt="Converto" className="h-6 w-auto" />
           {!collapsed && (
-            <img src={logoText} alt="Converto" className="h-4 w-auto animate-fade-in" />
+            <div className="flex flex-col items-end animate-fade-in">
+              <img src={logoText} alt="Converto" className="h-4 w-auto" />
+              <img src={byJiyLogo} alt="by JIY" className="h-2 w-auto mt-0.5 opacity-70" />
+            </div>
           )}
+          <img 
+            src={logoIcon} 
+            alt="Converto" 
+            className={cn(
+              "transition-all duration-300",
+              collapsed ? "h-10 w-auto" : "h-6 w-auto"
+            )} 
+          />
         </Link>
         <button
           onClick={() => setCollapsed(!collapsed)}
