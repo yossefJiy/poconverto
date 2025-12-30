@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   User,
   Building2,
-  Filter,
   Plus,
   Loader2,
   CheckSquare,
@@ -22,7 +21,12 @@ import {
   Bell,
   Mail,
   Phone,
-  Tag
+  ChevronDown,
+  ChevronLeft,
+  ListTree,
+  GripVertical,
+  Copy,
+  Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +60,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Task {
   id: string;
@@ -64,6 +73,7 @@ interface Task {
   status: string;
   priority: string;
   due_date: string | null;
+  scheduled_time: string | null;
   assignee: string | null;
   department: string | null;
   client_id: string | null;
@@ -74,11 +84,14 @@ interface Task {
   notification_phone: string | null;
   notification_email_address: string | null;
   reminder_sent: boolean;
+  parent_id: string | null;
+  order_index: number;
 }
 
 interface TeamMember {
   id: string;
   name: string;
+  email: string | null;
   departments: string[];
 }
 
@@ -106,6 +119,11 @@ const categoryOptions = [
   "מנהל מוצר",
 ];
 
+// Time options for scheduler
+const timeOptions = Array.from({ length: 24 }, (_, h) => 
+  ["00", "30"].map(m => `${h.toString().padStart(2, "0")}:${m}`)
+).flat();
+
 export default function Tasks() {
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
@@ -113,11 +131,14 @@ export default function Tasks() {
   const [filter, setFilter] = useState<"all" | "assignee" | "department">("all");
   const [selectedValue, setSelectedValue] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -125,6 +146,7 @@ export default function Tasks() {
   const [formStatus, setFormStatus] = useState("pending");
   const [formPriority, setFormPriority] = useState("medium");
   const [formDueDate, setFormDueDate] = useState("");
+  const [formScheduledTime, setFormScheduledTime] = useState("");
   const [formAssignee, setFormAssignee] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
   const [formCategory, setFormCategory] = useState("");
@@ -133,6 +155,7 @@ export default function Tasks() {
   const [formNotificationSms, setFormNotificationSms] = useState(false);
   const [formNotificationPhone, setFormNotificationPhone] = useState("");
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
+  const [formParentId, setFormParentId] = useState<string | null>(null);
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", selectedClient?.id],
@@ -148,7 +171,13 @@ export default function Tasks() {
       
       const { data, error } = await query;
       if (error) throw error;
-      return data as Task[];
+      // Map database results to include new fields with defaults
+      return (data || []).map(task => ({
+        ...task,
+        scheduled_time: (task as any).scheduled_time || null,
+        parent_id: (task as any).parent_id || null,
+        order_index: (task as any).order_index || 0,
+      })) as Task[];
     },
   });
 
@@ -164,6 +193,73 @@ export default function Tasks() {
     },
   });
 
+  // Organize tasks into parent-child structure
+  const { parentTasks, childTasksMap } = useMemo(() => {
+    const parents = tasks.filter(t => !t.parent_id);
+    const childMap = new Map<string, Task[]>();
+    
+    tasks.filter(t => t.parent_id).forEach(task => {
+      const existing = childMap.get(task.parent_id!) || [];
+      childMap.set(task.parent_id!, [...existing, task]);
+    });
+    
+    return { parentTasks: parents, childTasksMap: childMap };
+  }, [tasks]);
+
+  // Smart auto-assignment based on category and department
+  const getSmartAssignee = (category: string, department: string): string => {
+    if (!category && !department) return "";
+    
+    // Find team members that match the department
+    const matchingMembers = teamMembers.filter(m => 
+      m.departments.includes(department) || 
+      (category && m.departments.some(d => d.toLowerCase().includes(category.toLowerCase())))
+    );
+    
+    if (matchingMembers.length > 0) {
+      // Return the first matching member (could be enhanced with load balancing)
+      return matchingMembers[0].name;
+    }
+    
+    return "";
+  };
+
+  // Auto-fill email when assignee changes
+  const handleAssigneeChange = (name: string) => {
+    setFormAssignee(name);
+    const member = teamMembers.find(m => m.name === name);
+    if (member?.email && !formNotificationEmailAddress) {
+      setFormNotificationEmailAddress(member.email);
+    }
+    // Also set department from member's primary department
+    if (member?.departments?.[0] && !formDepartment) {
+      setFormDepartment(member.departments[0]);
+    }
+  };
+
+  // Auto-suggest assignee when category/department changes
+  const handleCategoryChange = (category: string) => {
+    setFormCategory(category);
+    if (!formAssignee && category) {
+      const suggested = getSmartAssignee(category, formDepartment);
+      if (suggested) {
+        handleAssigneeChange(suggested);
+        toast.info(`שויך אוטומטית ל: ${suggested}`);
+      }
+    }
+  };
+
+  const handleDepartmentChange = (department: string) => {
+    setFormDepartment(department);
+    if (!formAssignee && department) {
+      const suggested = getSmartAssignee(formCategory, department);
+      if (suggested) {
+        handleAssigneeChange(suggested);
+        toast.info(`שויך אוטומטית ל: ${suggested}`);
+      }
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (task: Partial<Task> & { id?: string }) => {
       const taskData = {
@@ -172,6 +268,7 @@ export default function Tasks() {
         status: task.status,
         priority: task.priority,
         due_date: task.due_date || null,
+        scheduled_time: task.scheduled_time || null,
         assignee: task.assignee,
         department: task.department,
         category: task.category || null,
@@ -181,6 +278,8 @@ export default function Tasks() {
         notification_phone: task.notification_phone || null,
         notification_email_address: task.notification_email_address || null,
         reminder_sent: false,
+        parent_id: task.parent_id || null,
+        order_index: task.order_index || 0,
       };
 
       if (task.id) {
@@ -203,6 +302,30 @@ export default function Tasks() {
       closeDialog();
     },
     onError: () => toast.error("שגיאה בשמירת משימה"),
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (tasksText: string) => {
+      const lines = tasksText.split("\n").filter(line => line.trim());
+      const tasksToCreate = lines.map((line, index) => ({
+        title: line.trim(),
+        status: "pending",
+        priority: "medium",
+        client_id: selectedClient?.id || null,
+        order_index: index,
+      }));
+
+      const { error } = await supabase.from("tasks").insert(tasksToCreate);
+      if (error) throw error;
+      return tasksToCreate.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success(`${count} משימות נוספו בהצלחה`);
+      setBulkImportDialogOpen(false);
+      setBulkImportText("");
+    },
+    onError: () => toast.error("שגיאה בייבוא משימות"),
   });
 
   const updateStatusMutation = useMutation({
@@ -230,13 +353,31 @@ export default function Tasks() {
     onError: () => toast.error("שגיאה במחיקת משימה"),
   });
 
-  const openDialog = (task?: Task) => {
+  const duplicateMutation = useMutation({
+    mutationFn: async (task: Task) => {
+      const { id, ...taskData } = task;
+      const { error } = await supabase.from("tasks").insert({
+        ...taskData,
+        title: `${task.title} (העתק)`,
+        status: "pending",
+        reminder_sent: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("המשימה שוכפלה");
+    },
+  });
+
+  const openDialog = (task?: Task, parentId?: string) => {
     setSelectedTask(task || null);
     setFormTitle(task?.title || "");
     setFormDescription(task?.description || "");
     setFormStatus(task?.status || "pending");
     setFormPriority(task?.priority || "medium");
     setFormDueDate(task?.due_date || "");
+    setFormScheduledTime(task?.scheduled_time?.slice(0, 5) || "");
     setFormAssignee(task?.assignee || "");
     setFormDepartment(task?.department || "");
     setFormCategory(task?.category || "");
@@ -245,6 +386,7 @@ export default function Tasks() {
     setFormNotificationSms(task?.notification_sms || false);
     setFormNotificationPhone(task?.notification_phone || "");
     setFormNotificationEmailAddress(task?.notification_email_address || "");
+    setFormParentId(parentId || task?.parent_id || null);
     setEditDialogOpen(true);
   };
 
@@ -256,6 +398,7 @@ export default function Tasks() {
     setFormStatus("pending");
     setFormPriority("medium");
     setFormDueDate("");
+    setFormScheduledTime("");
     setFormAssignee("");
     setFormDepartment("");
     setFormCategory("");
@@ -264,6 +407,7 @@ export default function Tasks() {
     setFormNotificationSms(false);
     setFormNotificationPhone("");
     setFormNotificationEmailAddress("");
+    setFormParentId(null);
   };
 
   const handleSave = () => {
@@ -278,6 +422,7 @@ export default function Tasks() {
       status: formStatus,
       priority: formPriority,
       due_date: formDueDate || null,
+      scheduled_time: formScheduledTime ? `${formScheduledTime}:00` : null,
       assignee: formAssignee || null,
       department: formDepartment || null,
       category: formCategory || null,
@@ -287,6 +432,20 @@ export default function Tasks() {
       notification_phone: formNotificationPhone || null,
       notification_email_address: formNotificationEmailAddress || null,
       reminder_sent: false,
+      parent_id: formParentId,
+      order_index: selectedTask?.order_index || 0,
+    });
+  };
+
+  const toggleExpanded = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
     });
   };
 
@@ -297,12 +456,139 @@ export default function Tasks() {
     ...teamMembers.flatMap(m => m.departments)
   ])];
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = parentTasks.filter(task => {
     if (filter === "all" || !selectedValue) return true;
     if (filter === "assignee") return task.assignee === selectedValue;
     if (filter === "department") return task.department === selectedValue;
     return true;
   });
+
+  // Format time for display
+  const formatTime = (time: string | null) => {
+    if (!time) return null;
+    return time.slice(0, 5);
+  };
+
+  // Render task row (used for both parent and child tasks)
+  const renderTaskRow = (task: Task, isSubtask = false) => {
+    const status = statusConfig[task.status] || statusConfig.pending;
+    const priority = priorityConfig[task.priority] || priorityConfig.medium;
+    const StatusIcon = status.icon;
+    const childTasks = childTasksMap.get(task.id) || [];
+    const hasChildren = childTasks.length > 0;
+    const isExpanded = expandedTasks.has(task.id);
+    
+    return (
+      <div key={task.id}>
+        <div className={cn(
+          "p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group",
+          isSubtask && "bg-muted/20 pr-12"
+        )}>
+          <div className="flex items-start gap-3">
+            {!isSubtask && hasChildren ? (
+              <button
+                onClick={() => toggleExpanded(task.id)}
+                className="p-2 rounded-lg transition-colors hover:bg-muted flex-shrink-0"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const nextStatus = task.status === "pending" ? "in-progress" : task.status === "in-progress" ? "completed" : "pending";
+                  updateStatusMutation.mutate({ id: task.id, status: nextStatus });
+                }}
+                className={cn("p-2 rounded-lg transition-colors hover:opacity-80 flex-shrink-0", status.bg)}
+              >
+                <StatusIcon className={cn("w-5 h-5", status.color)} />
+              </button>
+            )}
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                {isSubtask && <ListTree className="w-4 h-4 text-muted-foreground" />}
+                <h3 className={cn("font-medium", task.status === "completed" && "line-through text-muted-foreground")}>
+                  {task.title}
+                </h3>
+                <span className={cn("w-2 h-2 rounded-full flex-shrink-0", priority.color)} title={priority.label} />
+                {hasChildren && (
+                  <Badge variant="secondary" className="text-xs">
+                    {childTasks.length} תתי-משימות
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                {task.assignee && (
+                  <span className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {task.assignee}
+                  </span>
+                )}
+                {task.department && (
+                  <span className="flex items-center gap-1">
+                    <Building2 className="w-3 h-3" />
+                    {task.department}
+                  </span>
+                )}
+                {task.due_date && (
+                  <span className={cn(
+                    "flex items-center gap-1",
+                    new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive"
+                  )}>
+                    <Calendar className="w-3 h-3" />
+                    {new Date(task.due_date).toLocaleDateString("he-IL")}
+                    {task.scheduled_time && (
+                      <span className="mr-1">
+                        <Clock className="w-3 h-3 inline ml-1" />
+                        {formatTime(task.scheduled_time)}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {task.description && (
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-1">{task.description}</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              {!isSubtask && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(undefined, task.id)} title="הוסף תת-משימה">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateMutation.mutate(task)} title="שכפל">
+                <Copy className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(task)}>
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setTaskToDelete(task); setDeleteDialogOpen(true); }}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <Badge variant="outline" className={cn("whitespace-nowrap flex-shrink-0", status.bg, status.color)}>
+              {status.label}
+            </Badge>
+          </div>
+        </div>
+        
+        {/* Render child tasks */}
+        {hasChildren && isExpanded && (
+          <div className="border-r-2 border-primary/20 mr-6">
+            {childTasks.map(child => renderTaskRow(child, true))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <MainLayout>
@@ -311,10 +597,16 @@ export default function Tasks() {
           title={selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"}
           description="לפי עובד, לקוח ומחלקה"
           actions={
-            <Button className="glow" onClick={() => openDialog()}>
-              <Plus className="w-4 h-4 ml-2" />
-              משימה חדשה
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setBulkImportDialogOpen(true)}>
+                <Upload className="w-4 h-4 ml-2" />
+                ייבוא בכמות
+              </Button>
+              <Button className="glow" onClick={() => openDialog()}>
+                <Plus className="w-4 h-4 ml-2" />
+                משימה חדשה
+              </Button>
+            </div>
           }
         />
 
@@ -399,83 +691,14 @@ export default function Tasks() {
           </div>
         ) : viewMode === "list" ? (
           <div className="glass rounded-xl overflow-hidden">
-            {filteredTasks.map((task) => {
-              const status = statusConfig[task.status] || statusConfig.pending;
-              const priority = priorityConfig[task.priority] || priorityConfig.medium;
-              const StatusIcon = status.icon;
-              
-              return (
-                <div key={task.id} className="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group">
-                  <div className="flex items-start gap-3">
-                    <button
-                      onClick={() => {
-                        const nextStatus = task.status === "pending" ? "in-progress" : task.status === "in-progress" ? "completed" : "pending";
-                        updateStatusMutation.mutate({ id: task.id, status: nextStatus });
-                      }}
-                      className={cn("p-2 rounded-lg transition-colors hover:opacity-80 flex-shrink-0", status.bg)}
-                    >
-                      <StatusIcon className={cn("w-5 h-5", status.color)} />
-                    </button>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className={cn("font-medium", task.status === "completed" && "line-through text-muted-foreground")}>
-                          {task.title}
-                        </h3>
-                        <span className={cn("w-2 h-2 rounded-full flex-shrink-0", priority.color)} title={priority.label} />
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                        {task.assignee && (
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {task.assignee}
-                          </span>
-                        )}
-                        {task.department && (
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />
-                            {task.department}
-                          </span>
-                        )}
-                        {task.due_date && (
-                          <span className={cn(
-                            "flex items-center gap-1",
-                            new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive"
-                          )}>
-                            <Calendar className="w-3 h-3" />
-                            {new Date(task.due_date).toLocaleDateString("he-IL")}
-                          </span>
-                        )}
-                      </div>
-
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-1">{task.description}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(task)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setTaskToDelete(task); setDeleteDialogOpen(true); }}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <Badge variant="outline" className={cn("whitespace-nowrap flex-shrink-0", status.bg, status.color)}>
-                      {status.label}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredTasks.map((task) => renderTaskRow(task))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTasks.map((task, index) => {
               const status = statusConfig[task.status] || statusConfig.pending;
               const priority = priorityConfig[task.priority] || priorityConfig.medium;
+              const childTasks = childTasksMap.get(task.id) || [];
               
               return (
                 <div 
@@ -488,8 +711,16 @@ export default function Tasks() {
                       <div className="flex items-center gap-2">
                         <span className={cn("w-2 h-2 rounded-full", priority.color)} />
                         <span className="text-xs text-muted-foreground">{priority.label}</span>
+                        {childTasks.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {childTasks.length} תתי-משימות
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(undefined, task.id)}>
+                          <Plus className="w-3 h-3" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(task)}>
                           <Edit2 className="w-3 h-3" />
                         </Button>
@@ -513,6 +744,7 @@ export default function Tasks() {
                         {task.due_date && (
                           <span className={cn(new Date(task.due_date) < new Date() && task.status !== "completed" && "text-destructive")}>
                             {new Date(task.due_date).toLocaleDateString("he-IL")}
+                            {task.scheduled_time && ` ${formatTime(task.scheduled_time)}`}
                           </span>
                         )}
                       </div>
@@ -532,9 +764,18 @@ export default function Tasks() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedTask ? "עריכת משימה" : "משימה חדשה"}</DialogTitle>
+            <DialogTitle>
+              {selectedTask ? "עריכת משימה" : formParentId ? "תת-משימה חדשה" : "משימה חדשה"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {formParentId && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm text-muted-foreground">
+                <ListTree className="w-4 h-4" />
+                <span>תת-משימה של: {tasks.find(t => t.id === formParentId)?.title}</span>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label>כותרת</Label>
               <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="כותרת המשימה" />
@@ -570,7 +811,7 @@ export default function Tasks() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>אחראי</Label>
-                <Select value={formAssignee || "none"} onValueChange={(v) => setFormAssignee(v === "none" ? "" : v)}>
+                <Select value={formAssignee || "none"} onValueChange={(v) => handleAssigneeChange(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="בחר אחראי" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-</SelectItem>
@@ -580,7 +821,7 @@ export default function Tasks() {
               </div>
               <div className="space-y-2">
                 <Label>מחלקה</Label>
-                <Select value={formDepartment || "none"} onValueChange={(v) => setFormDepartment(v === "none" ? "" : v)}>
+                <Select value={formDepartment || "none"} onValueChange={(v) => handleDepartmentChange(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="בחר מחלקה" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-</SelectItem>
@@ -595,15 +836,25 @@ export default function Tasks() {
                 <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>קטגוריה</Label>
-                <Select value={formCategory || "none"} onValueChange={(v) => setFormCategory(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
+                <Label>שעה מתוכננת</Label>
+                <Select value={formScheduledTime || "none"} onValueChange={(v) => setFormScheduledTime(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="בחר שעה" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-</SelectItem>
-                    {categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {timeOptions.map((time) => <SelectItem key={time} value={time}>{time}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>קטגוריה</Label>
+              <Select value={formCategory || "none"} onValueChange={(v) => handleCategoryChange(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-</SelectItem>
+                  {categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Reminder Section */}
@@ -673,12 +924,52 @@ export default function Tasks() {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Import Dialog */}
+      <Dialog open={bulkImportDialogOpen} onOpenChange={setBulkImportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>ייבוא משימות בכמות</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>הזן משימות (כל שורה = משימה אחת)</Label>
+              <Textarea 
+                value={bulkImportText} 
+                onChange={(e) => setBulkImportText(e.target.value)} 
+                placeholder={`לדוגמה:\nעיצוב באנר לקמפיין\nכתיבת תוכן לפוסט\nאופטימיזציה לקמפיין גוגל`}
+                rows={8}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {bulkImportText.split("\n").filter(l => l.trim()).length} משימות יתווספו
+            </p>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setBulkImportDialogOpen(false)}>ביטול</Button>
+              <Button 
+                onClick={() => bulkImportMutation.mutate(bulkImportText)} 
+                disabled={bulkImportMutation.isPending || !bulkImportText.trim()}
+              >
+                {bulkImportMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                ייבא משימות
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת משימה</AlertDialogTitle>
-            <AlertDialogDescription>האם למחוק את "{taskToDelete?.title}"?</AlertDialogDescription>
+            <AlertDialogDescription>
+              האם למחוק את "{taskToDelete?.title}"?
+              {childTasksMap.get(taskToDelete?.id || "")?.length ? (
+                <span className="block mt-2 text-destructive">
+                  שים לב: {childTasksMap.get(taskToDelete?.id || "")?.length} תתי-משימות ימחקו גם כן!
+                </span>
+              ) : null}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
