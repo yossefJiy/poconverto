@@ -32,6 +32,7 @@ const Auth = () => {
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [authStep, setAuthStep] = useState<AuthStep>("credentials");
   const [resendTimer, setResendTimer] = useState(0);
+  const [codeDeliveryMethod, setCodeDeliveryMethod] = useState<"sms" | "email">("email");
   
   // Flag to prevent navigation during 2FA flow
   const is2FAInProgress = useRef(false);
@@ -98,8 +99,18 @@ const Auth = () => {
   };
 
   const send2FACode = useCallback(async () => {
+    // First, get user's phone from authorized_emails
+    const { data: authUser } = await supabase
+      .from("authorized_emails")
+      .select("phone")
+      .eq("email", email.toLowerCase())
+      .single();
+
+    const phone = authUser?.phone;
+    console.log("[Auth] User phone for 2FA:", phone ? "found" : "not found");
+
     const response = await supabase.functions.invoke("send-2fa-code", {
-      body: { email, action: "send" },
+      body: { email, phone, action: "send" },
     });
 
     if (response.error) {
@@ -198,10 +209,17 @@ const Auth = () => {
       console.log("[Auth][2FA] Signed out, sending 2FA code...");
 
       // Send 2FA code via our edge function
-      await send2FACode();
-      console.log("[Auth][2FA] 2FA code sent successfully");
-
-      toast.success("קוד אימות נשלח לאימייל שלך");
+      const result = await send2FACode();
+      console.log("[Auth][2FA] 2FA code sent successfully via:", result.method);
+      
+      const method = result.method === "sms" ? "sms" : "email";
+      setCodeDeliveryMethod(method);
+      
+      if (method === "sms") {
+        toast.success("קוד אימות נשלח ב-SMS לטלפון שלך");
+      } else {
+        toast.success("קוד אימות נשלח לאימייל שלך");
+      }
       setAuthStep("otp");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
     } catch (error: any) {
@@ -411,7 +429,10 @@ const Auth = () => {
                 <KeyRound className="h-4 w-4" />
                 <AlertTitle>אימות דו-שלבי (2FA)</AlertTitle>
                 <AlertDescription className="text-sm">
-                  קוד אימות בן 6 ספרות נשלח ל-{email}
+                  {codeDeliveryMethod === "sms" 
+                    ? "קוד אימות בן 6 ספרות נשלח ב-SMS לטלפון שלך"
+                    : `קוד אימות בן 6 ספרות נשלח ל-${email}`
+                  }
                 </AlertDescription>
               </Alert>
 
@@ -454,7 +475,10 @@ const Auth = () => {
                     </InputOTP>
                   </div>
                   <p className="text-center text-sm text-muted-foreground">
-                    בדוק את תיבת האימייל שלך וקוד האימות יגיע תוך דקות ספורות
+                    {codeDeliveryMethod === "sms" 
+                      ? "בדוק את ה-SMS שלך, הקוד יגיע תוך שניות"
+                      : "בדוק את תיבת האימייל שלך, הקוד יגיע תוך דקות ספורות"
+                    }
                   </p>
                 </div>
 
