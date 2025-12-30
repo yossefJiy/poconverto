@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Target, 
   ShoppingCart, 
@@ -31,6 +32,9 @@ const staggerContainer: Variants = {
 };
 
 const Home = () => {
+  const { user } = useAuth();
+  const authHref = user ? "/dashboard" : "/auth";
+
   return (
     <PublicLayout>
       {/* Hero Section */}
@@ -79,8 +83,8 @@ const Home = () => {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
             <Button asChild size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all shadow-lg shadow-primary/20">
-              <Link to="/auth">
-                התחילו בחינם
+              <Link to={authHref}>
+                {user ? "לדשבורד" : "התחילו בחינם"}
                 <ArrowLeft className="mr-2 h-5 w-5" />
               </Link>
             </Button>

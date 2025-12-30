@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
 import { AnimatedSection, StaggerContainer, StaggerItem } from "@/components/home/AnimatedSection";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Target,
   ArrowLeft,
@@ -55,6 +56,9 @@ const stats = [
 ];
 
 export default function ProductLandingPages() {
+  const { user } = useAuth();
+  const authHref = user ? "/dashboard" : "/auth";
+  
   return (
     <PublicLayout>
       {/* Hero */}
@@ -87,8 +91,8 @@ export default function ProductLandingPages() {
                 </a>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link to="/auth">
-                  התחברו לדשבורד
+                <Link to={authHref}>
+                  {user ? "לדשבורד" : "התחברו לדשבורד"}
                 </Link>
               </Button>
             </div>
