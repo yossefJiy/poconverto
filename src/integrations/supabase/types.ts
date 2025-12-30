@@ -581,13 +581,20 @@ export type Database = {
         Row: {
           assignee: string | null
           campaign_id: string | null
+          category: string | null
           client_id: string | null
           created_at: string
           department: string | null
           description: string | null
           due_date: string | null
           id: string
+          notification_email: boolean | null
+          notification_email_address: string | null
+          notification_phone: string | null
+          notification_sms: boolean | null
           priority: string
+          reminder_at: string | null
+          reminder_sent: boolean | null
           status: string
           title: string
           updated_at: string
@@ -595,13 +602,20 @@ export type Database = {
         Insert: {
           assignee?: string | null
           campaign_id?: string | null
+          category?: string | null
           client_id?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
+          notification_email?: boolean | null
+          notification_email_address?: string | null
+          notification_phone?: string | null
+          notification_sms?: boolean | null
           priority?: string
+          reminder_at?: string | null
+          reminder_sent?: boolean | null
           status?: string
           title: string
           updated_at?: string
@@ -609,13 +623,20 @@ export type Database = {
         Update: {
           assignee?: string | null
           campaign_id?: string | null
+          category?: string | null
           client_id?: string | null
           created_at?: string
           department?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
+          notification_email?: boolean | null
+          notification_email_address?: string | null
+          notification_phone?: string | null
+          notification_sms?: boolean | null
           priority?: string
+          reminder_at?: string | null
+          reminder_sent?: boolean | null
           status?: string
           title?: string
           updated_at?: string
