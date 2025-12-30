@@ -10,10 +10,10 @@ export function PublicFooter() {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Logo & Description */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-4 mb-4">
               <div className="flex flex-col items-end">
                 <img src={logoText} alt="Converto" className="h-5 w-auto" />
-                <img src={byJiyLogo} alt="by JIY" className="h-2.5 w-auto mt-0.5 opacity-70" />
+                <img src={byJiyLogo} alt="by JIY" className="h-2.5 w-auto mt-1.5 opacity-70" />
               </div>
               <img src={logoIcon} alt="Converto" className="h-8 w-auto" />
             </div>

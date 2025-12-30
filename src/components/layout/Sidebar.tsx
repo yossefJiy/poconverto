@@ -109,11 +109,11 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-3">
           {!collapsed && (
             <div className="flex flex-col items-end animate-fade-in">
               <img src={logoText} alt="Converto" className="h-4 w-auto" />
-              <img src={byJiyLogo} alt="by JIY" className="h-2 w-auto mt-0.5 opacity-70" />
+              <img src={byJiyLogo} alt="by JIY" className="h-2 w-auto mt-1.5 opacity-70" />
             </div>
           )}
           <img 
