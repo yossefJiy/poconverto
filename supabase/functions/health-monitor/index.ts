@@ -40,6 +40,9 @@ const ADMIN_EMAIL = "yossef@jiy.co.il";
 // Cooldown period in minutes to prevent alert spam
 const ALERT_COOLDOWN_MINUTES = 15;
 
+// Continuous failure threshold - only alert after service is down for this many minutes
+const CONTINUOUS_FAILURE_THRESHOLD_MINUTES = 5;
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -188,9 +191,19 @@ serve(async (req: Request): Promise<Response> => {
       const isHealthy = currentStatus === "healthy";
 
       if (wasHealthy && !isHealthy) {
-        // Service went down
-        alerts.push({ service, type: "down" });
-        console.log(`[Health Monitor] ALERT: ${service.displayName} went ${currentStatus}`);
+        // Service went down - check if it's been down continuously for threshold period
+        const isDownContinuously = await isServiceDownContinuously(
+          supabase, 
+          service.name, 
+          CONTINUOUS_FAILURE_THRESHOLD_MINUTES
+        );
+        
+        if (isDownContinuously) {
+          alerts.push({ service, type: "down" });
+          console.log(`[Health Monitor] ALERT: ${service.displayName} has been ${currentStatus} for ${CONTINUOUS_FAILURE_THRESHOLD_MINUTES}+ minutes`);
+        } else {
+          console.log(`[Health Monitor] ${service.displayName} is ${currentStatus} but hasn't reached ${CONTINUOUS_FAILURE_THRESHOLD_MINUTES} min threshold yet`);
+        }
       } else if (!wasHealthy && isHealthy && previousRecord) {
         // Service recovered - calculate downtime
         const downtime = previousRecord.checked_at 
@@ -284,6 +297,45 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 });
+
+// Check if a service has been continuously down for the specified duration
+async function isServiceDownContinuously(
+  supabase: any,
+  serviceName: string,
+  thresholdMinutes: number
+): Promise<boolean> {
+  const thresholdTime = new Date(Date.now() - thresholdMinutes * 60 * 1000).toISOString();
+  
+  // Get all health records for this service in the threshold period
+  const { data: records, error } = await supabase
+    .from("service_health_history")
+    .select("status, checked_at")
+    .eq("service_name", serviceName)
+    .gte("checked_at", thresholdTime)
+    .order("checked_at", { ascending: false });
+
+  if (error) {
+    console.error(`[Health Monitor] Error checking continuous failure for ${serviceName}:`, error);
+    return false; // Don't alert on error
+  }
+
+  // If no records in the threshold period, service might be newly unhealthy
+  if (!records || records.length === 0) {
+    return false;
+  }
+
+  // Need at least 2 records to confirm continuous failure (to avoid single-check alerts)
+  if (records.length < 2) {
+    return false;
+  }
+
+  // Check if ALL records in the period are unhealthy
+  const allUnhealthy = records.every((r: any) => r.status !== "healthy");
+  
+  console.log(`[Health Monitor] ${serviceName}: ${records.length} records in last ${thresholdMinutes} min, all unhealthy: ${allUnhealthy}`);
+  
+  return allUnhealthy;
+}
 
 async function sendAlertEmail(
   resend: any,
