@@ -62,7 +62,39 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("[Health Monitor] Starting health check...");
 
-    // Step 1: Call the aggregate health-check endpoint
+    // Step 1: Get connected integrations to determine which services to monitor
+    const { data: connectedIntegrations, error: integrationsError } = await supabase
+      .from("integrations")
+      .select("platform")
+      .eq("is_connected", true);
+
+    if (integrationsError) {
+      console.error("[Health Monitor] Error fetching integrations:", integrationsError);
+    }
+
+    // Map platform names to service names
+    const platformToServiceMap: Record<string, string> = {
+      'shopify': 'shopify-api',
+      'google_ads': 'google-ads',
+      'google_analytics': 'google-analytics',
+      'facebook_ads': 'facebook-ads',
+      'woocommerce': 'woocommerce-api'
+    };
+
+    // Get list of connected service names
+    const connectedServices = new Set<string>(
+      (connectedIntegrations || [])
+        .map(i => platformToServiceMap[i.platform])
+        .filter(Boolean)
+    );
+
+    // System services are always monitored
+    const systemServices = ['send-2fa-code', 'ai-marketing', 'generate-report'];
+    systemServices.forEach(s => connectedServices.add(s));
+
+    console.log("[Health Monitor] Services to monitor:", Array.from(connectedServices));
+
+    // Step 2: Call the aggregate health-check endpoint
     const healthCheckUrl = `${supabaseUrl}/functions/v1/health-check`;
     const healthResponse = await fetch(healthCheckUrl, {
       method: "POST",
@@ -106,7 +138,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Step 3: Compare and detect changes
+    // Step 4: Compare and detect changes - ONLY for connected services
     const alerts: { service: ServiceHealth; type: "down" | "recovered"; previousStatus?: string; downtime?: number }[] = [];
     const newRecords: { service_name: string; status: string; latency_ms: number; message: string | null; alert_sent: boolean }[] = [];
 
@@ -115,7 +147,7 @@ serve(async (req: Request): Promise<Response> => {
       const previousStatus = previousRecord?.status || "healthy"; // Assume healthy if no previous record
       const currentStatus = service.status;
 
-      // Prepare record for insertion
+      // Prepare record for insertion (log all services)
       newRecords.push({
         service_name: service.name,
         status: currentStatus,
@@ -123,6 +155,11 @@ serve(async (req: Request): Promise<Response> => {
         message: service.message || null,
         alert_sent: false,
       });
+
+      // Only alert for connected/monitored services
+      if (!connectedServices.has(service.name)) {
+        continue; // Skip alerting for unconnected services
+      }
 
       // Check for status changes
       const wasHealthy = previousStatus === "healthy";
@@ -142,7 +179,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Step 4: Insert new health records
+    // Step 5: Insert new health records
     if (newRecords.length > 0) {
       const { error: insertError } = await supabase
         .from("service_health_history")
@@ -153,7 +190,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Step 5: Send email alerts if there are status changes
+    // Step 6: Send email alerts if there are status changes (only for connected services)
     if (alerts.length > 0 && resend) {
       // Check cooldown - get the most recent alert sent
       const { data: recentAlerts } = await supabase
@@ -178,13 +215,13 @@ serve(async (req: Request): Promise<Response> => {
           .order("checked_at", { ascending: false })
           .limit(alerts.length);
 
-        console.log(`[Health Monitor] Sent ${alerts.length} alert(s)`);
+        console.log(`[Health Monitor] Sent ${alerts.length} alert(s) for connected services`);
       } else {
         console.log("[Health Monitor] Skipping alerts - cooldown period not expired");
       }
     }
 
-    // Step 6: Cleanup old records (older than 30 days)
+    // Step 7: Cleanup old records (older than 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
