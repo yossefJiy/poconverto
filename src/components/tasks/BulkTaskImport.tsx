@@ -61,7 +61,52 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   const [defaultCategory, setDefaultCategory] = useState("");
   const [googleDocsUrl, setGoogleDocsUrl] = useState("");
   const [urlError, setUrlError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      processFile(file);
+    }
+  }, []);
+
+  const processFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      const tasks = parseCSVContent(content);
+      setParsedTasks(tasks);
+      setShowPreview(true);
+    };
+    reader.readAsText(file);
+  };
 
   // Parse text input - each line is a task
   const parseTextInput = useCallback((text: string): ParsedTask[] => {
@@ -150,16 +195,45 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      const tasks = parseCSVContent(content);
-      setParsedTasks(tasks);
-      setShowPreview(true);
-    };
-    reader.readAsText(file);
+    processFile(file);
   };
+
+  // Validate task fields
+  const validateTask = useCallback((task: ParsedTask): ParsedTask => {
+    const errors: string[] = [];
+    
+    if (!task.title.trim()) {
+      errors.push("כותרת חובה");
+    } else if (task.title.length > 200) {
+      errors.push("כותרת ארוכה מדי (מקסימום 200 תווים)");
+    }
+    
+    if (task.description && task.description.length > 1000) {
+      errors.push("תיאור ארוך מדי (מקסימום 1000 תווים)");
+    }
+    
+    if (task.due_date) {
+      const date = new Date(task.due_date);
+      if (isNaN(date.getTime())) {
+        errors.push("תאריך לא תקין");
+      }
+    }
+    
+    return {
+      ...task,
+      valid: errors.length === 0,
+      error: errors.length > 0 ? errors.join(", ") : undefined
+    };
+  }, []);
+
+  // Update task with validation
+  const updateTaskWithValidation = useCallback((index: number, field: keyof ParsedTask, value: string) => {
+    setParsedTasks(prev => prev.map((task, i) => {
+      if (i !== index) return task;
+      const updatedTask = { ...task, [field]: value };
+      return validateTask(updatedTask);
+    }));
+  }, [validateTask]);
 
   // Handle text parse
   const handleParseText = () => {
@@ -327,11 +401,29 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </div>
                   
                   <div 
-                    className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    ref={dropZoneRef}
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+                      isDragging 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    )}
                     onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
                   >
-                    <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-sm text-muted-foreground">לחצו לבחירת קובץ או גררו לכאן</p>
+                    <FileSpreadsheet className={cn(
+                      "w-12 h-12 mx-auto mb-4 transition-colors",
+                      isDragging ? "text-primary" : "text-muted-foreground"
+                    )} />
+                    <p className={cn(
+                      "text-sm transition-colors",
+                      isDragging ? "text-primary font-medium" : "text-muted-foreground"
+                    )}>
+                      {isDragging ? "שחררו את הקובץ כאן" : "לחצו לבחירת קובץ או גררו לכאן"}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">CSV, XLS, XLSX</p>
                     <input 
                       ref={fileInputRef}
@@ -407,32 +499,34 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                       <div className="flex-1 space-y-2">
                         <Input 
                           value={task.title}
-                          onChange={(e) => updateTask(index, "title", e.target.value)}
+                          onChange={(e) => updateTaskWithValidation(index, "title", e.target.value)}
                           placeholder="כותרת משימה"
                           className={cn("font-medium", !task.valid && "border-destructive")}
+                          maxLength={200}
                         />
                         <div className="grid grid-cols-4 gap-2">
                           <Input 
                             value={task.description || ""}
-                            onChange={(e) => updateTask(index, "description", e.target.value)}
+                            onChange={(e) => updateTaskWithValidation(index, "description", e.target.value)}
                             placeholder="תיאור"
                             className="text-sm"
+                            maxLength={1000}
                           />
                           <Input 
                             type="date"
                             value={task.due_date || ""}
-                            onChange={(e) => updateTask(index, "due_date", e.target.value)}
+                            onChange={(e) => updateTaskWithValidation(index, "due_date", e.target.value)}
                             className="text-sm"
                           />
                           <Select 
-                            value={task.assignee || ""} 
-                            onValueChange={(v) => updateTask(index, "assignee", v)}
+                            value={task.assignee || "none"} 
+                            onValueChange={(v) => updateTaskWithValidation(index, "assignee", v === "none" ? "" : v)}
                           >
                             <SelectTrigger className="text-sm">
                               <SelectValue placeholder="אחראי" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">לא נבחר</SelectItem>
+                              <SelectItem value="none">לא נבחר</SelectItem>
                               {teamMembers.map(m => (
                                 <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
                               ))}
@@ -440,7 +534,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                           </Select>
                           <Select 
                             value={task.priority || "medium"} 
-                            onValueChange={(v) => updateTask(index, "priority", v)}
+                            onValueChange={(v) => updateTaskWithValidation(index, "priority", v)}
                           >
                             <SelectTrigger className="text-sm">
                               <SelectValue />
