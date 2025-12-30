@@ -18,7 +18,11 @@ import {
   Circle,
   Clock,
   Calendar,
-  Edit2
+  Edit2,
+  Bell,
+  Mail,
+  Phone,
+  Tag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,6 +55,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface Task {
   id: string;
@@ -62,6 +67,13 @@ interface Task {
   assignee: string | null;
   department: string | null;
   client_id: string | null;
+  category: string | null;
+  reminder_at: string | null;
+  notification_email: boolean;
+  notification_sms: boolean;
+  notification_phone: string | null;
+  notification_email_address: string | null;
+  reminder_sent: boolean;
 }
 
 interface TeamMember {
@@ -81,6 +93,18 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
   medium: { color: "bg-warning", label: "בינונית" },
   high: { color: "bg-destructive", label: "גבוהה" },
 };
+
+const categoryOptions = [
+  "אסטרטגיה ותכנון",
+  "קריאייטיב ועיצוב",
+  "קמפיינים ופרסום",
+  "ניתוח נתונים",
+  "תפעול וניהול",
+  "פיתוח ומערכות",
+  "תוכן ו-SEO",
+  "לקוחות ומכירות",
+  "מנהל מוצר",
+];
 
 export default function Tasks() {
   const { selectedClient } = useClient();
@@ -103,6 +127,12 @@ export default function Tasks() {
   const [formDueDate, setFormDueDate] = useState("");
   const [formAssignee, setFormAssignee] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
+  const [formCategory, setFormCategory] = useState("");
+  const [formReminderAt, setFormReminderAt] = useState("");
+  const [formNotificationEmail, setFormNotificationEmail] = useState(false);
+  const [formNotificationSms, setFormNotificationSms] = useState(false);
+  const [formNotificationPhone, setFormNotificationPhone] = useState("");
+  const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", selectedClient?.id],
@@ -136,30 +166,33 @@ export default function Tasks() {
 
   const saveMutation = useMutation({
     mutationFn: async (task: Partial<Task> & { id?: string }) => {
+      const taskData = {
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.due_date || null,
+        assignee: task.assignee,
+        department: task.department,
+        category: task.category || null,
+        reminder_at: task.reminder_at || null,
+        notification_email: task.notification_email || false,
+        notification_sms: task.notification_sms || false,
+        notification_phone: task.notification_phone || null,
+        notification_email_address: task.notification_email_address || null,
+        reminder_sent: false,
+      };
+
       if (task.id) {
         const { error } = await supabase
           .from("tasks")
-          .update({
-            title: task.title,
-            description: task.description,
-            status: task.status,
-            priority: task.priority,
-            due_date: task.due_date || null,
-            assignee: task.assignee,
-            department: task.department,
-          })
+          .update(taskData)
           .eq("id", task.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("tasks").insert({
+          ...taskData,
           client_id: selectedClient?.id || null,
-          title: task.title!,
-          description: task.description,
-          priority: task.priority || "medium",
-          status: task.status || "pending",
-          assignee: task.assignee,
-          department: task.department,
-          due_date: task.due_date || null,
         });
         if (error) throw error;
       }
@@ -206,6 +239,12 @@ export default function Tasks() {
     setFormDueDate(task?.due_date || "");
     setFormAssignee(task?.assignee || "");
     setFormDepartment(task?.department || "");
+    setFormCategory(task?.category || "");
+    setFormReminderAt(task?.reminder_at ? task.reminder_at.slice(0, 16) : "");
+    setFormNotificationEmail(task?.notification_email || false);
+    setFormNotificationSms(task?.notification_sms || false);
+    setFormNotificationPhone(task?.notification_phone || "");
+    setFormNotificationEmailAddress(task?.notification_email_address || "");
     setEditDialogOpen(true);
   };
 
@@ -219,6 +258,12 @@ export default function Tasks() {
     setFormDueDate("");
     setFormAssignee("");
     setFormDepartment("");
+    setFormCategory("");
+    setFormReminderAt("");
+    setFormNotificationEmail(false);
+    setFormNotificationSms(false);
+    setFormNotificationPhone("");
+    setFormNotificationEmailAddress("");
   };
 
   const handleSave = () => {
@@ -235,6 +280,13 @@ export default function Tasks() {
       due_date: formDueDate || null,
       assignee: formAssignee || null,
       department: formDepartment || null,
+      category: formCategory || null,
+      reminder_at: formReminderAt ? new Date(formReminderAt).toISOString() : null,
+      notification_email: formNotificationEmail,
+      notification_sms: formNotificationSms,
+      notification_phone: formNotificationPhone || null,
+      notification_email_address: formNotificationEmailAddress || null,
+      reminder_sent: false,
     });
   };
 
@@ -537,9 +589,78 @@ export default function Tasks() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>תאריך יעד</Label>
-              <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>תאריך יעד</Label>
+                <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>קטגוריה</Label>
+                <Select value={formCategory || "none"} onValueChange={(v) => setFormCategory(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Reminder Section */}
+            <div className="border-t border-border pt-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-muted-foreground" />
+                <Label className="font-medium">תזכורת והתראות</Label>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>שעת תזכורת</Label>
+                <Input 
+                  type="datetime-local" 
+                  value={formReminderAt} 
+                  onChange={(e) => setFormReminderAt(e.target.value)} 
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <Label>שלח מייל</Label>
+                </div>
+                <Switch 
+                  checked={formNotificationEmail} 
+                  onCheckedChange={setFormNotificationEmail} 
+                />
+              </div>
+
+              {formNotificationEmail && (
+                <Input 
+                  type="email" 
+                  placeholder="כתובת מייל" 
+                  value={formNotificationEmailAddress} 
+                  onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
+                />
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <Label>שלח SMS</Label>
+                </div>
+                <Switch 
+                  checked={formNotificationSms} 
+                  onCheckedChange={setFormNotificationSms} 
+                />
+              </div>
+
+              {formNotificationSms && (
+                <Input 
+                  type="tel" 
+                  placeholder="מספר טלפון" 
+                  value={formNotificationPhone} 
+                  onChange={(e) => setFormNotificationPhone(e.target.value)} 
+                />
+              )}
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={closeDialog}>ביטול</Button>
