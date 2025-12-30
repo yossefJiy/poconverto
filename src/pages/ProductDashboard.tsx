@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
 import { AnimatedSection, StaggerContainer, StaggerItem } from "@/components/home/AnimatedSection";
 import {
@@ -14,7 +14,6 @@ import {
   FileText,
   Zap,
   TrendingUp,
-  Clock,
 } from "lucide-react";
 
 const features = [
@@ -66,42 +65,37 @@ const stats = [
 
 export default function ProductDashboard() {
   return (
-    <div className="min-h-screen bg-background text-foreground" dir="rtl">
+    <PublicLayout>
       {/* Hero */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-purple-500/5" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent" />
+      <section className="relative py-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-purple-500/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         
         <div className="container mx-auto px-4 relative z-10">
-          <AnimatedSection className="text-center max-w-4xl mx-auto">
-            <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
-              <ArrowLeft className="h-4 w-4 rotate-180" />
-              חזרה לעמוד הבית
-            </Link>
-            
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mx-auto mb-8 shadow-lg shadow-primary/25">
-              <BarChart3 className="h-10 w-10 text-primary-foreground" />
+          <AnimatedSection className="text-center max-w-3xl mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20">
+              <BarChart3 className="h-8 w-8 text-primary-foreground" />
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-3xl md:text-5xl font-bold mb-5">
               דשבורד{" "}
               <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                 חכם
               </span>
             </h1>
             
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
               נתונים הופכים לפעולות. כל הפלטפורמות במקום אחד, עם תובנות AI שחוסכות שעות עבודה.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
                 <Link to="/auth">
                   גשו לדשבורד
-                  <ArrowLeft className="mr-2 h-5 w-5" />
+                  <ArrowLeft className="mr-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6">
+              <Button asChild variant="outline" size="lg">
                 <a href="#contact">
                   השאירו פרטים
                 </a>
@@ -112,18 +106,18 @@ export default function ProductDashboard() {
       </section>
 
       {/* Integrations */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-12 bg-muted/20">
         <div className="container mx-auto px-4">
-          <AnimatedSection className="text-center mb-8">
-            <p className="text-muted-foreground">מתחבר לכל הפלטפורמות שאתם כבר משתמשים בהן</p>
+          <AnimatedSection className="text-center mb-6">
+            <p className="text-sm text-muted-foreground">מתחבר לכל הפלטפורמות שאתם כבר משתמשים בהן</p>
           </AnimatedSection>
           
-          <StaggerContainer className="flex flex-wrap justify-center gap-4">
+          <StaggerContainer className="flex flex-wrap justify-center gap-3">
             {integrations.map((integration, index) => (
               <StaggerItem key={index}>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border/50">
-                  <div className={`w-3 h-3 rounded-full ${integration.color}`} />
-                  <span className="text-sm">{integration.name}</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border/50">
+                  <div className={`w-2.5 h-2.5 rounded-full ${integration.color}`} />
+                  <span className="text-xs">{integration.name}</span>
                 </div>
               </StaggerItem>
             ))}
@@ -132,15 +126,15 @@ export default function ProductDashboard() {
       </section>
 
       {/* Stats */}
-      <section className="py-16">
+      <section className="py-14">
         <div className="container mx-auto px-4">
-          <StaggerContainer className="grid md:grid-cols-3 gap-8 text-center">
+          <StaggerContainer className="grid md:grid-cols-3 gap-6 text-center">
             {stats.map((stat, index) => (
               <StaggerItem key={index}>
-                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent mb-2">
+                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent mb-1">
                   {stat.value}
                 </div>
-                <div className="text-muted-foreground">{stat.label}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
               </StaggerItem>
             ))}
           </StaggerContainer>
@@ -148,28 +142,28 @@ export default function ProductDashboard() {
       </section>
 
       {/* Features */}
-      <section className="py-24 bg-muted/30">
+      <section className="py-20 bg-muted/20">
         <div className="container mx-auto px-4">
-          <AnimatedSection className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <AnimatedSection className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
               יכולות{" "}
               <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                 הדשבורד
               </span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-muted-foreground max-w-xl mx-auto">
               כל מה שצריך כדי לקבל החלטות חכמות מבוססות נתונים
             </p>
           </AnimatedSection>
 
-          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
             {features.map((feature, index) => (
               <StaggerItem key={index}>
-                <Card className="p-6 h-full bg-card/50 backdrop-blur border-border/50 hover:border-primary/50 transition-all group">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                <Card className="p-5 h-full bg-card/50 backdrop-blur border-border/50 hover:border-primary/30 transition-all group">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                    <feature.icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                  <h3 className="font-semibold mb-1.5">{feature.title}</h3>
                   <p className="text-muted-foreground text-sm">{feature.description}</p>
                 </Card>
               </StaggerItem>
@@ -179,13 +173,13 @@ export default function ProductDashboard() {
       </section>
 
       {/* How It Works */}
-      <section className="py-24">
+      <section className="py-20">
         <div className="container mx-auto px-4">
-          <AnimatedSection className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">איך מתחילים?</h2>
+          <AnimatedSection className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">איך מתחילים?</h2>
           </AnimatedSection>
 
-          <StaggerContainer className="max-w-3xl mx-auto space-y-8">
+          <StaggerContainer className="max-w-2xl mx-auto space-y-6">
             {[
               { step: 1, icon: Zap, title: "התחברו", desc: "היכנסו לדשבורד עם חשבון Google או מייל" },
               { step: 2, icon: Layers, title: "חברו פלטפורמות", desc: "חברו את Google Analytics, Ads, Shopify ועוד" },
@@ -194,12 +188,12 @@ export default function ProductDashboard() {
             ].map((item) => (
               <StaggerItem key={item.step}>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <item.icon className="h-5 w-5 text-primary-foreground" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="h-4 w-4 text-primary-foreground" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold mb-1">{item.title}</h3>
-                    <p className="text-muted-foreground">{item.desc}</p>
+                    <h3 className="text-lg font-semibold mb-0.5">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground">{item.desc}</p>
                   </div>
                 </div>
               </StaggerItem>
@@ -209,16 +203,16 @@ export default function ProductDashboard() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-gradient-to-br from-primary/10 via-background to-purple-500/10">
+      <section className="py-16 bg-gradient-to-br from-primary/5 via-background to-purple-500/5">
         <div className="container mx-auto px-4 text-center">
           <AnimatedSection>
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold mb-5">
               מוכנים לראות את הנתונים שלכם בצורה אחרת?
             </h2>
-            <Button asChild size="lg" className="text-lg px-10 py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
+            <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
               <Link to="/auth">
                 התחילו עכשיו - בחינם
-                <ArrowLeft className="mr-2 h-5 w-5" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
               </Link>
             </Button>
           </AnimatedSection>
@@ -226,11 +220,11 @@ export default function ProductDashboard() {
       </section>
 
       {/* Contact Form */}
-      <section id="contact" className="py-24">
+      <section id="contact" className="py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-xl mx-auto">
             <AnimatedSection className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">
                 יש לכם שאלות?
               </h2>
               <p className="text-muted-foreground">
@@ -239,26 +233,13 @@ export default function ProductDashboard() {
             </AnimatedSection>
             
             <AnimatedSection delay={0.2}>
-              <LeadForm source="dashboard" />
+              <Card className="p-6 bg-card/80 backdrop-blur border-border/50">
+                <LeadForm source="dashboard" />
+              </Card>
             </AnimatedSection>
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 bg-muted/50 border-t border-border/50">
-        <div className="container mx-auto px-4 text-center">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-              Converto
-            </span>
-            <span className="text-muted-foreground">by JIY</span>
-          </Link>
-          <p className="mt-4 text-sm text-muted-foreground">
-            © {new Date().getFullYear()} JIY. כל הזכויות שמורות.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </PublicLayout>
   );
 }
