@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
+import byJiyLogo from "@/assets/by-jiy-logo.svg";
 
 export function PublicFooter() {
   return (
@@ -10,9 +11,11 @@ export function PublicFooter() {
           {/* Logo & Description */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
+              <div className="flex flex-col items-end">
+                <img src={logoText} alt="Converto" className="h-5 w-auto" />
+                <img src={byJiyLogo} alt="by JIY" className="h-2.5 w-auto mt-0.5 opacity-70" />
+              </div>
               <img src={logoIcon} alt="Converto" className="h-8 w-auto" />
-              <img src={logoText} alt="Converto" className="h-5 w-auto" />
-              <span className="text-xs text-muted-foreground">by JIY</span>
             </div>
             <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
               Converto הופך את השיווק הדיגיטלי שלכם לפשוט ויעיל יותר. 
