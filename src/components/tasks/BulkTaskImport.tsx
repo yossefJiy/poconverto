@@ -16,9 +16,102 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Table
+  Table,
+  LayoutTemplate,
+  Megaphone,
+  Users,
+  Calendar,
+  Target,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Task templates
+const taskTemplates = [
+  {
+    id: "campaign-launch",
+    name: "השקת קמפיין",
+    icon: Megaphone,
+    description: "רשימת משימות להשקת קמפיין פרסומי",
+    tasks: [
+      { title: "הגדרת יעדי קמפיין ו-KPIs", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "בחירת קהלי יעד וסגמנטציה", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "הכנת קריאייטיבים (תמונות/וידאו)", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "כתיבת טקסטים ומסרים", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "הגדרת תקציב יומי/כולל", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "בניית מבנה קמפיין בפלטפורמה", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "הגדרת טראקינג והמרות", category: "ניתוח נתונים", priority: "high" },
+      { title: "בדיקות A/B לקריאייטיב", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "אישור והפעלת קמפיין", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "ניטור ביצועים יום ראשון", category: "ניתוח נתונים", priority: "high" },
+    ]
+  },
+  {
+    id: "new-client",
+    name: "הקמת לקוח חדש",
+    icon: Users,
+    description: "תהליך אונבורדינג ללקוח חדש",
+    tasks: [
+      { title: "פגישת היכרות ובריף", category: "לקוחות ומכירות", priority: "high" },
+      { title: "איסוף נכסים דיגיטליים (לוגו, צבעים, פונטים)", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "קבלת גישה לחשבונות פרסום", category: "תפעול וניהול", priority: "high" },
+      { title: "חיבור Google Analytics", category: "ניתוח נתונים", priority: "high" },
+      { title: "חיבור חשבונות סושיאל", category: "תפעול וניהול", priority: "medium" },
+      { title: "הגדרת דוחות אוטומטיים", category: "ניתוח נתונים", priority: "medium" },
+      { title: "בניית אסטרטגיה שיווקית", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "הכנת לוח שנה ותוכן", category: "תוכן ו-SEO", priority: "medium" },
+    ]
+  },
+  {
+    id: "monthly-report",
+    name: "דו״ח חודשי",
+    icon: Calendar,
+    description: "הכנת דו״ח ביצועים חודשי",
+    tasks: [
+      { title: "איסוף נתוני קמפיינים", category: "ניתוח נתונים", priority: "high" },
+      { title: "ניתוח Google Analytics", category: "ניתוח נתונים", priority: "high" },
+      { title: "סיכום המרות ו-ROAS", category: "ניתוח נתונים", priority: "high" },
+      { title: "השוואה לחודש קודם", category: "ניתוח נתונים", priority: "medium" },
+      { title: "זיהוי תובנות ומסקנות", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "הכנת המלצות לחודש הבא", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "עיצוב הדו״ח", category: "קריאייטיב ועיצוב", priority: "medium" },
+      { title: "שליחה ללקוח", category: "לקוחות ומכירות", priority: "high" },
+    ]
+  },
+  {
+    id: "website-launch",
+    name: "השקת אתר",
+    icon: Target,
+    description: "רשימת בדיקות להשקת אתר",
+    tasks: [
+      { title: "בדיקת תאימות מובייל", category: "פיתוח ומערכות", priority: "high" },
+      { title: "בדיקת מהירות טעינה", category: "פיתוח ומערכות", priority: "high" },
+      { title: "התקנת Google Analytics & GTM", category: "ניתוח נתונים", priority: "high" },
+      { title: "הגדרת Search Console", category: "תוכן ו-SEO", priority: "high" },
+      { title: "בדיקת SEO בסיסי (title, meta)", category: "תוכן ו-SEO", priority: "high" },
+      { title: "בדיקת טפסי יצירת קשר", category: "פיתוח ומערכות", priority: "high" },
+      { title: "הגדרת Pixel פייסבוק", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "יצירת sitemap.xml", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "בדיקת SSL ואבטחה", category: "פיתוח ומערכות", priority: "high" },
+    ]
+  },
+  {
+    id: "content-plan",
+    name: "תוכנית תוכן",
+    icon: Sparkles,
+    description: "הכנת תוכנית תוכן לסושיאל",
+    tasks: [
+      { title: "מחקר מתחרים", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "הגדרת נושאי תוכן מרכזיים", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "יצירת לוח תוכן חודשי", category: "תוכן ו-SEO", priority: "high" },
+      { title: "כתיבת פוסטים", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "הכנת קריאייטיבים", category: "קריאייטיב ועיצוב", priority: "medium" },
+      { title: "תכנון סטוריז ורילס", category: "קריאייטיב ועיצוב", priority: "medium" },
+      { title: "תיאום צילומים", category: "תפעול וניהול", priority: "low" },
+      { title: "אישור לקוח", category: "לקוחות ומכירות", priority: "high" },
+    ]
+  }
+];
 
 interface ParsedTask {
   title: string;
@@ -52,7 +145,7 @@ const categoryOptions = [
 ];
 
 export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [], isLoading }: BulkTaskImportProps) {
-  const [activeTab, setActiveTab] = useState<"text" | "file" | "url">("text");
+  const [activeTab, setActiveTab] = useState<"templates" | "text" | "file" | "url">("templates");
   const [textInput, setTextInput] = useState("");
   const [parsedTasks, setParsedTasks] = useState<ParsedTask[]>([]);
   const [showPreview, setShowPreview] = useState(false);
@@ -306,7 +399,11 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
         {!showPreview ? (
           <div className="flex-1 overflow-hidden">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col">
-              <TabsList className="grid grid-cols-3 w-full">
+              <TabsList className="grid grid-cols-4 w-full">
+                <TabsTrigger value="templates" className="flex items-center gap-2">
+                  <LayoutTemplate className="w-4 h-4" />
+                  תבניות
+                </TabsTrigger>
                 <TabsTrigger value="text" className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   טקסט חופשי
@@ -320,6 +417,66 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   Google Docs
                 </TabsTrigger>
               </TabsList>
+
+              {/* Templates section */}
+              <TabsContent value="templates" className="flex-1 mt-4">
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground mb-4">
+                    בחרו תבנית מוכנה להתחלה מהירה
+                  </div>
+                  <ScrollArea className="h-[300px]">
+                    <div className="grid grid-cols-1 gap-3 pr-2">
+                      {taskTemplates.map((template) => {
+                        const Icon = template.icon;
+                        return (
+                          <div
+                            key={template.id}
+                            className="border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => {
+                              const tasks = template.tasks.map(t => ({
+                                ...t,
+                                valid: true,
+                                assignee: defaultAssignee || undefined,
+                              }));
+                              setParsedTasks(tasks);
+                              setShowPreview(true);
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                <Icon className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium">{template.name}</h4>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {template.tasks.length} משימות
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {template.description}
+                                </p>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {template.tasks.slice(0, 3).map((t, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs">
+                                      {t.title.length > 20 ? t.title.slice(0, 20) + "..." : t.title}
+                                    </Badge>
+                                  ))}
+                                  {template.tasks.length > 3 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{template.tasks.length - 3} נוספות
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </TabsContent>
 
               {/* Default values section */}
               <div className="grid grid-cols-3 gap-3 py-4 border-b border-border">

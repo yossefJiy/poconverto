@@ -30,19 +30,24 @@ export default function Dashboard() {
   const { selectedClient } = useClient();
   const { isModuleEnabled } = useClientModules();
 
+  // Check if this is the master account (JIY)
+  const isMasterAccount = selectedClient?.name?.toLowerCase().includes("jiy") || 
+                          selectedClient?.name?.includes("סוכנות") ||
+                          !selectedClient; // No client selected = show all
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["dashboard-stats", selectedClient?.id],
+    queryKey: ["dashboard-stats", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
-      // Get tasks
-      let tasksQuery = supabase.from("tasks").select("status");
-      if (selectedClient) {
+      // Get tasks - for master account, get ALL tasks
+      let tasksQuery = supabase.from("tasks").select("status, client_id");
+      if (selectedClient && !isMasterAccount) {
         tasksQuery = tasksQuery.eq("client_id", selectedClient.id);
       }
       const { data: tasks } = await tasksQuery;
 
-      // Get campaigns
-      let campaignsQuery = supabase.from("campaigns").select("status, budget, spent, impressions, clicks, conversions");
-      if (selectedClient) {
+      // Get campaigns - for master account, get ALL campaigns
+      let campaignsQuery = supabase.from("campaigns").select("status, budget, spent, impressions, clicks, conversions, client_id");
+      if (selectedClient && !isMasterAccount) {
         campaignsQuery = campaignsQuery.eq("client_id", selectedClient.id);
       }
       const { data: campaigns } = await campaignsQuery;
@@ -56,6 +61,11 @@ export default function Dashboard() {
 
       const openTasks = tasks?.filter(t => t.status !== "completed").length || 0;
       const completedTasks = tasks?.filter(t => t.status === "completed").length || 0;
+      
+      // Count unique clients for master account view
+      const uniqueClients = isMasterAccount 
+        ? new Set([...tasks?.map(t => t.client_id), ...campaigns?.map(c => c.client_id)].filter(Boolean)).size
+        : 0;
 
       return {
         activeCampaigns,
@@ -66,6 +76,7 @@ export default function Dashboard() {
         totalConversions,
         openTasks,
         completedTasks,
+        uniqueClients,
         ctr: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0",
       };
     },
@@ -103,14 +114,14 @@ export default function Dashboard() {
   });
 
   const { data: recentTasks = [] } = useQuery({
-    queryKey: ["recent-tasks", selectedClient?.id],
+    queryKey: ["recent-tasks", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, team_members(name)")
+        .select("*, clients(name)")
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (selectedClient) {
+        .limit(10);
+      if (selectedClient && !isMasterAccount) {
         query = query.eq("client_id", selectedClient.id);
       }
       const { data } = await query;
@@ -119,14 +130,14 @@ export default function Dashboard() {
   });
 
   const { data: recentCampaigns = [] } = useQuery({
-    queryKey: ["recent-campaigns", selectedClient?.id],
+    queryKey: ["recent-campaigns", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
       let query = supabase
         .from("campaigns")
-        .select("*")
+        .select("*, clients(name)")
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (selectedClient) {
+        .limit(10);
+      if (selectedClient && !isMasterAccount) {
         query = query.eq("client_id", selectedClient.id);
       }
       const { data } = await query;
