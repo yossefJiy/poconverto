@@ -601,6 +601,33 @@ export type Database = {
         }
         Relationships: []
       }
+      trusted_devices: {
+        Row: {
+          created_at: string
+          device_fingerprint: string
+          email: string
+          id: string
+          last_used_at: string
+          trusted_until: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint: string
+          email: string
+          id?: string
+          last_used_at?: string
+          trusted_until: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string
+          email?: string
+          id?: string
+          last_used_at?: string
+          trusted_until?: string
+        }
+        Relationships: []
+      }
       two_factor_codes: {
         Row: {
           attempts: number
@@ -695,6 +722,7 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
+      cleanup_expired_trusted_devices: { Args: never; Returns: undefined }
       decrypt_integration_credentials: {
         Args: { encrypted_data: string }
         Returns: Json

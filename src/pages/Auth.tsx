@@ -13,6 +13,7 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { PhoneSignIn } from "@/components/auth/PhoneSignIn";
 import { Mail, Phone, ShieldCheck, KeyRound, ArrowRight, Clock, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { generateDeviceFingerprint } from "@/lib/deviceFingerprint";
 
 const emailSchema = z.string().email("אימייל לא תקין");
 const passwordSchema = z.string().min(6, "הסיסמה חייבת להכיל לפחות 6 תווים");
@@ -112,6 +113,42 @@ const Auth = () => {
     return response.data;
   }, [email]);
 
+  const checkTrustedDevice = useCallback(async (): Promise<boolean> => {
+    try {
+      const deviceFingerprint = generateDeviceFingerprint();
+      const response = await supabase.functions.invoke("trusted-device", {
+        body: { email, device_fingerprint: deviceFingerprint, action: "check" },
+      });
+
+      if (response.error) {
+        console.error("[Auth] Error checking trusted device:", response.error);
+        return false;
+      }
+
+      return response.data?.trusted === true;
+    } catch (error) {
+      console.error("[Auth] Error checking trusted device:", error);
+      return false;
+    }
+  }, [email]);
+
+  const addTrustedDevice = useCallback(async () => {
+    try {
+      const deviceFingerprint = generateDeviceFingerprint();
+      const response = await supabase.functions.invoke("trusted-device", {
+        body: { email, device_fingerprint: deviceFingerprint, action: "add" },
+      });
+
+      if (response.error) {
+        console.error("[Auth] Error adding trusted device:", response.error);
+      } else {
+        console.log("[Auth] Device added as trusted until:", response.data?.trusted_until);
+      }
+    } catch (error) {
+      console.error("[Auth] Error adding trusted device:", error);
+    }
+  }, [email]);
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateInputs()) return;
@@ -143,8 +180,20 @@ const Auth = () => {
 
       console.log("[Auth][2FA] Credentials valid, session created:", { userId: signInData.user?.id });
 
+      // Check if this device is trusted
+      const isTrusted = await checkTrustedDevice();
+      
+      if (isTrusted) {
+        // Device is trusted - skip 2FA
+        console.log("[Auth][2FA] Device is trusted, skipping 2FA");
+        is2FAInProgress.current = false;
+        toast.success("התחברת בהצלחה!");
+        navigate("/");
+        return;
+      }
+
       // Sign out immediately - we need 2FA verification
-      console.log("[Auth][2FA] Signing out for 2FA verification...");
+      console.log("[Auth][2FA] Device not trusted, signing out for 2FA verification...");
       await supabase.auth.signOut();
       console.log("[Auth][2FA] Signed out, sending 2FA code...");
 
@@ -212,6 +261,9 @@ const Auth = () => {
 
       console.log("[Auth][2FA] Login successful:", { userId: finalSignIn.user?.id, sessionExists: !!finalSignIn.session });
       
+      // Add device as trusted for 30 days
+      await addTrustedDevice();
+      
       // Log session details for debugging
       const sessionCheck = await supabase.auth.getSession();
       console.log("[Auth][2FA] Session check after login:", { 
@@ -220,7 +272,7 @@ const Auth = () => {
         expiresAt: sessionCheck.data.session?.expires_at
       });
 
-      toast.success("התחברת בהצלחה!");
+      toast.success("התחברת בהצלחה! המכשיר יזכר ל-30 יום");
       navigate("/");
     } catch (error: any) {
       console.error("[Auth][2FA] Error in handleVerifyOtp:", error);

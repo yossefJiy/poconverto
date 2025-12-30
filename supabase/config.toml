@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.health-monitor]
 verify_jwt = false
+
+[functions.trusted-device]
+verify_jwt = false
