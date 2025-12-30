@@ -121,7 +121,7 @@ export function Sidebar() {
             alt="Converto" 
             className={cn(
               "transition-all duration-300",
-              collapsed ? "h-10 w-auto" : "h-6 w-auto"
+              collapsed ? "h-10 w-auto" : "h-7 w-auto"
             )} 
           />
         </Link>
