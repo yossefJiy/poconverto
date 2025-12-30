@@ -13,6 +13,9 @@ import Campaigns from "./pages/Campaigns";
 import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
+import ProductLandingPages from "./pages/ProductLandingPages";
+import ProductEcommerce from "./pages/ProductEcommerce";
+import ProductDashboard from "./pages/ProductDashboard";
 
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -39,6 +42,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/products/landing-pages" element={<ProductLandingPages />} />
+              <Route path="/products/ecommerce" element={<ProductEcommerce />} />
+              <Route path="/products/dashboard" element={<ProductDashboard />} />
               <Route path="/client/:clientId" element={<ClientDashboard />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/clients" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
