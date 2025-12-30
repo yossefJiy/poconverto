@@ -81,6 +81,7 @@ export type Database = {
           is_active: boolean | null
           last_login_at: string | null
           name: string | null
+          notification_preference: string
           phone: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
@@ -93,6 +94,7 @@ export type Database = {
           is_active?: boolean | null
           last_login_at?: string | null
           name?: string | null
+          notification_preference?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
@@ -105,6 +107,7 @@ export type Database = {
           is_active?: boolean | null
           last_login_at?: string | null
           name?: string | null
+          notification_preference?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null

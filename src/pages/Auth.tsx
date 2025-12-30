@@ -99,18 +99,19 @@ const Auth = () => {
   };
 
   const send2FACode = useCallback(async () => {
-    // First, get user's phone from authorized_emails
+    // First, get user's phone and notification preference from authorized_emails
     const { data: authUser } = await supabase
       .from("authorized_emails")
-      .select("phone")
+      .select("phone, notification_preference")
       .eq("email", email.toLowerCase())
       .single();
 
     const phone = authUser?.phone;
-    console.log("[Auth] User phone for 2FA:", phone ? "found" : "not found");
+    const notificationPref = authUser?.notification_preference || "email";
+    console.log("[Auth] User 2FA preference:", notificationPref, "phone:", phone ? "found" : "not found");
 
     const response = await supabase.functions.invoke("send-2fa-code", {
-      body: { email, phone, action: "send" },
+      body: { email, phone, notification_preference: notificationPref, action: "send" },
     });
 
     if (response.error) {
@@ -212,11 +213,13 @@ const Auth = () => {
       const result = await send2FACode();
       console.log("[Auth][2FA] 2FA code sent successfully via:", result.method);
       
-      const method = result.method === "sms" ? "sms" : "email";
-      setCodeDeliveryMethod(method);
+      const method = result.method as "sms" | "email" | "both";
+      setCodeDeliveryMethod(method === "both" ? "sms" : method);
       
       if (method === "sms") {
         toast.success("קוד אימות נשלח ב-SMS לטלפון שלך");
+      } else if (method === "both") {
+        toast.success("קוד אימות נשלח ב-SMS ולאימייל שלך");
       } else {
         toast.success("קוד אימות נשלח לאימייל שלך");
       }

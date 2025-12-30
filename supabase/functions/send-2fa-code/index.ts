@@ -13,6 +13,7 @@ const corsHeaders = {
 interface TwoFactorRequest {
   email?: string;
   phone?: string; // User's phone number for SMS
+  notification_preference?: 'email' | 'sms' | 'both'; // User's preference
   action: "send" | "verify" | "health";
   code?: string;
 }
@@ -70,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body = await req.json();
-    const { email, phone, action, code }: TwoFactorRequest = body;
+    const { email, phone, notification_preference, action, code }: TwoFactorRequest = body;
 
     // Health check endpoint - no auth required
     if (action === 'health') {
@@ -106,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
       const newCode = generateCode();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
 
-      console.log(`[2FA] Generating code for email: ${email}`);
+      console.log(`[2FA] Generating code for email: ${email}, preference: ${notification_preference || 'not set'}`);
 
       // Store code in database (upsert to replace any existing code)
       const { error: dbError } = await supabase
@@ -129,24 +130,30 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       let sendMethod = "email";
-      let sendSuccess = false;
+      let smsSent = false;
+      let emailSent = false;
       let sendError = "";
 
-      // Try SMS first if phone is provided and SMS is configured
-      if (phone && extraApiToken) {
+      // Determine what to send based on preference
+      const pref = notification_preference || 'email';
+      const shouldSendSms = (pref === 'sms' || pref === 'both') && phone && extraApiToken;
+      const shouldSendEmail = (pref === 'email' || pref === 'both') && resendApiKey;
+
+      // Send SMS if needed
+      if (shouldSendSms) {
         console.log(`[2FA] Sending code via SMS to: ${phone}`);
         const smsResult = await sendSMS(phone, `קוד האימות שלך: ${newCode}\nתוקף: 5 דקות`);
         if (smsResult.success) {
-          sendSuccess = true;
+          smsSent = true;
           sendMethod = "sms";
         } else {
-          console.log(`[2FA] SMS failed, will try email: ${smsResult.error}`);
+          console.log(`[2FA] SMS failed: ${smsResult.error}`);
           sendError = smsResult.error || "";
         }
       }
 
-      // Fall back to email if SMS wasn't sent or failed
-      if (!sendSuccess && resendApiKey) {
+      // Send email if needed (or as fallback if SMS only was requested but failed)
+      if (shouldSendEmail || (pref === 'sms' && !smsSent && resendApiKey)) {
         console.log(`[2FA] Sending code via email to: ${email}`);
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -178,8 +185,8 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
         if (emailResponse.ok) {
-          sendSuccess = true;
-          sendMethod = "email";
+          emailSent = true;
+          if (!smsSent) sendMethod = "email";
         } else {
           const errorData = await emailResponse.text();
           console.error("[2FA] Email sending failed:", errorData);
@@ -187,7 +194,16 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      if (!sendSuccess) {
+      // Determine final method for response
+      if (smsSent && emailSent) {
+        sendMethod = "both";
+      } else if (smsSent) {
+        sendMethod = "sms";
+      } else if (emailSent) {
+        sendMethod = "email";
+      }
+
+      if (!smsSent && !emailSent) {
         return new Response(
           JSON.stringify({ error: sendError || "Failed to send code" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
