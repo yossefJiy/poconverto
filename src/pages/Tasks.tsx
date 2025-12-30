@@ -62,6 +62,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { TeamDashboard } from "@/components/tasks/TeamDashboard";
+import { BulkTaskImport } from "@/components/tasks/BulkTaskImport";
 
 interface Task {
   id: string;
@@ -137,7 +138,6 @@ export default function Tasks() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
-  const [bulkImportText, setBulkImportText] = useState("");
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -304,25 +304,27 @@ export default function Tasks() {
   });
 
   const bulkImportMutation = useMutation({
-    mutationFn: async (tasksText: string) => {
-      const lines = tasksText.split("\n").filter(line => line.trim());
-      const tasksToCreate = lines.map((line, index) => ({
-        title: line.trim(),
+    mutationFn: async (tasksToCreate: Array<{ title: string; description?: string; due_date?: string; assignee?: string; priority?: string; category?: string }>) => {
+      const tasksData = tasksToCreate.map((task, index) => ({
+        title: task.title,
+        description: task.description || null,
+        due_date: task.due_date || null,
+        assignee: task.assignee || null,
+        priority: task.priority || "medium",
+        category: task.category || null,
         status: "pending",
-        priority: "medium",
         client_id: selectedClient?.id || null,
         order_index: index,
       }));
 
-      const { error } = await supabase.from("tasks").insert(tasksToCreate);
+      const { error } = await supabase.from("tasks").insert(tasksData);
       if (error) throw error;
-      return tasksToCreate.length;
+      return tasksData.length;
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success(`${count} משימות נוספו בהצלחה`);
       setBulkImportDialogOpen(false);
-      setBulkImportText("");
     },
     onError: () => toast.error("שגיאה בייבוא משימות"),
   });
@@ -948,38 +950,14 @@ export default function Tasks() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Import Dialog */}
-      <Dialog open={bulkImportDialogOpen} onOpenChange={setBulkImportDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>ייבוא משימות בכמות</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>הזן משימות (כל שורה = משימה אחת)</Label>
-              <Textarea 
-                value={bulkImportText} 
-                onChange={(e) => setBulkImportText(e.target.value)} 
-                placeholder={`לדוגמה:\nעיצוב באנר לקמפיין\nכתיבת תוכן לפוסט\nאופטימיזציה לקמפיין גוגל`}
-                rows={8}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {bulkImportText.split("\n").filter(l => l.trim()).length} משימות יתווספו
-            </p>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setBulkImportDialogOpen(false)}>ביטול</Button>
-              <Button 
-                onClick={() => bulkImportMutation.mutate(bulkImportText)} 
-                disabled={bulkImportMutation.isPending || !bulkImportText.trim()}
-              >
-                {bulkImportMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                ייבא משימות
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Bulk Import Dialog - Advanced Component */}
+      <BulkTaskImport 
+        open={bulkImportDialogOpen}
+        onOpenChange={setBulkImportDialogOpen}
+        onImport={(tasks) => bulkImportMutation.mutate(tasks)}
+        teamMembers={teamMembers.map(m => ({ id: m.id, name: m.name }))}
+        isLoading={bulkImportMutation.isPending}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
