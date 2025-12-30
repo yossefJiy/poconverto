@@ -264,12 +264,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">אחראי ברירת מחדל</Label>
-                  <Select value={defaultAssignee} onValueChange={setDefaultAssignee}>
+                  <Select value={defaultAssignee || "none"} onValueChange={(v) => setDefaultAssignee(v === "none" ? "" : v)}>
                     <SelectTrigger className="h-9 mt-1">
                       <SelectValue placeholder="לא נבחר" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">לא נבחר</SelectItem>
+                      <SelectItem value="none">לא נבחר</SelectItem>
                       {teamMembers.map(m => (
                         <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
                       ))}
@@ -278,12 +278,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">קטגוריה ברירת מחדל</Label>
-                  <Select value={defaultCategory} onValueChange={setDefaultCategory}>
+                  <Select value={defaultCategory || "none"} onValueChange={(v) => setDefaultCategory(v === "none" ? "" : v)}>
                     <SelectTrigger className="h-9 mt-1">
                       <SelectValue placeholder="לא נבחרה" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">לא נבחרה</SelectItem>
+                      <SelectItem value="none">לא נבחרה</SelectItem>
                       {categoryOptions.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
