@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
+import { WelcomeGateCTA } from "@/components/home/WelcomeGateCTA";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   Target, 
@@ -304,6 +305,9 @@ const Home = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Welcome Gate CTA */}
+      <WelcomeGateCTA />
 
       {/* Contact Section */}
       <section id="contact" className="py-20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
