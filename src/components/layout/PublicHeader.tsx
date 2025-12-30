@@ -1,6 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,9 +23,13 @@ const navItems: NavItem[] = [
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
-  const authHref = user ? "/dashboard" : "/auth";
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   const isActive = (href: string) => {
     if (href.startsWith("#")) return false;
@@ -84,19 +88,40 @@ export function PublicHeader() {
             ))}
           </nav>
 
-          {/* Login Button */}
+          {/* Login/User Buttons */}
           <div className="flex items-center gap-3">
-            <Button asChild variant="outline" size="sm" className="hidden sm:flex gap-2">
-              <Link to={authHref}>
-                <LogIn className="h-4 w-4" />
-                {user ? "למערכת" : "כניסה למערכת"}
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="hidden sm:flex bg-gradient-to-r from-primary to-accent hover:opacity-90">
-              <Link to={authHref}>
-                {user ? "למערכת" : "התחילו בחינם"}
-              </Link>
-            </Button>
+            {user ? (
+              <>
+                <Button asChild size="sm" className="hidden sm:flex bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                  <Link to="/dashboard">
+                    למערכת
+                  </Link>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  className="hidden sm:flex gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="h-4 w-4" />
+                  התנתק
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="outline" size="sm" className="hidden sm:flex gap-2">
+                  <Link to="/auth">
+                    <LogIn className="h-4 w-4" />
+                    כניסה למערכת
+                  </Link>
+                </Button>
+                <Button asChild size="sm" className="hidden sm:flex bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                  <Link to="/auth">
+                    התחילו בחינם
+                  </Link>
+                </Button>
+              </>
+            )}
 
             {/* Mobile Menu Button */}
             <Button
@@ -147,17 +172,40 @@ export function PublicHeader() {
                 )
               ))}
               <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/50">
-                <Button asChild variant="outline" className="w-full gap-2">
-                  <Link to={authHref} onClick={() => setMobileMenuOpen(false)}>
-                    <LogIn className="h-4 w-4" />
-                    {user ? "למערכת" : "כניסה למערכת"}
-                  </Link>
-                </Button>
-                <Button asChild className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  <Link to={authHref} onClick={() => setMobileMenuOpen(false)}>
-                    {user ? "למערכת" : "התחילו בחינם"}
-                  </Link>
-                </Button>
+                {user ? (
+                  <>
+                    <Button asChild className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                      <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                        למערכת
+                      </Link>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleSignOut();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      התנתק
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="outline" className="w-full gap-2">
+                      <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                        <LogIn className="h-4 w-4" />
+                        כניסה למערכת
+                      </Link>
+                    </Button>
+                    <Button asChild className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                      <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                        התחילו בחינם
+                      </Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </motion.div>

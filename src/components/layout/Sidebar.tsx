@@ -44,7 +44,7 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "דשבורד", path: "/", moduleKey: "dashboard" },
+  { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
   { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
   { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
@@ -108,7 +108,7 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <img src={logoIcon} alt="Converto" className="h-6 w-auto" />
           {!collapsed && (
             <img src={logoText} alt="Converto" className="h-4 w-auto animate-fade-in" />

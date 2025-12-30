@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
 import { AnimatedSection, StaggerContainer, StaggerItem } from "@/components/home/AnimatedSection";
+import { useAuth } from "@/hooks/useAuth";
 import {
   BarChart3,
   ArrowLeft,
@@ -64,6 +65,9 @@ const stats = [
 ];
 
 export default function ProductDashboard() {
+  const { user } = useAuth();
+  const authHref = user ? "/dashboard" : "/auth";
+
   return (
     <PublicLayout>
       {/* Hero */}
@@ -90,8 +94,8 @@ export default function ProductDashboard() {
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
-                <Link to="/auth">
-                  גשו לדשבורד
+                <Link to={authHref}>
+                  {user ? "לדשבורד שלי" : "גשו לדשבורד"}
                   <ArrowLeft className="mr-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -210,8 +214,8 @@ export default function ProductDashboard() {
               מוכנים לראות את הנתונים שלכם בצורה אחרת?
             </h2>
             <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">
-              <Link to="/auth">
-                התחילו עכשיו - בחינם
+              <Link to={authHref}>
+                {user ? "לדשבורד שלי" : "התחילו עכשיו - בחינם"}
                 <ArrowLeft className="mr-2 h-4 w-4" />
               </Link>
             </Button>
