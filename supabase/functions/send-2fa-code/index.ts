@@ -12,6 +12,7 @@ const corsHeaders = {
 
 interface TwoFactorRequest {
   email?: string;
+  phone?: string; // User's phone number for SMS
   action: "send" | "verify" | "health";
   code?: string;
 }
@@ -19,6 +20,46 @@ interface TwoFactorRequest {
 // Generate a 6-digit numeric code
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Send SMS via Extra API
+async function sendSMS(to: string, message: string): Promise<{ success: boolean; error?: string }> {
+  const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
+  const sender = "Converto"; // Verified sender name
+  
+  if (!extraApiToken) {
+    console.log("[2FA-SMS] Extra API token not configured");
+    return { success: false, error: "SMS service not configured" };
+  }
+
+  try {
+    const response = await fetch("https://www.exm.co.il/api/v1/sms/send/", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${extraApiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+        destination: to,
+        sender,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok || !data.success) {
+      const errorMessage = data.errors?.[0]?.description || "Failed to send SMS";
+      console.error("[2FA-SMS] Error:", errorMessage);
+      return { success: false, error: errorMessage };
+    }
+
+    console.log("[2FA-SMS] SMS sent successfully:", data.id);
+    return { success: true };
+  } catch (error: any) {
+    console.error("[2FA-SMS] Exception:", error);
+    return { success: false, error: error.message };
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -29,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body = await req.json();
-    const { email, action, code }: TwoFactorRequest = body;
+    const { email, phone, action, code }: TwoFactorRequest = body;
 
     // Health check endpoint - no auth required
     if (action === 'health') {
@@ -48,11 +89,14 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if SMS is available (preferred) or fall back to email
+    const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey && action === "send") {
-      console.error("[2FA] RESEND_API_KEY not configured");
+    
+    if (!extraApiToken && !resendApiKey && action === "send") {
+      console.error("[2FA] No messaging service configured (SMS or Email)");
       return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
+        JSON.stringify({ error: "Messaging service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -84,49 +128,76 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Send email with code using Resend API
-      const emailResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "JIY Marketing <onboarding@resend.dev>",
-          to: [email],
-          subject: "קוד אימות - מערכת ניהול שיווק",
-          html: `
-            <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #333; text-align: center;">קוד אימות</h1>
-              <p style="color: #666; text-align: center; font-size: 16px;">
-                הקוד שלך לאימות דו-שלבי הוא:
-              </p>
-              <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">
-                  ${newCode}
-                </span>
-              </div>
-              <p style="color: #999; text-align: center; font-size: 14px;">
-                קוד זה יפוג תוך 5 דקות. אם לא ביקשת קוד זה, התעלם מאימייל זה.
-              </p>
-            </div>
-          `,
-        }),
-      });
+      let sendMethod = "email";
+      let sendSuccess = false;
+      let sendError = "";
 
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.text();
-        console.error("[2FA] Email sending failed:", errorData);
+      // Try SMS first if phone is provided and SMS is configured
+      if (phone && extraApiToken) {
+        console.log(`[2FA] Sending code via SMS to: ${phone}`);
+        const smsResult = await sendSMS(phone, `קוד האימות שלך: ${newCode}\nתוקף: 5 דקות`);
+        if (smsResult.success) {
+          sendSuccess = true;
+          sendMethod = "sms";
+        } else {
+          console.log(`[2FA] SMS failed, will try email: ${smsResult.error}`);
+          sendError = smsResult.error || "";
+        }
+      }
+
+      // Fall back to email if SMS wasn't sent or failed
+      if (!sendSuccess && resendApiKey) {
+        console.log(`[2FA] Sending code via email to: ${email}`);
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "JIY Marketing <onboarding@resend.dev>",
+            to: [email],
+            subject: "קוד אימות - מערכת ניהול שיווק",
+            html: `
+              <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #333; text-align: center;">קוד אימות</h1>
+                <p style="color: #666; text-align: center; font-size: 16px;">
+                  הקוד שלך לאימות דו-שלבי הוא:
+                </p>
+                <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+                  <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">
+                    ${newCode}
+                  </span>
+                </div>
+                <p style="color: #999; text-align: center; font-size: 14px;">
+                  קוד זה יפוג תוך 5 דקות. אם לא ביקשת קוד זה, התעלם מאימייל זה.
+                </p>
+              </div>
+            `,
+          }),
+        });
+
+        if (emailResponse.ok) {
+          sendSuccess = true;
+          sendMethod = "email";
+        } else {
+          const errorData = await emailResponse.text();
+          console.error("[2FA] Email sending failed:", errorData);
+          sendError = "Failed to send email";
+        }
+      }
+
+      if (!sendSuccess) {
         return new Response(
-          JSON.stringify({ error: "Failed to send email" }),
+          JSON.stringify({ error: sendError || "Failed to send code" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      console.log("[2FA] Email sent successfully");
+      console.log(`[2FA] Code sent successfully via ${sendMethod}`);
 
       return new Response(
-        JSON.stringify({ success: true, message: "Code sent successfully" }),
+        JSON.stringify({ success: true, message: "Code sent successfully", method: sendMethod }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
 
