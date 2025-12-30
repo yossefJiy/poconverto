@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   User,
   Building2,
@@ -24,9 +25,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ListTree,
-  GripVertical,
   Copy,
-  Upload
+  Upload,
+  LayoutDashboard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,11 +61,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { TeamDashboard } from "@/components/tasks/TeamDashboard";
 
 interface Task {
   id: string;
@@ -126,8 +123,10 @@ const timeOptions = Array.from({ length: 24 }, (_, h) =>
 
 export default function Tasks() {
   const { selectedClient } = useClient();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   
+  const [showDashboard, setShowDashboard] = useState(false);
   const [filter, setFilter] = useState<"all" | "assignee" | "department">("all");
   const [selectedValue, setSelectedValue] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -590,6 +589,27 @@ export default function Tasks() {
     );
   };
 
+  // Show dashboard view
+  if (showDashboard) {
+    return (
+      <MainLayout>
+        <div className="p-4 md:p-8">
+          <PageHeader 
+            title="הדשבורד שלי"
+            description="משימות להיום ולקראת"
+            actions={
+              <Button variant="outline" onClick={() => setShowDashboard(false)}>
+                <List className="w-4 h-4 ml-2" />
+                תצוגה מלאה
+              </Button>
+            }
+          />
+          <TeamDashboard />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="p-4 md:p-8">
@@ -598,6 +618,10 @@ export default function Tasks() {
           description="לפי עובד, לקוח ומחלקה"
           actions={
             <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowDashboard(true)}>
+                <LayoutDashboard className="w-4 h-4 ml-2" />
+                הדשבורד שלי
+              </Button>
               <Button variant="outline" onClick={() => setBulkImportDialogOpen(true)}>
                 <Upload className="w-4 h-4 ml-2" />
                 ייבוא בכמות
