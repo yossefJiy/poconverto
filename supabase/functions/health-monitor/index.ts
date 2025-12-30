@@ -138,7 +138,29 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Step 4: Compare and detect changes - ONLY for connected services
+    // Step 4: Get user monitoring preferences
+    const { data: monitoringPrefs, error: prefsError } = await supabase
+      .from("monitoring_preferences")
+      .select("user_id, service_name, notify_on_down, notify_on_recovery");
+
+    if (prefsError) {
+      console.error("[Health Monitor] Error fetching monitoring preferences:", prefsError);
+    }
+
+    // Create a map of users who want alerts for each service
+    const serviceAlertUsers = new Map<string, Set<string>>();
+    if (monitoringPrefs) {
+      for (const pref of monitoringPrefs) {
+        if (pref.notify_on_down) {
+          if (!serviceAlertUsers.has(pref.service_name)) {
+            serviceAlertUsers.set(pref.service_name, new Set());
+          }
+          serviceAlertUsers.get(pref.service_name)!.add(pref.user_id);
+        }
+      }
+    }
+
+    // Step 5: Compare and detect changes - ONLY for connected services
     const alerts: { service: ServiceHealth; type: "down" | "recovered"; previousStatus?: string; downtime?: number }[] = [];
     const newRecords: { service_name: string; status: string; latency_ms: number; message: string | null; alert_sent: boolean }[] = [];
 

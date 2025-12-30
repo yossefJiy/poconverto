@@ -3,21 +3,25 @@ import mermaid from "mermaid";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ArrowRight, Lock } from "lucide-react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePermissions } from "@/hooks/useAuth";
+import { Navigate } from "react-router-dom";
 
 const diagramDefinition = `
 flowchart TB
-    subgraph Users["👥 Users"]
+    subgraph Users["👥 משתמשים"]
         Admin["🔐 Admin"]
         Manager["👔 Manager"]
         TeamMember["👤 Team Member"]
-        Client["🏢 Client"]
+        ClientUser["🏢 Client"]
     end
 
-    subgraph Auth["🔒 Authentication"]
+    subgraph Auth["🔒 אימות"]
         EmailAuth["📧 Email/Password"]
         GoogleAuth["🔗 Google OAuth"]
-        PhoneAuth["📱 Phone OTP"]
+        TwoFA["📱 2FA + SMS"]
     end
 
     subgraph Frontend["🖥️ Frontend (React + Vite)"]
@@ -28,7 +32,7 @@ flowchart TB
         Marketing["📢 Marketing"]
         Ecommerce["🛒 E-commerce"]
         Team["👥 Team"]
-        Integrations["🔌 Integrations"]
+        Status["🔔 System Status"]
     end
 
     subgraph Backend["⚙️ Backend"]
@@ -38,8 +42,9 @@ flowchart TB
             GoogleAnalytics["📊 Google Analytics"]
             ShopifyAPI["🛍️ Shopify API"]
             ReportGen["📄 Report Generator"]
-            WebhookReceiver["🔗 Webhook Receiver"]
-            MCPServer["🔌 MCP Server"]
+            HealthCheck["🔔 Health Monitor"]
+            SMSService["📱 SMS Service"]
+            EmailService["📧 Email Service"]
         end
         
         subgraph Database["🗄️ Database"]
@@ -48,7 +53,8 @@ flowchart TB
             TasksDB["✅ Tasks"]
             TeamDB["👤 Team"]
             IntegrationsDB["🔌 Integrations"]
-            MarketingData["📊 Marketing Data"]
+            AnalyticsDB["📊 Analytics Snapshots"]
+            MonitoringPrefs["🔔 Monitoring Prefs"]
         end
     end
 
@@ -56,24 +62,42 @@ flowchart TB
         GA["📈 Google Analytics"]
         GAds["📢 Google Ads"]
         Shopify["🛍️ Shopify"]
+        WooCommerce["🛒 WooCommerce"]
+        Twilio["📱 Twilio SMS"]
+        Resend["📧 Resend Email"]
         AI["🤖 AI Models"]
     end
 
-    subgraph AIAssistants["🤖 AI Assistants"]
-        Claude["💬 Claude / MCP Client"]
-        AIInsights["💡 AI Marketing Insights"]
-    end
-
+    %% User Authentication Flow
     Users --> Auth
     Auth --> Frontend
+    
+    %% Frontend to Backend
     Frontend --> EdgeFunctions
     EdgeFunctions --> Database
-    EdgeFunctions --> ExternalAPIs
-    MCPServer <--> Claude
-    AIMarketing --> AI
-    AIMarketing --> AIInsights
+    
+    %% External API Connections
     GoogleAnalytics --> GA
+    DataAPI --> GAds
     ShopifyAPI --> Shopify
+    ShopifyAPI --> WooCommerce
+    SMSService --> Twilio
+    EmailService --> Resend
+    AIMarketing --> AI
+    
+    %% Internal Connections
+    Analytics --> AnalyticsDB
+    Campaigns --> CampaignsDB
+    Tasks --> TasksDB
+    Team --> TeamDB
+    Dashboard --> AnalyticsDB
+    Status --> HealthCheck
+    
+    %% Data Flow Relationships
+    CampaignsDB --> AnalyticsDB
+    TasksDB --> CampaignsDB
+    TeamDB --> Clients
+    IntegrationsDB --> Clients
 `;
 
 mermaid.initialize({
@@ -93,6 +117,12 @@ export default function SystemDiagram() {
   const diagramRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRendered, setIsRendered] = useState(false);
+  const { isAdmin } = usePermissions();
+
+  // Redirect non-admins
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   useEffect(() => {
     const renderDiagram = async () => {
@@ -144,24 +174,99 @@ export default function SystemDiagram() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-foreground">System Architecture</h1>
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              ארכיטקטורת מערכת
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              תרשים הקשרים והחיבורים בין רכיבי המערכת
+            </p>
+          </div>
           <Button onClick={downloadPDF} disabled={isLoading || !isRendered}>
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            Download PDF
+            הורד PDF
           </Button>
         </div>
-        
-        <div className="bg-card rounded-lg border border-border p-6 overflow-auto">
-          <div ref={diagramRef} className="flex justify-center min-h-[600px]" />
+
+        {/* Legend */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">מקרא</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-indigo-500" />
+                <span>רכיבים ראשיים</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <span>זרימת נתונים</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-slate-700" />
+                <span>שירותים חיצוניים</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Connections Info */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">קשרי נתונים</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>• Analytics ← Dashboard (מציג נתונים)</p>
+              <p>• Campaigns ← Analytics (סנכרון ביצועים)</p>
+              <p>• Tasks ← Campaigns (משימות לקמפיינים)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">קשרי לקוחות</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>• Team ← Clients (צוות משויך ללקוח)</p>
+              <p>• Integrations ← Clients (חיבורים per client)</p>
+              <p>• Campaigns ← Clients (קמפיינים per client)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">שירותים חיצוניים</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>• Resend - שליחת מיילים</p>
+              <p>• Twilio - שליחת SMS</p>
+              <p>• Lovable AI - יצירת תוכן</p>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Diagram */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">תרשים מערכת מלא</CardTitle>
+            <CardDescription>
+              לחץ על "הורד PDF" לייצוא התרשים
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-auto">
+            <div ref={diagramRef} className="flex justify-center min-h-[600px]" />
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </MainLayout>
   );
 }
