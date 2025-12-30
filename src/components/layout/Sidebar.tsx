@@ -17,6 +17,7 @@ import {
   BarChart3,
   ShoppingBag,
   Activity,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,6 +59,7 @@ const settingsItems = [
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
   { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
+  { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
 ];
 
 

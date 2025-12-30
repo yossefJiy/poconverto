@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Clock, Zap, Info, Users, Link2, Link2Off, Settings2 } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Clock, Zap, Info, Users, Link2, Link2Off, Settings2, Mail, MessageSquare } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
+import { MonitoringSettingsDialog } from "@/components/status/MonitoringSettingsDialog";
+
 // Service information - descriptions and capabilities
 const SERVICE_INFO: Record<string, {
   description: string;
@@ -104,6 +106,16 @@ const SERVICE_INFO: Record<string, {
     ],
     connectedTo: 'Internal Service',
     requiresSetup: false
+  },
+  'send-sms': {
+    description: 'שליחת הודעות SMS ללקוחות ומשתמשים',
+    capabilities: [
+      'התראות SMS',
+      'אימות דו-שלבי בSMS',
+      'עדכוני סטטוס'
+    ],
+    connectedTo: 'Twilio',
+    requiresSetup: true
   }
 };
 
@@ -248,6 +260,17 @@ const StatusPage = () => {
     ['send-2fa-code', 'ai-marketing', 'generate-report'].includes(s.name)
   ) || [];
 
+  // Add SMS as a virtual service (not in health check yet)
+  const smsService = {
+    name: 'send-sms',
+    displayName: 'SMS Service',
+    status: 'unhealthy' as const, // Will show as "not connected" until configured
+    latencyMs: 0,
+    message: 'לא הוגדר - נדרש חיבור ל-Twilio'
+  };
+
+  const allSystemServices = [...systemServices, smsService];
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -260,6 +283,7 @@ const StatusPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <MonitoringSettingsDialog />
             {lastUpdated && (
               <span className="text-sm text-muted-foreground">
                 עודכן: {lastUpdated.toLocaleTimeString('he-IL')}
@@ -366,7 +390,7 @@ const StatusPage = () => {
                   </CardContent>
                 </Card>
               ))
-            ) : systemServices.map((service) => {
+            ) : allSystemServices.map((service) => {
               const info = SERVICE_INFO[service.name];
               return (
                 <Card 

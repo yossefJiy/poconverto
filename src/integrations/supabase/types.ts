@@ -359,6 +359,36 @@ export type Database = {
           },
         ]
       }
+      monitoring_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          notify_on_down: boolean
+          notify_on_recovery: boolean
+          service_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_on_down?: boolean
+          notify_on_recovery?: boolean
+          service_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_on_down?: boolean
+          notify_on_recovery?: boolean
+          service_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
