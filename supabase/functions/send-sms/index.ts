@@ -33,7 +33,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
-    const defaultSender = "Converto"; // Fixed sender name
+    const defaultSender = "ExtraMobile"; // Verified sender name
 
     // Check if SMS is configured
     if (!extraApiToken) {

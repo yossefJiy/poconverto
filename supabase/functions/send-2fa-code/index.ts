@@ -25,7 +25,7 @@ function generateCode(): string {
 // Send SMS via Extra API
 async function sendSMS(to: string, message: string): Promise<{ success: boolean; error?: string }> {
   const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
-  const sender = "Converto"; // Verified sender name
+  const sender = "ExtraMobile"; // Verified sender name
   
   if (!extraApiToken) {
     console.log("[2FA-SMS] Extra API token not configured");
