@@ -1,4 +1,5 @@
-import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Clock, Zap, Info, Users, Link2, Link2Off } from "lucide-react";
+import { useState, useEffect } from "react";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Clock, Zap, Info, Users, Link2, Link2Off, Settings2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
+import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 // Service information - descriptions and capabilities
 const SERVICE_INFO: Record<string, {
   description: string;
@@ -107,8 +108,22 @@ const SERVICE_INFO: Record<string, {
 };
 
 const StatusPage = () => {
-  // Reduced polling interval to 60 seconds to minimize API calls
-  const { data, loading, error, refetch, lastUpdated } = useHealthCheck(60000);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const [integrationsDialogOpen, setIntegrationsDialogOpen] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | undefined>();
+
+  // Adaptive polling - stop when page is not visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Only poll when page is visible, otherwise disable polling
+  const { data, loading, error, refetch, lastUpdated } = useHealthCheck(isPageVisible ? 60000 : 0);
 
   // Fetch client integrations - only once on mount
   const { data: clientIntegrations } = useQuery({
@@ -127,6 +142,23 @@ const StatusPage = () => {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     refetchOnWindowFocus: false
   });
+
+  // Map service names to platform IDs for the dialog
+  const platformIdMap: Record<string, string> = {
+    'shopify-api': 'shopify',
+    'google-ads': 'google_ads',
+    'google-analytics': 'google_analytics',
+    'facebook-ads': 'facebook_ads',
+    'woocommerce-api': 'woocommerce'
+  };
+
+  const handleConnectIntegration = (serviceName: string) => {
+    const platformId = platformIdMap[serviceName];
+    if (platformId) {
+      setSelectedPlatform(platformId);
+      setIntegrationsDialogOpen(true);
+    }
+  };
 
   const getStatusIcon = (status: 'healthy' | 'degraded' | 'unhealthy') => {
     switch (status) {
@@ -192,6 +224,20 @@ const StatusPage = () => {
   };
 
   const statusMessage = getOverallStatusMessage(data?.status);
+
+  // Count unconnected integrations
+  const getUnconnectedCount = () => {
+    if (!clientIntegrations) return 0;
+    const connectedPlatforms = new Set(
+      clientIntegrations.integrations
+        .filter(i => i.is_connected)
+        .map(i => i.platform)
+    );
+    const allPlatforms = ['shopify', 'google_ads', 'google_analytics', 'facebook_ads', 'woocommerce'];
+    return allPlatforms.filter(p => !connectedPlatforms.has(p)).length;
+  };
+
+  const unconnectedCount = getUnconnectedCount();
 
   // Separate services into categories
   const integrationServices = data?.services.filter(s => 
@@ -261,7 +307,7 @@ const StatusPage = () => {
               </div>
               {data && (
                 <div className="text-left">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
                       {data.summary.healthy} תקינים
                     </Badge>
@@ -273,6 +319,11 @@ const StatusPage = () => {
                     {data.summary.unhealthy > 0 && (
                       <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20">
                         {data.summary.unhealthy} לא זמינים
+                      </Badge>
+                    )}
+                    {unconnectedCount > 0 && (
+                      <Badge variant="outline" className="bg-muted text-muted-foreground">
+                        {unconnectedCount} לא מחוברים
                       </Badge>
                     )}
                   </div>
@@ -505,9 +556,20 @@ const StatusPage = () => {
                               </div>
                             )}
                             {!hasConnections && (
-                              <p className="text-sm text-muted-foreground">
-                                כדי להשתמש באינטגרציה זו, יש להגדיר חיבור דרך הגדרות הלקוח.
-                              </p>
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                  כדי להשתמש באינטגרציה זו, יש להגדיר חיבור.
+                                </p>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleConnectIntegration(service.name)}
+                                  className="w-full"
+                                >
+                                  <Settings2 className="h-4 w-4 ml-2" />
+                                  הגדר חיבור
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </AccordionContent>
@@ -525,11 +587,18 @@ const StatusPage = () => {
           <CardHeader>
             <CardTitle className="text-base">מידע נוסף</CardTitle>
             <CardDescription>
-              הדף מתעדכן אוטומטית כל 60 שניות. לחץ על "רענן" לעדכון מיידי.
+              הדף מתעדכן אוטומטית כל 60 שניות (מפסיק כשעוברים לחלון אחר). לחץ על "רענן" לעדכון מיידי.
             </CardDescription>
           </CardHeader>
         </Card>
       </div>
+
+      {/* Integrations Dialog */}
+      <IntegrationsDialog 
+        open={integrationsDialogOpen}
+        onOpenChange={setIntegrationsDialogOpen}
+        defaultPlatform={selectedPlatform}
+      />
     </MainLayout>
   );
 };
