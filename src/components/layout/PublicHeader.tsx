@@ -42,7 +42,7 @@ export function PublicHeader() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-4 group">
             <div className="hidden sm:flex flex-col items-end">
               <img 
                 src={logoText} 
@@ -52,7 +52,7 @@ export function PublicHeader() {
               <img 
                 src={byJiyLogo} 
                 alt="by JIY" 
-                className="h-2.5 w-auto mt-0.5 opacity-70" 
+                className="h-2.5 w-auto mt-1.5 opacity-70" 
               />
             </div>
             <img 
