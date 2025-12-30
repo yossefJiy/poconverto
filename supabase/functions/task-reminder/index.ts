@@ -173,15 +173,15 @@ serve(async (req) => {
             phone = "972" + phone;
           }
 
-          const smsResponse = await fetch("https://extra.tapuz.co.il/api/v1/send-sms", {
+          const smsResponse = await fetch("https://www.exm.co.il/api/v1/sms/send/", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${extraApiToken}`,
             },
             body: JSON.stringify({
-              to: phone,
               message: smsMessage,
+              destination: phone,
               sender: "Converto",
             }),
           });
