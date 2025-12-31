@@ -179,6 +179,56 @@ export type Database = {
           },
         ]
       }
+      client_contacts: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          email: string | null
+          has_portal_access: boolean | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          phone: string | null
+          receive_task_updates: boolean | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          email?: string | null
+          has_portal_access?: boolean | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          phone?: string | null
+          receive_task_updates?: boolean | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          email?: string | null
+          has_portal_access?: boolean | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          phone?: string | null
+          receive_task_updates?: boolean | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_credit_packages: {
         Row: {
           created_at: string | null

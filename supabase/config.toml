@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.send-dev-report]
 verify_jwt = false
+
+[functions.test-email]
+verify_jwt = false
