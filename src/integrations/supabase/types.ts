@@ -223,6 +223,7 @@ export type Database = {
           id: string
           industry: string | null
           instagram_url: string | null
+          is_master_account: boolean
           jiy_commission_percent: number | null
           linkedin_url: string | null
           logo_url: string | null
@@ -242,6 +243,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram_url?: string | null
+          is_master_account?: boolean
           jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
@@ -261,6 +263,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram_url?: string | null
+          is_master_account?: boolean
           jiy_commission_percent?: number | null
           linkedin_url?: string | null
           logo_url?: string | null
@@ -587,6 +590,7 @@ export type Database = {
           department: string | null
           description: string | null
           due_date: string | null
+          duration_minutes: number
           id: string
           notification_email: boolean | null
           notification_email_address: string | null
@@ -595,6 +599,7 @@ export type Database = {
           priority: string
           reminder_at: string | null
           reminder_sent: boolean | null
+          scheduled_time: string | null
           status: string
           title: string
           updated_at: string
@@ -608,6 +613,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           due_date?: string | null
+          duration_minutes?: number
           id?: string
           notification_email?: boolean | null
           notification_email_address?: string | null
@@ -616,6 +622,7 @@ export type Database = {
           priority?: string
           reminder_at?: string | null
           reminder_sent?: boolean | null
+          scheduled_time?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -629,6 +636,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           due_date?: string | null
+          duration_minutes?: number
           id?: string
           notification_email?: boolean | null
           notification_email_address?: string | null
@@ -637,6 +645,7 @@ export type Database = {
           priority?: string
           reminder_at?: string | null
           reminder_sent?: boolean | null
+          scheduled_time?: string | null
           status?: string
           title?: string
           updated_at?: string

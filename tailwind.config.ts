@@ -62,6 +62,11 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        jiy: {
+          gold: "hsl(var(--jiy-gold))",
+          "gold-light": "hsl(var(--jiy-gold-light))",
+          "gold-dark": "hsl(var(--jiy-gold-dark))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
