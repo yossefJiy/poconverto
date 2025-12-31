@@ -5,7 +5,8 @@ import {
   Target, 
   CheckSquare,
   ShoppingBag,
-  Users
+  Users,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function QuickActionsCard({ isModuleEnabled }: QuickActionsCardProps) {
     { key: "marketing", label: "שיווק ופרסונות", icon: Target, path: "/marketing" },
     { key: "tasks", label: "ניהול משימות", icon: CheckSquare, path: "/tasks" },
     { key: "team", label: "צוות משויך", icon: Users, path: "/team" },
+    { key: "features", label: "פיצ'רים עתידיים", icon: Sparkles, path: "/settings" },
   ];
 
   const visibleActions = actions.filter(action => isModuleEnabled(action.key as keyof ClientModules));

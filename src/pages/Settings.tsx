@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { AuthorizedUsersManager } from "@/components/admin/AuthorizedUsersManager";
 import { FutureFeatures } from "@/components/FutureFeatures";
+import { FeatureRequestsManager } from "@/components/features/FeatureRequestsManager";
 
 const settingsSections = [
   { id: "profile", icon: User, title: "פרופיל", description: "ניהול פרטים אישיים" },
@@ -178,7 +179,10 @@ export default function Settings() {
             )}
 
             {activeSection === "features" && isAdmin && (
-              <FutureFeatures />
+              <div className="space-y-6">
+                <FeatureRequestsManager />
+                <FutureFeatures />
+              </div>
             )}
           </div>
         </div>
