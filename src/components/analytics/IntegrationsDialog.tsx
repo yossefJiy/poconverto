@@ -97,6 +97,7 @@ interface PlatformOption {
   useApiCredentials?: boolean; // For platforms needing consumer key/secret
   useGACredentials?: boolean; // For Google Analytics with property ID + measurement ID
   useOAuth?: boolean; // For Google Workspace integrations requiring OAuth
+  useFacebookAds?: boolean; // For Facebook Ads - just ad account ID (digits only)
   category: "ecommerce" | "analytics" | "google_workspace" | "ai";
   comingSoon?: boolean;
   steps: { title: string; description: string }[];
@@ -202,11 +203,12 @@ const platformOptions: PlatformOption[] = [
     category: "analytics",
     description: "קבלת נתוני קמפיינים מ-Facebook Business",
     credentialKey: "ad_account_id",
-    placeholder: "act_123456789",
+    placeholder: "478334941537916",
+    useFacebookAds: true,
     steps: [
       { title: "היכנס ל-Business Manager", description: "עבור ל-business.facebook.com" },
       { title: "לחץ על Business Settings", description: "בחר Accounts > Ad Accounts" },
-      { title: "העתק את Ad Account ID", description: "המזהה מתחיל ב-act_" },
+      { title: "העתק את מספר החשבון (ספרות בלבד)", description: "הקידומת act_ תתווסף אוטומטית" },
     ],
     helpUrl: "https://www.facebook.com/business/help/1492627900875762",
     features: ["קמפיינים", "קבוצות מודעות", "Insights", "המרות"],
@@ -411,6 +413,10 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           property_id: credential,
           measurement_id: measurementId || "",
         };
+      } else if (selectedPlatform.useFacebookAds) {
+        // Facebook Ads - add act_ prefix if not present
+        const cleanId = credential.replace(/\D/g, '');
+        credentials[selectedPlatform.credentialKey] = `act_${cleanId}`;
       } else {
         credentials[selectedPlatform.credentialKey] = credential;
       }
@@ -573,7 +579,9 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
       ? !!credential && !!consumerKey && !!consumerSecret
       : selectedPlatform?.useGACredentials
         ? !!credential
-        : !!credential;
+        : selectedPlatform?.useFacebookAds
+          ? credential.replace(/\D/g, '').length > 0
+          : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -895,8 +903,42 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Manual Input for other platforms (not MCC, API credentials, GA, or OAuth) */}
-            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useOAuth && (
+            {/* Facebook Ads - just ad account ID (digits only, act_ added automatically) */}
+            {selectedPlatform.useFacebookAds && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>מספר חשבון מודעות (ספרות בלבד):</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      // Only allow digits
+                      const digitsOnly = e.target.value.replace(/\D/g, '');
+                      setCredential(digitsOnly);
+                      setCurrentStep(digitsOnly ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder={selectedPlatform.placeholder}
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    הקידומת act_ תתווסף אוטומטית • נמצא ב-Business Settings → Ad Accounts
+                  </p>
+                </div>
+                {credential && (
+                  <Alert className="py-2">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <AlertDescription className="text-sm" dir="ltr">
+                      יישמר כ: act_{credential}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            {/* Manual Input for other platforms (not MCC, API credentials, GA, OAuth, or Facebook Ads) */}
+            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useOAuth && !selectedPlatform.useFacebookAds && (
               <div className="space-y-2">
                 <Label>הזן את המזהה:</Label>
                 <Input
