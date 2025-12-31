@@ -29,6 +29,100 @@ interface FutureFeature {
   prompt: string;
 }
 
+// Business Development Features
+const businessDevFeatures: FutureFeature[] = [
+  {
+    id: "client-credits-full",
+    title: "מערכת קרדיטים מתקדמת",
+    description: "ניהול קרדיטים מלא עם התראות, חריגות, ורכישה אוטומטית",
+    priority: "high",
+    icon: Building2,
+    prompt: `יש להרחיב את מערכת הקרדיטים:
+
+1. **התראות אוטומטיות:**
+   - שליחת מייל/SMS כשמגיעים ל-80% ניצול
+   - התראה יומית על חריגה מהמכסה
+   - עדכון שבועי על מצב הקרדיטים
+
+2. **רכישה עצמית:**
+   - ממשק רכישת קרדיטים נוספים
+   - אינטגרציה עם Stripe לתשלומים
+   - חבילות קרדיטים לבחירה
+
+3. **דוחות:**
+   - ייצוא דוח שימוש חודשי
+   - ניתוח מגמות
+   - השוואה בין חודשים`
+  },
+  {
+    id: "leads-portal",
+    title: "פורטל לידים",
+    description: "לידים יוכלו להירשם, לבחור שירותים ולשלם ישירות מהאתר",
+    priority: "high",
+    icon: Users,
+    prompt: `יש לממש פורטל לידים:
+
+1. **הרשמה:**
+   - טופס הרשמה ללידים חדשים
+   - בחירת חבילת שירות
+   - תשלום ראשוני
+
+2. **קטלוג שירותים:**
+   - רשימת שירותים עם מחירים
+   - הערכת זמן לכל שירות
+   - דוגמאות עבודות
+
+3. **תהליך עבודה:**
+   - ליד נרשם -> בקשת משימה -> אישור -> ביצוע -> תשלום`
+  },
+  {
+    id: "subscription-plans",
+    title: "מנויים חודשיים",
+    description: "חבילות מנוי עם חידוש אוטומטי וניהול מתקדם",
+    priority: "medium",
+    icon: Calendar,
+    prompt: `יש לממש מערכת מנויים:
+
+1. **חבילות:**
+   - בסיסית: 10 שעות / ₪2,180
+   - סטנדרטית: 20 שעות / ₪4,360
+   - פרימיום: 40 שעות / ₪8,720
+
+2. **חידוש אוטומטי:**
+   - חיוב אוטומטי בתחילת חודש
+   - אפשרות לשדרוג/שנמוך
+   - ביטול עם הודעה מראש
+
+3. **הטבות:**
+   - הנחה על התחייבות שנתית
+   - קרדיטים בונוס
+   - עדיפות בתור`
+  },
+  {
+    id: "project-management",
+    title: "ניהול פרויקטים ללקוחות",
+    description: "תצוגת פרויקטים עם אבני דרך וסטטוס מפורט",
+    priority: "medium",
+    icon: FileText,
+    prompt: `יש לממש ניהול פרויקטים:
+
+1. **פרויקט:**
+   - שם, תיאור, לקוח
+   - תאריך התחלה/סיום
+   - סטטוס: בתכנון, בביצוע, הושלם
+
+2. **אבני דרך:**
+   - רשימת שלבים עיקריים
+   - תאריך יעד לכל שלב
+   - אחוז התקדמות
+
+3. **תצוגה ללקוח:**
+   - Timeline ויזואלי
+   - עדכונים שוטפים
+   - קבצים משותפים`
+  }
+];
+
 const futureFeatures: FutureFeature[] = [
   {
     id: "master-account",
@@ -311,6 +405,7 @@ const channel = supabase
 
 export function FutureFeatures() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"features" | "business">("features");
 
   const copyPrompt = (prompt: string, title: string) => {
     navigator.clipboard.writeText(prompt);
@@ -322,6 +417,62 @@ export function FutureFeatures() {
     medium: { label: "עדיפות בינונית", className: "bg-warning/20 text-warning" },
     low: { label: "עדיפות נמוכה", className: "bg-muted text-muted-foreground" },
   };
+
+  const renderFeatureList = (features: FutureFeature[]) => (
+    <div className="space-y-3">
+      {features.map((feature) => {
+        const Icon = feature.icon;
+        const isExpanded = expandedId === feature.id;
+        
+        return (
+          <div 
+            key={feature.id}
+            className="border border-border rounded-lg overflow-hidden"
+          >
+            <div 
+              className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+              onClick={() => setExpandedId(isExpanded ? null : feature.id)}
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Icon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-medium">{feature.title}</h4>
+                  <Badge className={cn("text-xs", priorityConfig[feature.priority].className)}>
+                    {priorityConfig[feature.priority].label}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="flex-shrink-0">
+                {isExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            
+            {isExpanded && (
+              <div className="border-t border-border bg-muted/20 p-4">
+                <div className="text-xs font-mono bg-background rounded-lg p-3 max-h-[300px] overflow-auto whitespace-pre-wrap mb-3">
+                  {feature.prompt}
+                </div>
+                <Button 
+                  onClick={() => copyPrompt(feature.prompt, feature.title)}
+                  className="w-full"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  שלח בשבילי (העתק פרומפט)
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <Card className="glass">
@@ -335,60 +486,28 @@ export function FutureFeatures() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4 border-b border-border pb-2">
+          <Button
+            variant={activeTab === "features" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("features")}
+          >
+            פיצ'רים טכניים
+          </Button>
+          <Button
+            variant={activeTab === "business" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("business")}
+            className="flex items-center gap-2"
+          >
+            <Building2 className="w-4 h-4" />
+            פיתוח עסקי
+          </Button>
+        </div>
+
         <ScrollArea className="h-[500px] pr-4">
-          <div className="space-y-3">
-            {futureFeatures.map((feature) => {
-              const Icon = feature.icon;
-              const isExpanded = expandedId === feature.id;
-              
-              return (
-                <div 
-                  key={feature.id}
-                  className="border border-border rounded-lg overflow-hidden"
-                >
-                  <div 
-                    className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                    onClick={() => setExpandedId(isExpanded ? null : feature.id)}
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{feature.title}</h4>
-                        <Badge className={cn("text-xs", priorityConfig[feature.priority].className)}>
-                          {priorityConfig[feature.priority].label}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{feature.description}</p>
-                    </div>
-                    <Button variant="ghost" size="icon" className="flex-shrink-0">
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  
-                  {isExpanded && (
-                    <div className="border-t border-border bg-muted/20 p-4">
-                      <div className="text-xs font-mono bg-background rounded-lg p-3 max-h-[300px] overflow-auto whitespace-pre-wrap mb-3">
-                        {feature.prompt}
-                      </div>
-                      <Button 
-                        onClick={() => copyPrompt(feature.prompt, feature.title)}
-                        className="w-full"
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        שלח בשבילי (העתק פרומפט)
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {activeTab === "features" ? renderFeatureList(futureFeatures) : renderFeatureList(businessDevFeatures)}
         </ScrollArea>
       </CardContent>
     </Card>

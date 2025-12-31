@@ -16,6 +16,7 @@ import Settings from "./pages/Settings";
 import ProductLandingPages from "./pages/ProductLandingPages";
 import ProductEcommerce from "./pages/ProductEcommerce";
 import ProductDashboard from "./pages/ProductDashboard";
+import CreditManagement from "./pages/CreditManagement";
 
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -53,7 +54,7 @@ const App = () => (
               <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              
+              <Route path="/credits" element={<ProtectedRoute><CreditManagement /></ProtectedRoute>} />
               <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
