@@ -234,35 +234,68 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Greeting */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-foreground">
-                {currentTeamMember?.name || "שלום"}, רומא לא נבנתה ביום אחד, גם לא JIY
-              </h2>
+            {/* Greeting with elegant quote */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-bold text-foreground">
+                  {currentTeamMember?.name || "שלום"}
+                </h2>
+              </div>
+              <blockquote className="border-r-2 border-primary/30 pr-4 py-1">
+                <p className="text-sm text-muted-foreground italic">
+                  "רומא לא נבנתה ביום אחד, גם לא JIY"
+                </p>
+              </blockquote>
             </div>
 
-            {/* Compact stats row */}
+            {/* Stats sections */}
             {isModuleEnabled("tasks") && (
-              <div className="flex items-center gap-3 flex-wrap mb-6">
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
-                  <Circle className="w-3 h-3 text-primary" />
-                  <span className="font-medium">{stats?.openTasks || 0}</span>
-                  <span className="text-muted-foreground text-xs">פתוחות</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* All pending tasks */}
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-4">כל המשימות הממתינות</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Circle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <span className="text-3xl font-bold text-foreground">{stats?.openTasks || 0}</span>
+                      <p className="text-sm text-muted-foreground">משימות פתוחות</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
-                  <Calendar className="w-3 h-3 text-warning" />
-                  <span className="font-medium">{todayTasksCount}</span>
-                  <span className="text-muted-foreground text-xs">להיום</span>
-                </div>
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
-                  <Clock className="w-3 h-3 text-info" />
-                  <span className="font-medium">{hoursCompletedToday}</span>
-                  <span className="text-muted-foreground text-xs">שעות</span>
-                </div>
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
-                  <Users className="w-3 h-3 text-success" />
-                  <span className="font-medium">{clientsHandledToday}</span>
-                  <span className="text-muted-foreground text-xs">לקוחות</span>
+
+                {/* Today's stats */}
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground">היום</h3>
+                    <span className="text-xs text-muted-foreground/70 font-medium">
+                      {new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-2">
+                        <Calendar className="w-4 h-4 text-warning" />
+                      </div>
+                      <span className="text-xl font-bold text-foreground block">{todayTasksCount}</span>
+                      <p className="text-xs text-muted-foreground">משימות</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center mx-auto mb-2">
+                        <Clock className="w-4 h-4 text-info" />
+                      </div>
+                      <span className="text-xl font-bold text-foreground block">{hoursCompletedToday}</span>
+                      <p className="text-xs text-muted-foreground">שעות</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-2">
+                        <Users className="w-4 h-4 text-success" />
+                      </div>
+                      <span className="text-xl font-bold text-foreground block">{clientsHandledToday}</span>
+                      <p className="text-xs text-muted-foreground">לקוחות</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
