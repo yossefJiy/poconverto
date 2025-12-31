@@ -11,7 +11,8 @@ import {
   Loader2,
   Shield,
   Sparkles,
-  Coins
+  Coins,
+  Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,12 +22,14 @@ import { toast } from "sonner";
 import { AuthorizedUsersManager } from "@/components/admin/AuthorizedUsersManager";
 import { FutureFeatures } from "@/components/FutureFeatures";
 import { FeatureRequestsManager } from "@/components/features/FeatureRequestsManager";
+import { EmailTestingSection } from "@/components/admin/EmailTestingSection";
 
 const settingsSections = [
   { id: "profile", icon: User, title: "פרופיל", description: "ניהול פרטים אישיים" },
   { id: "notifications", icon: Bell, title: "התראות", description: "הגדרת התראות ועדכונים" },
   { id: "appearance", icon: Palette, title: "מראה", description: "התאמה אישית של הממשק" },
   { id: "users", icon: Shield, title: "משתמשים", description: "ניהול משתמשים מורשים", adminOnly: true },
+  { id: "email-testing", icon: Mail, title: "בדיקת מיילים", description: "בדיקת שליחת מיילים", adminOnly: true },
   { id: "credits", icon: Coins, title: "קרדיטים", description: "ניהול קרדיטים לקוחות", adminOnly: true },
   { id: "features", icon: Sparkles, title: "פיצ'רים עתידיים", description: "רשימת פיצ'רים לפיתוח", adminOnly: true },
 ];
@@ -162,6 +165,10 @@ export default function Settings() {
 
             {activeSection === "users" && isAdmin && (
               <AuthorizedUsersManager />
+            )}
+
+            {activeSection === "email-testing" && isAdmin && (
+              <EmailTestingSection />
             )}
 
             {activeSection === "credits" && isAdmin && (

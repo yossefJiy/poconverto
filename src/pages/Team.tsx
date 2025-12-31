@@ -3,6 +3,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useClient } from "@/hooks/useClient";
 import { 
   Mail, 
   Plus,
@@ -11,7 +12,8 @@ import {
   Edit2,
   Trash2,
   Phone,
-  X
+  X,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ClientContactsManager } from "@/components/client/ClientContactsManager";
 
 interface TeamMember {
   id: string;
@@ -77,6 +80,7 @@ const departmentOptions = [
 
 export default function Team() {
   const queryClient = useQueryClient();
+  const { selectedClient } = useClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; member: TeamMember | null }>({ open: false, member: null });
@@ -89,6 +93,9 @@ export default function Team() {
   const [formNewPhone, setFormNewPhone] = useState("");
   const [formDepartments, setFormDepartments] = useState<string[]>([]);
   const [formColor, setFormColor] = useState("#6366f1");
+
+  // Check if selected client is master account (JIY)
+  const isMasterAccount = (selectedClient as any)?.is_master_account === true;
 
   const { data: teamMembers = [], isLoading } = useQuery({
     queryKey: ["team"],
@@ -242,85 +249,108 @@ export default function Team() {
 
   return (
     <MainLayout>
-      <div className="p-4 md:p-8">
-        <PageHeader 
-          title="הצוות"
-          description="ניהול חברי צוות"
-          actions={
-            <Button onClick={() => openDialog()}>
-              <Plus className="w-4 h-4 ml-2" />
-              הוסף חבר צוות
-            </Button>
-          }
-        />
-
-        {teamMembers.length === 0 ? (
-          <div className="glass rounded-xl p-8 md:p-12 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">אין חברי צוות</h3>
-            <p className="text-muted-foreground mb-4">הוסף חברי צוות כדי להתחיל</p>
-            <Button onClick={() => openDialog()}>
-              <Plus className="w-4 h-4 ml-2" />
-              הוסף חבר צוות
-            </Button>
+      <div className="p-4 md:p-8 space-y-8">
+        {/* Client Contacts Section - Always shown when a client is selected */}
+        {selectedClient && (
+          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
+            <ClientContactsManager 
+              clientId={selectedClient.id} 
+              clientName={selectedClient.name} 
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {teamMembers.map((member, index) => (
-              <div 
-                key={member.id}
-                className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden group"
-                style={{ animationDelay: `${0.1 + index * 0.08}s`, animationFillMode: "forwards" }}
-              >
-                <div 
-                  className="h-2" 
-                  style={{ background: `linear-gradient(to right, ${member.avatar_color || '#6366f1'}, ${member.avatar_color || '#6366f1'}80)` }} 
-                />
-                <div className="p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
-                        style={{ backgroundColor: member.avatar_color || '#6366f1' }}
-                      >
-                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold">{member.name}</h3>
-                        {member.email && (
-                          <a 
-                            href={`mailto:${member.email}`}
-                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        )}
+
+        {/* Agency Team Section - Only for master account */}
+        {isMasterAccount && (
+          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+            <PageHeader 
+              title="צוות הסוכנות"
+              description="ניהול חברי צוות JIY"
+              actions={
+                <Button onClick={() => openDialog()}>
+                  <Plus className="w-4 h-4 ml-2" />
+                  הוסף חבר צוות
+                </Button>
+              }
+            />
+
+            {teamMembers.length === 0 ? (
+              <div className="glass rounded-xl p-8 md:p-12 text-center">
+                <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">אין חברי צוות</h3>
+                <p className="text-muted-foreground mb-4">הוסף חברי צוות כדי להתחיל</p>
+                <Button onClick={() => openDialog()}>
+                  <Plus className="w-4 h-4 ml-2" />
+                  הוסף חבר צוות
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {teamMembers.map((member, index) => (
+                  <div 
+                    key={member.id}
+                    className="glass rounded-xl card-shadow overflow-hidden group"
+                  >
+                    <div 
+                      className="h-2" 
+                      style={{ background: `linear-gradient(to right, ${member.avatar_color || '#6366f1'}, ${member.avatar_color || '#6366f1'}80)` }} 
+                    />
+                    <div className="p-4 md:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
+                            style={{ backgroundColor: member.avatar_color || '#6366f1' }}
                           >
-                            <Mail className="w-3 h-3" />
-                            {member.email}
-                          </a>
+                            {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold">{member.name}</h3>
+                            {member.email && (
+                              <a 
+                                href={`mailto:${member.email}`}
+                                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <Mail className="w-3 h-3" />
+                                {member.email}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(member)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteDialog({ open: true, member })}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {member.departments.map((dept) => (
+                          <Badge key={dept} variant="secondary" className="text-xs">
+                            {dept}
+                          </Badge>
+                        ))}
+                        {member.departments.length === 0 && (
+                          <span className="text-sm text-muted-foreground">אין מחלקות</span>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(member)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteDialog({ open: true, member })}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-1">
-                    {member.departments.map((dept) => (
-                      <Badge key={dept} variant="secondary" className="text-xs">
-                        {dept}
-                      </Badge>
-                    ))}
-                    {member.departments.length === 0 && (
-                      <span className="text-sm text-muted-foreground">אין מחלקות</span>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
+          </div>
+        )}
+
+        {/* Show message if no client is selected */}
+        {!selectedClient && (
+          <div className="glass rounded-xl p-8 md:p-12 text-center opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">בחר לקוח</h3>
+            <p className="text-muted-foreground">בחר לקוח מהתפריט כדי לראות את אנשי הקשר שלו</p>
           </div>
         )}
       </div>

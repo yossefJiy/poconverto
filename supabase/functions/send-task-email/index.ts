@@ -46,10 +46,29 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { to, tasks, message, clientId }: TaskEmailRequest = await req.json();
+  // Create Supabase client for logging
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.9");
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log(`Sending task email to ${to} with ${tasks.length} tasks`);
+  let to = "";
+  let clientId = "";
+  let taskId: string | null = null;
+
+  try {
+    const body: TaskEmailRequest = await req.json();
+    to = body.to;
+    clientId = body.clientId;
+    const tasks = body.tasks;
+    const message = body.message;
+
+    // Get first task id for logging
+    if (tasks.length > 0) {
+      taskId = (tasks[0] as any).id || null;
+    }
+
+    console.log(`[send-task-email] Sending to ${to} with ${tasks.length} tasks`);
 
     const tasksHtml = tasks
       .map(
@@ -115,27 +134,64 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if ((emailResponse as any)?.error) {
-      console.error("Resend error:", (emailResponse as any).error);
-      return new Response(JSON.stringify({ error: (emailResponse as any).error?.message ?? "Resend error" }), {
+      const errorMessage = (emailResponse as any).error?.message ?? "Resend error";
+      console.error("[send-task-email] Resend error:", (emailResponse as any).error);
+
+      // Log failure to notification_history
+      await supabase.from("notification_history").insert({
+        notification_type: "email",
+        recipient: to,
+        subject: `משימות חדשות (${tasks.length})`,
+        message: message || null,
+        status: "failed",
+        error_message: errorMessage,
+        client_id: clientId || null,
+        task_id: taskId,
+        metadata: { tasks_count: tasks.length, error: (emailResponse as any).error },
+      });
+
+      return new Response(JSON.stringify({ error: errorMessage }), {
         status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("[send-task-email] Email sent successfully:", emailResponse);
+
+    // Log success to notification_history
+    await supabase.from("notification_history").insert({
+      notification_type: "email",
+      recipient: to,
+      subject: `משימות חדשות (${tasks.length})`,
+      message: message || null,
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      client_id: clientId || null,
+      task_id: taskId,
+      metadata: { tasks_count: tasks.length, resend_id: (emailResponse as any).id },
+    });
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error in send-task-email function:", error);
+    console.error("[send-task-email] Error:", error);
+
+    // Log error to notification_history
+    if (to) {
+      await supabase.from("notification_history").insert({
+        notification_type: "email",
+        recipient: to,
+        subject: "משימות חדשות",
+        status: "failed",
+        error_message: error.message,
+        client_id: clientId || null,
+        task_id: taskId,
+        metadata: { error: error.message },
+      });
+    }
+
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },

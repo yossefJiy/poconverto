@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -26,14 +26,12 @@ import {
 import {
   Share2,
   Mail,
-  User,
-  Clock,
   CheckCircle2,
   Loader2,
   Send,
   Building2,
+  UserCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -51,6 +49,15 @@ interface Client {
   shopify_email?: string | null;
 }
 
+interface ClientContact {
+  id: string;
+  client_id: string;
+  name: string;
+  email: string | null;
+  is_primary: boolean;
+  receive_task_updates: boolean;
+}
+
 interface TaskShareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +67,7 @@ interface TaskShareDialogProps {
 export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogProps) {
   const queryClient = useQueryClient();
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedContactId, setSelectedContactId] = useState<string>("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
@@ -75,6 +83,37 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
       return data as Client[];
     },
   });
+
+  // Fetch contacts for selected client
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["client-contacts-for-share", selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      const { data, error } = await supabase
+        .from("client_contacts")
+        .select("id, client_id, name, email, is_primary, receive_task_updates")
+        .eq("client_id", selectedClientId)
+        .eq("receive_task_updates", true)
+        .order("is_primary", { ascending: false })
+        .order("name");
+      if (error) throw error;
+      return data as ClientContact[];
+    },
+    enabled: !!selectedClientId,
+  });
+
+  // Auto-select primary contact when contacts load
+  useEffect(() => {
+    if (contacts.length > 0 && !selectedContactId) {
+      const primaryContact = contacts.find(c => c.is_primary) || contacts[0];
+      if (primaryContact) {
+        setSelectedContactId(primaryContact.id);
+        if (primaryContact.email) {
+          setRecipientEmail(primaryContact.email);
+        }
+      }
+    }
+  }, [contacts, selectedContactId]);
 
   const shareMutation = useMutation({
     mutationFn: async () => {
@@ -99,10 +138,11 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
 
       // Send email if requested
       if (sendEmail && recipientEmail) {
-        const { error: emailError } = await supabase.functions.invoke("send-task-email", {
+        const { data, error: emailError } = await supabase.functions.invoke("send-task-email", {
           body: {
             to: recipientEmail,
             tasks: tasks.map(t => ({
+              id: t.id,
               title: t.title,
               description: t.description,
               status: t.status,
@@ -116,9 +156,15 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
 
         if (emailError) {
           console.error("Email error:", emailError);
-          // Don't fail the whole operation if email fails
           toast.warning("המשימות שותפו, אך היתה בעיה בשליחת המייל");
-          return tasks.length; // Return count even if email fails
+          return tasks.length;
+        }
+
+        // Check if the response contains an error
+        if (data?.error) {
+          console.error("Email send error:", data.error);
+          toast.warning(`המשימות שותפו, אך היתה שגיאה: ${data.error}`);
+          return tasks.length;
         }
       }
 
@@ -126,7 +172,7 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["task-shares"] });
-      toast.success(`${count} משימות שותפו בהצלחה`);
+      toast.success(`${count} משימות שותפו בהצלחה${sendEmail && recipientEmail ? " והמייל נשלח" : ""}`);
       onOpenChange(false);
       resetForm();
     },
@@ -135,6 +181,7 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
 
   const resetForm = () => {
     setSelectedClientId("");
+    setSelectedContactId("");
     setRecipientEmail("");
     setMessage("");
     setSendEmail(true);
@@ -142,9 +189,23 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
 
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
+    setSelectedContactId("");
+    setRecipientEmail("");
+    
+    // Fallback to shopify_email if no contacts
     const client = clients.find(c => c.id === clientId);
     if (client?.shopify_email) {
       setRecipientEmail(client.shopify_email);
+    }
+  };
+
+  const handleContactChange = (contactId: string) => {
+    setSelectedContactId(contactId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (contact?.email) {
+      setRecipientEmail(contact.email);
+    } else {
+      setRecipientEmail("");
     }
   };
 
@@ -152,12 +213,6 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
     pending: "ממתין",
     "in-progress": "בתהליך",
     completed: "הושלם",
-  };
-
-  const priorityLabels: Record<string, string> = {
-    low: "נמוכה",
-    medium: "בינונית",
-    high: "גבוהה",
   };
 
   return (
@@ -213,6 +268,28 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
               </SelectContent>
             </Select>
           </div>
+
+          {/* Contact selection - only show if there are contacts */}
+          {selectedClientId && contacts.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <UserCircle className="w-4 h-4" />
+                איש קשר
+              </Label>
+              <Select value={selectedContactId} onValueChange={handleContactChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר איש קשר" />
+                </SelectTrigger>
+                <SelectContent dir="rtl">
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      {contact.name} {contact.is_primary && "(ראשי)"} {contact.email && `- ${contact.email}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Email toggle and input */}
           <div className="space-y-3">
