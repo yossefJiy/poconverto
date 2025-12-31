@@ -372,19 +372,31 @@ export default function Tasks() {
 
   const duplicateMutation = useMutation({
     mutationFn: async (task: Task) => {
-      const { id, ...taskData } = task;
       const { error } = await supabase.from("tasks").insert({
-        ...taskData,
         title: `${task.title} (העתק)`,
+        description: task.description,
         status: "pending",
+        priority: task.priority,
+        due_date: task.due_date,
+        scheduled_time: task.scheduled_time,
+        assignee: task.assignee,
+        department: task.department,
+        client_id: task.client_id,
+        category: task.category,
+        duration_minutes: task.duration_minutes,
+        notification_email: task.notification_email,
+        notification_sms: task.notification_sms,
+        notification_phone: task.notification_phone,
+        notification_email_address: task.notification_email_address,
         reminder_sent: false,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success("המשימה שוכפלה");
+      toast.success("המשימה שוכפלה בהצלחה");
     },
+    onError: () => toast.error("שגיאה בשכפול משימה"),
   });
 
   const restoreMutation = useMutation({
