@@ -9,7 +9,9 @@ import {
   Loader2,
   Users,
   Edit2,
-  Trash2
+  Trash2,
+  Phone,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,8 @@ interface TeamMember {
   user_id: string | null;
   name: string;
   email: string | null;
+  emails: string[];
+  phones: string[];
   departments: string[];
   avatar_url: string | null;
   avatar_color: string | null;
@@ -79,6 +83,10 @@ export default function Team() {
   
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
+  const [formEmails, setFormEmails] = useState<string[]>([]);
+  const [formPhones, setFormPhones] = useState<string[]>([]);
+  const [formNewEmail, setFormNewEmail] = useState("");
+  const [formNewPhone, setFormNewPhone] = useState("");
   const [formDepartments, setFormDepartments] = useState<string[]>([]);
   const [formColor, setFormColor] = useState("#6366f1");
 
@@ -96,13 +104,15 @@ export default function Team() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; email: string; departments: string[]; avatar_color: string }) => {
+    mutationFn: async (data: { id?: string; name: string; email: string; emails: string[]; phones: string[]; departments: string[]; avatar_color: string }) => {
       if (data.id) {
         const { error } = await supabase
           .from("team")
           .update({ 
             name: data.name, 
             email: data.email, 
+            emails: data.emails,
+            phones: data.phones,
             departments: data.departments, 
             avatar_color: data.avatar_color,
             updated_at: new Date().toISOString() 
@@ -115,6 +125,8 @@ export default function Team() {
           .insert({ 
             name: data.name, 
             email: data.email, 
+            emails: data.emails,
+            phones: data.phones,
             departments: data.departments,
             avatar_color: data.avatar_color
           });
@@ -147,8 +159,12 @@ export default function Team() {
     setSelectedMember(member || null);
     setFormName(member?.name || "");
     setFormEmail(member?.email || "");
+    setFormEmails(member?.emails || []);
+    setFormPhones(member?.phones || []);
     setFormDepartments(member?.departments || []);
     setFormColor(member?.avatar_color || "#6366f1");
+    setFormNewEmail("");
+    setFormNewPhone("");
     setDialogOpen(true);
   };
 
@@ -157,6 +173,10 @@ export default function Team() {
     setSelectedMember(null);
     setFormName("");
     setFormEmail("");
+    setFormEmails([]);
+    setFormPhones([]);
+    setFormNewEmail("");
+    setFormNewPhone("");
     setFormDepartments([]);
     setFormColor("#6366f1");
   };
@@ -170,9 +190,33 @@ export default function Team() {
       id: selectedMember?.id,
       name: formName,
       email: formEmail,
+      emails: formEmails,
+      phones: formPhones,
       departments: formDepartments,
       avatar_color: formColor,
     });
+  };
+
+  const addEmail = () => {
+    if (formNewEmail.trim() && !formEmails.includes(formNewEmail.trim())) {
+      setFormEmails([...formEmails, formNewEmail.trim()]);
+      setFormNewEmail("");
+    }
+  };
+
+  const removeEmail = (email: string) => {
+    setFormEmails(formEmails.filter(e => e !== email));
+  };
+
+  const addPhone = () => {
+    if (formNewPhone.trim() && !formPhones.includes(formNewPhone.trim())) {
+      setFormPhones([...formPhones, formNewPhone.trim()]);
+      setFormNewPhone("");
+    }
+  };
+
+  const removePhone = (phone: string) => {
+    setFormPhones(formPhones.filter(p => p !== phone));
   };
 
   const toggleDepartment = (dept: string) => {
@@ -293,8 +337,64 @@ export default function Team() {
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="שם מלא" />
             </div>
             <div className="space-y-2">
-              <Label>אימייל</Label>
+              <Label>אימייל ראשי</Label>
               <Input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="email@example.com" />
+            </div>
+            
+            {/* Multiple Emails */}
+            <div className="space-y-2">
+              <Label>כתובות מייל נוספות</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formEmails.map((email) => (
+                  <div key={email} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm">
+                    <Mail className="w-3 h-3 text-muted-foreground" />
+                    <span>{email}</span>
+                    <button type="button" onClick={() => removeEmail(email)} className="text-destructive hover:text-destructive/80">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input 
+                  type="email" 
+                  value={formNewEmail} 
+                  onChange={(e) => setFormNewEmail(e.target.value)} 
+                  placeholder="הוסף כתובת מייל"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addEmail())}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={addEmail}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Multiple Phones */}
+            <div className="space-y-2">
+              <Label>מספרי טלפון</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formPhones.map((phone) => (
+                  <div key={phone} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm">
+                    <Phone className="w-3 h-3 text-muted-foreground" />
+                    <span>{phone}</span>
+                    <button type="button" onClick={() => removePhone(phone)} className="text-destructive hover:text-destructive/80">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input 
+                  type="tel" 
+                  value={formNewPhone} 
+                  onChange={(e) => setFormNewPhone(e.target.value)} 
+                  placeholder="הוסף מספר טלפון"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addPhone())}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={addPhone}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>מחלקות</Label>

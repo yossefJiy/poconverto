@@ -995,9 +995,11 @@ export type Database = {
           created_at: string
           departments: string[]
           email: string | null
+          emails: string[] | null
           id: string
           is_active: boolean | null
           name: string
+          phones: string[] | null
           updated_at: string
           user_id: string | null
         }
@@ -1007,9 +1009,11 @@ export type Database = {
           created_at?: string
           departments?: string[]
           email?: string | null
+          emails?: string[] | null
           id?: string
           is_active?: boolean | null
           name: string
+          phones?: string[] | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1019,9 +1023,11 @@ export type Database = {
           created_at?: string
           departments?: string[]
           email?: string | null
+          emails?: string[] | null
           id?: string
           is_active?: boolean | null
           name?: string
+          phones?: string[] | null
           updated_at?: string
           user_id?: string | null
         }
