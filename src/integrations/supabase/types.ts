@@ -990,6 +990,7 @@ export type Database = {
       }
       team: {
         Row: {
+          avatar_color: string | null
           avatar_url: string | null
           created_at: string
           departments: string[]
@@ -1001,6 +1002,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_color?: string | null
           avatar_url?: string | null
           created_at?: string
           departments?: string[]
@@ -1012,6 +1014,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_color?: string | null
           avatar_url?: string | null
           created_at?: string
           departments?: string[]

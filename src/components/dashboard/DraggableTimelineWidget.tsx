@@ -5,11 +5,16 @@ import { Clock, AlertCircle, CheckCircle2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TaskQuickActions } from "@/components/tasks/TaskQuickActions";
 import logoIcon from "@/assets/logo-icon.svg";
+
+interface TeamMember {
+  name: string;
+  avatar_color: string | null;
+}
 
 interface Task {
   id: string;
@@ -47,6 +52,26 @@ export function DraggableTimelineWidget({ tasks, masterClientId }: DraggableTime
   const queryClient = useQueryClient();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverHour, setDragOverHour] = useState<number | null>(null);
+
+  // Fetch team members with their avatar colors
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["team-colors"],
+    queryFn: async () => {
+      const { data } = await supabase.from("team").select("name, avatar_color").eq("is_active", true);
+      return (data || []) as TeamMember[];
+    },
+  });
+
+  // Map assignee names to colors
+  const assigneeColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    teamMembers.forEach(m => {
+      if (m.name && m.avatar_color) {
+        map[m.name] = m.avatar_color;
+      }
+    });
+    return map;
+  }, [teamMembers]);
 
   const { scheduledTasks, unscheduledTasks } = useMemo(() => {
     const today = startOfDay(new Date());
@@ -183,7 +208,8 @@ export function DraggableTimelineWidget({ tasks, masterClientId }: DraggableTime
           {/* Assignee Avatar */}
           {task.assignee && (
             <div 
-              className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary flex-shrink-0"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white flex-shrink-0"
+              style={{ backgroundColor: assigneeColorMap[task.assignee] || '#6366f1' }}
               title={task.assignee}
             >
               {task.assignee.split(' ').map(n => n[0]).join('').slice(0, 2)}

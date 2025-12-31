@@ -106,6 +106,7 @@ interface TeamMember {
   name: string;
   email: string | null;
   departments: string[];
+  avatar_color?: string | null;
 }
 
 const statusConfig: Record<string, { color: string; bg: string; label: string; icon: typeof Circle }> = {
@@ -547,6 +548,14 @@ export default function Tasks() {
     return true;
   });
 
+  // Map assignee names to colors
+  const assigneeColorMap: Record<string, string> = {};
+  teamMembers.forEach(m => {
+    if (m.name && m.avatar_color) {
+      assigneeColorMap[m.name] = m.avatar_color;
+    }
+  });
+
   // Format time for display
   const formatTime = (time: string | null) => {
     if (!time) return null;
@@ -638,7 +647,8 @@ export default function Tasks() {
             {/* Assignee Avatar */}
             {task.assignee && (
               <div 
-                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary flex-shrink-0"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white flex-shrink-0"
+                style={{ backgroundColor: assigneeColorMap[task.assignee] || '#6366f1' }}
                 title={task.assignee}
               >
                 {task.assignee.split(' ').map(n => n[0]).join('').slice(0, 2)}

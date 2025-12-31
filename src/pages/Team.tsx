@@ -42,10 +42,27 @@ interface TeamMember {
   email: string | null;
   departments: string[];
   avatar_url: string | null;
+  avatar_color: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
+
+const colorOptions = [
+  "#6366f1", // indigo
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#f43f5e", // rose
+  "#ef4444", // red
+  "#f97316", // orange
+  "#f59e0b", // amber
+  "#84cc16", // lime
+  "#22c55e", // green
+  "#14b8a6", // teal
+  "#06b6d4", // cyan
+  "#0ea5e9", // sky
+  "#3b82f6", // blue
+];
 
 const departmentOptions = [
   "קריאייטיב", "תוכן", "אסטרטגיה", "קופירייטינג", "קמפיינים",
@@ -63,6 +80,7 @@ export default function Team() {
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formDepartments, setFormDepartments] = useState<string[]>([]);
+  const [formColor, setFormColor] = useState("#6366f1");
 
   const { data: teamMembers = [], isLoading } = useQuery({
     queryKey: ["team"],
@@ -78,22 +96,34 @@ export default function Team() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; email: string; departments: string[] }) => {
+    mutationFn: async (data: { id?: string; name: string; email: string; departments: string[]; avatar_color: string }) => {
       if (data.id) {
         const { error } = await supabase
           .from("team")
-          .update({ name: data.name, email: data.email, departments: data.departments, updated_at: new Date().toISOString() })
+          .update({ 
+            name: data.name, 
+            email: data.email, 
+            departments: data.departments, 
+            avatar_color: data.avatar_color,
+            updated_at: new Date().toISOString() 
+          })
           .eq("id", data.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("team")
-          .insert({ name: data.name, email: data.email, departments: data.departments });
+          .insert({ 
+            name: data.name, 
+            email: data.email, 
+            departments: data.departments,
+            avatar_color: data.avatar_color
+          });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["team-active"] });
       toast.success("נשמר בהצלחה");
       closeDialog();
     },
@@ -118,6 +148,7 @@ export default function Team() {
     setFormName(member?.name || "");
     setFormEmail(member?.email || "");
     setFormDepartments(member?.departments || []);
+    setFormColor(member?.avatar_color || "#6366f1");
     setDialogOpen(true);
   };
 
@@ -127,6 +158,7 @@ export default function Team() {
     setFormName("");
     setFormEmail("");
     setFormDepartments([]);
+    setFormColor("#6366f1");
   };
 
   const handleSave = () => {
@@ -139,6 +171,7 @@ export default function Team() {
       name: formName,
       email: formEmail,
       departments: formDepartments,
+      avatar_color: formColor,
     });
   };
 
@@ -195,12 +228,18 @@ export default function Team() {
                 className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden group"
                 style={{ animationDelay: `${0.1 + index * 0.08}s`, animationFillMode: "forwards" }}
               >
-                <div className="h-2 bg-gradient-to-r from-primary to-accent" />
+                <div 
+                  className="h-2" 
+                  style={{ background: `linear-gradient(to right, ${member.avatar_color || '#6366f1'}, ${member.avatar_color || '#6366f1'}80)` }} 
+                />
                 <div className="p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-                        {member.name.slice(0, 2)}
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
+                        style={{ backgroundColor: member.avatar_color || '#6366f1' }}
+                      >
+                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
                         <h3 className="text-lg font-bold">{member.name}</h3>
@@ -270,6 +309,30 @@ export default function Team() {
                     <label htmlFor={dept} className="text-sm cursor-pointer">{dept}</label>
                   </div>
                 ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>צבע אווטאר</Label>
+              <div className="flex flex-wrap gap-2">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setFormColor(color)}
+                    className={`w-8 h-8 rounded-full transition-all ${formColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-105'}`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: formColor }}
+                >
+                  {formName ? formName.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AB'}
+                </div>
+                <span className="text-sm text-muted-foreground">תצוגה מקדימה</span>
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-4">
