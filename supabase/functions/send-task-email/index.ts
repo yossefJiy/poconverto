@@ -72,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
       .join("");
 
     const emailResponse = await resend.emails.send({
-      from: "JIY Tasks <onboarding@resend.dev>",
+      from: "Converto <tasks@converto.co.il>",
       to: [to],
       subject: `משימות חדשות עבורך (${tasks.length})`,
       html: `

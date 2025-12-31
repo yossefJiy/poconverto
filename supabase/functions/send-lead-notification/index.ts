@@ -31,7 +31,7 @@ serve(async (req: Request): Promise<Response> => {
     console.log(`[Lead Notification] New lead from ${source}: ${name} (${email})`);
 
     const emailResponse = await resend.emails.send({
-      from: "Converto <onboarding@resend.dev>",
+      from: "Converto <noreply@converto.co.il>",
       to: [ADMIN_EMAIL],
       subject: `🔔 ליד חדש מ-Converto: ${name}`,
       html: `
