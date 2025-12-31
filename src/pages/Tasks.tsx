@@ -91,8 +91,10 @@ interface Task {
   notification_phone: string | null;
   notification_email_address: string | null;
   reminder_sent: boolean;
-  parent_id: string | null;
-  order_index: number;
+  duration_minutes: number;
+  credits_cost: number | null;
+  recurrence_type: string | null;
+  recurrence_end_date: string | null;
 }
 
 interface TeamMember {
@@ -165,7 +167,7 @@ export default function Tasks() {
   const [formNotificationSms, setFormNotificationSms] = useState(false);
   const [formNotificationPhone, setFormNotificationPhone] = useState("");
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
-  const [formParentId, setFormParentId] = useState<string | null>(null);
+  
 
   // Fetch ALL tasks (or filtered by client if selected)
   const { data: allClients = [] } = useQuery({
@@ -191,12 +193,9 @@ export default function Tasks() {
       
       const { data, error } = await query;
       if (error) throw error;
-      // Map database results to include new fields with defaults
       return (data || []).map(task => ({
         ...task,
         scheduled_time: (task as any).scheduled_time || null,
-        parent_id: (task as any).parent_id || null,
-        order_index: (task as any).order_index || 0,
         clients: (task as any).clients || null,
       })) as (Task & { clients?: { name: string; is_master_account?: boolean } | null })[];
     },
@@ -214,18 +213,9 @@ export default function Tasks() {
     },
   });
 
-  // Organize tasks into parent-child structure
-  const { parentTasks, childTasksMap } = useMemo(() => {
-    const parents = tasks.filter(t => !t.parent_id);
-    const childMap = new Map<string, Task[]>();
-    
-    tasks.filter(t => t.parent_id).forEach(task => {
-      const existing = childMap.get(task.parent_id!) || [];
-      childMap.set(task.parent_id!, [...existing, task]);
-    });
-    
-    return { parentTasks: parents, childTasksMap: childMap };
-  }, [tasks]);
+  // All tasks are treated as parent tasks (parent_id feature not yet in DB)
+  const parentTasks = tasks;
+  const childTasksMap = new Map<string, Task[]>();
 
   // Smart auto-assignment based on category and department
   const getSmartAssignee = (category: string, department: string): string => {
@@ -299,8 +289,7 @@ export default function Tasks() {
         notification_phone: task.notification_phone || null,
         notification_email_address: task.notification_email_address || null,
         reminder_sent: false,
-        parent_id: task.parent_id || null,
-        order_index: task.order_index || 0,
+        duration_minutes: task.duration_minutes || 60,
       };
 
       if (task.id) {
@@ -393,7 +382,7 @@ export default function Tasks() {
     },
   });
 
-  const openDialog = (task?: Task, parentId?: string) => {
+  const openDialog = (task?: Task) => {
     setSelectedTask(task || null);
     setFormTitle(task?.title || "");
     setFormDescription(task?.description || "");
@@ -409,7 +398,6 @@ export default function Tasks() {
     setFormNotificationSms(task?.notification_sms || false);
     setFormNotificationPhone(task?.notification_phone || "");
     setFormNotificationEmailAddress(task?.notification_email_address || "");
-    setFormParentId(parentId || task?.parent_id || null);
     setEditDialogOpen(true);
   };
 
@@ -430,7 +418,6 @@ export default function Tasks() {
     setFormNotificationSms(false);
     setFormNotificationPhone("");
     setFormNotificationEmailAddress("");
-    setFormParentId(null);
   };
 
   const handleSave = () => {
@@ -455,8 +442,7 @@ export default function Tasks() {
       notification_phone: formNotificationPhone || null,
       notification_email_address: formNotificationEmailAddress || null,
       reminder_sent: false,
-      parent_id: formParentId,
-      order_index: selectedTask?.order_index || 0,
+      duration_minutes: 60,
     });
   };
 
@@ -590,11 +576,9 @@ export default function Tasks() {
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-              {!isSubtask && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(undefined, task.id)} title="הוסף תת-משימה">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              )}
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog()} title="משימה חדשה">
+                <Plus className="w-4 h-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateMutation.mutate(task)} title="שכפל">
                 <Copy className="w-4 h-4" />
               </Button>
@@ -802,14 +786,9 @@ export default function Tasks() {
                       <div className="flex items-center gap-2">
                         <span className={cn("w-2 h-2 rounded-full", priority.color)} />
                         <span className="text-xs text-muted-foreground">{priority.label}</span>
-                        {childTasks.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            {childTasks.length} תתי-משימות
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(undefined, task.id)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog()}>
                           <Plus className="w-3 h-3" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(task)}>
@@ -856,17 +835,10 @@ export default function Tasks() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedTask ? "עריכת משימה" : formParentId ? "תת-משימה חדשה" : "משימה חדשה"}
+              {selectedTask ? "עריכת משימה" : "משימה חדשה"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {formParentId && (
-              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm text-muted-foreground">
-                <ListTree className="w-4 h-4" />
-                <span>תת-משימה של: {tasks.find(t => t.id === formParentId)?.title}</span>
-              </div>
-            )}
-            
             <div className="space-y-2">
               <Label>כותרת</Label>
               <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="כותרת המשימה" />
