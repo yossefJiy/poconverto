@@ -20,6 +20,7 @@ interface Task {
   duration_minutes?: number;
   due_date?: string | null;
   client_id?: string | null;
+  assignee?: string | null;
   clients?: { name: string; is_master_account?: boolean } | null;
 }
 
@@ -179,6 +180,15 @@ export function DraggableTimelineWidget({ tasks, masterClientId }: DraggableTime
               )}
             </div>
           </div>
+          {/* Assignee Avatar */}
+          {task.assignee && (
+            <div 
+              className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary flex-shrink-0"
+              title={task.assignee}
+            >
+              {task.assignee.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            </div>
+          )}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <TaskQuickActions
               taskId={task.id}

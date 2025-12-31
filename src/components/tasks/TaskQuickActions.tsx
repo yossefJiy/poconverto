@@ -60,12 +60,51 @@ export function TaskQuickActions({
         .eq("id", taskId);
       if (error) throw error;
     },
+    onMutate: async (updates) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["tasks"] });
+      await queryClient.cancelQueries({ queryKey: ["recent-tasks"] });
+      
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData(["tasks"]);
+      const previousRecentTasks = queryClient.getQueryData(["recent-tasks"]);
+      
+      // Optimistically update
+      queryClient.setQueriesData({ queryKey: ["tasks"] }, (old: any) => {
+        if (!old) return old;
+        return old.map((task: any) => 
+          task.id === taskId ? { ...task, ...updates } : task
+        );
+      });
+      
+      queryClient.setQueriesData({ queryKey: ["recent-tasks"] }, (old: any) => {
+        if (!old) return old;
+        return old.map((task: any) => 
+          task.id === taskId ? { ...task, ...updates } : task
+        );
+      });
+      
+      return { previousTasks, previousRecentTasks };
+    },
+    onError: (err, updates, context) => {
+      // Rollback on error
+      if (context?.previousTasks) {
+        queryClient.setQueryData(["tasks"], context.previousTasks);
+      }
+      if (context?.previousRecentTasks) {
+        queryClient.setQueryData(["recent-tasks"], context.previousRecentTasks);
+      }
+      toast.error("שגיאה בעדכון");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("עודכן בהצלחה");
       onUpdate?.();
     },
-    onError: () => toast.error("שגיאה בעדכון"),
+    onSettled: () => {
+      // Sync with server after mutation settles
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-tasks"] });
+    },
   });
 
   const handleStatusChange = (newStatus: string) => {
