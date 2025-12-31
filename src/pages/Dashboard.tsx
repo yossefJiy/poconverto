@@ -25,7 +25,8 @@ import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
 import { ClientLinksCard } from "@/components/dashboard/ClientLinksCard";
 import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
-import { DailyTimelineWidget } from "@/components/dashboard/DailyTimelineWidget";
+import { DraggableTimelineWidget } from "@/components/dashboard/DraggableTimelineWidget";
+import { TaskQuickActions } from "@/components/tasks/TaskQuickActions";
 import { JiyPremiumCard, JiyPremiumBadge } from "@/components/dashboard/JiyPremiumCard";
 
 export default function Dashboard() {
@@ -291,7 +292,7 @@ export default function Dashboard() {
                 {/* Daily Timeline Widget */}
                 {isModuleEnabled("tasks") && (
                   <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
-                    <DailyTimelineWidget 
+                    <DraggableTimelineWidget 
                       tasks={recentTasks} 
                       masterClientId={masterClient?.id}
                     />
@@ -334,13 +335,12 @@ export default function Dashboard() {
                                     </p>
                                   </div>
                                 </div>
-                                <span className={cn(
-                                  "px-2 py-1 rounded-full text-xs font-medium",
-                                  statusConfig[task.status]?.color || "bg-muted",
-                                  "text-foreground"
-                                )}>
-                                  {statusConfig[task.status]?.label || task.status}
-                                </span>
+                                <TaskQuickActions
+                                  taskId={task.id}
+                                  currentStatus={task.status}
+                                  currentTime={task.scheduled_time}
+                                  compact
+                                />
                               </div>
                             </div>
                           );

@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { StyledDatePicker } from "@/components/ui/styled-date-picker";
+import { TaskQuickActions } from "@/components/tasks/TaskQuickActions";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -590,9 +592,14 @@ export default function Tasks() {
               </Button>
             </div>
 
-            <Badge variant="outline" className={cn("whitespace-nowrap flex-shrink-0", status.bg, status.color)}>
-              {status.label}
-            </Badge>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <TaskQuickActions
+                taskId={task.id}
+                currentStatus={task.status}
+                currentTime={task.scheduled_time}
+                compact
+              />
+            </div>
           </div>
         </div>
         
@@ -896,7 +903,11 @@ export default function Tasks() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>תאריך יעד</Label>
-                <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
+                <StyledDatePicker
+                  value={formDueDate ? parseISO(formDueDate) : undefined}
+                  onChange={(date) => setFormDueDate(date ? format(date, "yyyy-MM-dd") : "")}
+                  placeholder="בחר תאריך"
+                />
               </div>
               <div className="space-y-2">
                 <Label>שעה מתוכננת</Label>
