@@ -829,6 +829,88 @@ export type Database = {
           },
         ]
       }
+      task_attachments: {
+        Row: {
+          attachment_type: string
+          created_at: string
+          created_by: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          name: string
+          task_id: string
+          url: string
+        }
+        Insert: {
+          attachment_type: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          task_id: string
+          url: string
+        }
+        Update: {
+          attachment_type?: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          task_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean | null
+          task_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          task_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          task_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_requests: {
         Row: {
           approved_at: string | null
@@ -886,6 +968,60 @@ export type Database = {
           {
             foreignKeyName: "task_requests_converted_task_id_fkey"
             columns: ["converted_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_shares: {
+        Row: {
+          client_id: string
+          email_sent: boolean | null
+          email_sent_at: string | null
+          expires_at: string | null
+          id: string
+          message: string | null
+          share_type: string
+          shared_at: string
+          shared_by: string | null
+          task_id: string
+        }
+        Insert: {
+          client_id: string
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          share_type?: string
+          shared_at?: string
+          shared_by?: string | null
+          task_id: string
+        }
+        Update: {
+          client_id?: string
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          share_type?: string
+          shared_at?: string
+          shared_by?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_shares_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_shares_task_id_fkey"
+            columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]

@@ -958,6 +958,29 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
               <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>
                 חזרה לעריכה
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setParsedTasks(prev => [
+                    ...prev,
+                    {
+                      title: "",
+                      valid: false,
+                      error: "כותרת חובה",
+                      priority: defaultPriority,
+                      assignee: defaultAssignee || undefined,
+                      category: defaultCategory || undefined,
+                      scheduled_time: defaultTime || undefined,
+                      duration_minutes: defaultDuration,
+                    },
+                  ]);
+                }}
+                className="gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף משימה
+              </Button>
             </div>
 
             <div className="flex-1 min-h-0 overflow-hidden">

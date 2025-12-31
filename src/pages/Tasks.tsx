@@ -79,6 +79,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { TeamDashboard } from "@/components/tasks/TeamDashboard";
 import { BulkTaskImport } from "@/components/tasks/BulkTaskImport";
+import { TaskBulkActions } from "@/components/tasks/TaskBulkActions";
+import { TaskShareDialog } from "@/components/tasks/TaskShareDialog";
+import { TaskAttachments } from "@/components/tasks/TaskAttachments";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 
 interface Task {
@@ -168,6 +171,10 @@ export default function Tasks() {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
   const [duplicateDate, setDuplicateDate] = useState<Date | undefined>(undefined);
+
+  // Bulk selection state
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['title']));
