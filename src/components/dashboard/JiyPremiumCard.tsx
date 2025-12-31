@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import React, { forwardRef } from "react";
 import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoText from "@/assets/logo-text.svg";
