@@ -85,6 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 20px; margin: 0;">
           <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 24px; text-align: center;">
+              <img src="https://ovkuabbfubtiwnlksmxd.supabase.co/storage/v1/object/public/assets/converto-logo-white.png" alt="Converto" style="height: 40px; margin-bottom: 15px;" onerror="this.style.display='none'">
               <h1 style="margin: 0; color: white; font-size: 24px;">משימות חדשות</h1>
               <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
                 ${tasks.length} משימות שותפו איתך
@@ -101,9 +102,10 @@ const handler = async (req: Request): Promise<Response> => {
               ${tasksHtml}
               
               <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                  נשלח מ-JIY Tasks Management System
+                <p style="margin: 0 0 10px 0; color: #9ca3af; font-size: 12px;">
+                  נשלח מ-Converto Task Management
                 </p>
+                <img src="https://ovkuabbfubtiwnlksmxd.supabase.co/storage/v1/object/public/assets/by-jiy-logo.png" alt="by JIY" style="height: 18px;" onerror="this.style.display='none'">
               </div>
             </div>
           </div>
