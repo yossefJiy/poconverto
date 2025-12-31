@@ -225,11 +225,18 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
       <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
     </button>
     <div className={cn(
-      "overflow-hidden transition-all duration-200",
-      isExpanded ? "max-h-96 p-3 pt-0" : "max-h-0"
+      "grid transition-all duration-300 ease-in-out",
+      isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
     )}>
-      <div className="pt-3">
-        {children}
+      <div className="overflow-hidden">
+        <div className={cn(
+          "p-3 pt-0 transition-all duration-300",
+          isExpanded ? "translate-y-0" : "-translate-y-2"
+        )}>
+          <div className="pt-3 animate-fade-in">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   </div>
