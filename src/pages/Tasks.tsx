@@ -105,6 +105,8 @@ interface TeamMember {
   id: string;
   name: string;
   email: string | null;
+  emails: string[];
+  phones: string[];
   departments: string[];
   avatar_color?: string | null;
 }
@@ -308,16 +310,26 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
     return "";
   };
 
-  // Auto-fill email when assignee changes
+  // Auto-fill email and phone when assignee changes
   const handleAssigneeChange = (name: string) => {
     setFormAssignee(name);
     const member = teamMembers.find(m => m.name === name);
-    if (member?.email && !formNotificationEmailAddress) {
-      setFormNotificationEmailAddress(member.email);
-    }
-    // Also set department from member's primary department
-    if (member?.departments?.[0] && !formDepartment) {
-      setFormDepartment(member.departments[0]);
+    if (member) {
+      // Set email from member's emails array or primary email
+      if (!formNotificationEmailAddress) {
+        const primaryEmail = member.emails?.[0] || member.email;
+        if (primaryEmail) {
+          setFormNotificationEmailAddress(primaryEmail);
+        }
+      }
+      // Set phone from member's phones array
+      if (!formNotificationPhone && member.phones?.[0]) {
+        setFormNotificationPhone(member.phones[0]);
+      }
+      // Also set department from member's primary department
+      if (member.departments?.[0] && !formDepartment) {
+        setFormDepartment(member.departments[0]);
+      }
     }
   };
 
@@ -1168,12 +1180,42 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
                   <Switch checked={formNotificationEmail} onCheckedChange={setFormNotificationEmail} />
                 </div>
                 {formNotificationEmail && (
-                  <Input 
-                    type="email" 
-                    placeholder="כתובת מייל" 
-                    value={formNotificationEmailAddress} 
-                    onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
-                  />
+                  <div className="space-y-2">
+                    {(() => {
+                      const member = teamMembers.find(m => m.name === formAssignee);
+                      const availableEmails = [...(member?.emails || [])];
+                      if (member?.email && !availableEmails.includes(member.email)) {
+                        availableEmails.unshift(member.email);
+                      }
+                      
+                      return availableEmails.length > 0 ? (
+                        <Select value={formNotificationEmailAddress} onValueChange={setFormNotificationEmailAddress}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="בחר כתובת מייל" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableEmails.map((email) => (
+                              <SelectItem key={email} value={email}>{email}</SelectItem>
+                            ))}
+                            <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                          <Mail className="w-4 h-4" />
+                          <span>אין כתובת מייל לאיש הצוות</span>
+                        </div>
+                      );
+                    })()}
+                    {(formNotificationEmailAddress === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.emails?.length) && (
+                      <Input 
+                        type="email" 
+                        placeholder="כתובת מייל" 
+                        value={formNotificationEmailAddress === '_custom' ? '' : formNotificationEmailAddress} 
+                        onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
+                      />
+                    )}
+                  </div>
                 )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1183,12 +1225,39 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
                   <Switch checked={formNotificationSms} onCheckedChange={setFormNotificationSms} />
                 </div>
                 {formNotificationSms && (
-                  <Input 
-                    type="tel" 
-                    placeholder="מספר טלפון" 
-                    value={formNotificationPhone} 
-                    onChange={(e) => setFormNotificationPhone(e.target.value)} 
-                  />
+                  <div className="space-y-2">
+                    {(() => {
+                      const member = teamMembers.find(m => m.name === formAssignee);
+                      const availablePhones = member?.phones || [];
+                      
+                      return availablePhones.length > 0 ? (
+                        <Select value={formNotificationPhone} onValueChange={setFormNotificationPhone}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="בחר מספר טלפון" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availablePhones.map((phone) => (
+                              <SelectItem key={phone} value={phone}>{phone}</SelectItem>
+                            ))}
+                            <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                          <Phone className="w-4 h-4" />
+                          <span>אין מספר טלפון לאיש הצוות</span>
+                        </div>
+                      );
+                    })()}
+                    {(formNotificationPhone === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.phones?.length) && (
+                      <Input 
+                        type="tel" 
+                        placeholder="מספר טלפון" 
+                        value={formNotificationPhone === '_custom' ? '' : formNotificationPhone} 
+                        onChange={(e) => setFormNotificationPhone(e.target.value)} 
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             </CollapsibleField>
