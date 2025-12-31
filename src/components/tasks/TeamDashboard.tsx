@@ -105,7 +105,7 @@ export function TeamDashboard() {
     enabled: !!profile?.email,
   });
 
-  // Get tasks assigned to this team member
+  // Get tasks assigned to this team member (excluding completed)
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["my-tasks", teamMember?.name],
     queryFn: async () => {
@@ -121,6 +121,26 @@ export function TeamDashboard() {
         ...task,
         scheduled_time: (task as any).scheduled_time || null,
       })) as Task[];
+    },
+    enabled: !!teamMember?.name,
+  });
+
+  // Get completed tasks for today (for hours calculation)
+  const { data: completedTodayTasks = [] } = useQuery({
+    queryKey: ["my-completed-today", teamMember?.name],
+    queryFn: async () => {
+      if (!teamMember?.name) return [];
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, duration_minutes, client_id, updated_at")
+        .eq("assignee", teamMember.name)
+        .eq("status", "completed")
+        .gte("updated_at", todayStart.toISOString());
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!teamMember?.name,
   });
@@ -249,8 +269,10 @@ export function TeamDashboard() {
   // Calculate stats
   const openTasksCount = tasks.length;
   const todayTasksCount = todayTasks.length;
-  const hoursCompletedToday = 0; // Would need completed tasks data with duration
-  const clientsHandledToday = new Set(tasks.filter(t => t.due_date === todayStr).map((t: any) => t.client_id).filter(Boolean)).size;
+  // Calculate hours from completed tasks today
+  const totalMinutesToday = completedTodayTasks.reduce((sum, t: any) => sum + (t.duration_minutes || 60), 0);
+  const hoursCompletedToday = (totalMinutesToday / 60).toFixed(1);
+  const clientsHandledToday = new Set(completedTodayTasks.map((t: any) => t.client_id).filter(Boolean)).size;
 
   return (
     <div className="space-y-4">
