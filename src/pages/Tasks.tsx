@@ -37,8 +37,10 @@ import {
   Eye,
   UserPlus,
   Check,
-  X
+  X,
+  Paperclip
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -176,6 +178,18 @@ export default function Tasks() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
+  // Toggle single task selection
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['title']));
 
@@ -734,6 +748,24 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     return true;
   });
 
+  // Toggle all tasks selection
+  const toggleSelectAll = () => {
+    if (selectedTaskIds.size === filteredTasks.length) {
+      setSelectedTaskIds(new Set());
+    } else {
+      setSelectedTaskIds(new Set(filteredTasks.map(t => t.id)));
+    }
+  };
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedTaskIds(new Set());
+  };
+
+  // Get selected tasks objects for bulk actions
+  const selectedTasksObjects = tasks.filter(t => selectedTaskIds.has(t.id));
+
+
   // Map assignee names to colors
   const assigneeColorMap: Record<string, string> = {};
   teamMembers.forEach(m => {
@@ -761,9 +793,18 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
       <div key={task.id}>
         <div className={cn(
           "p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group",
-          isSubtask && "bg-muted/20 pr-12"
+          isSubtask && "bg-muted/20 pr-12",
+          selectedTaskIds.has(task.id) && "bg-primary/5"
         )}>
           <div className="flex items-start gap-3">
+            {/* Checkbox for selection */}
+            {!isSubtask && (
+              <Checkbox
+                checked={selectedTaskIds.has(task.id)}
+                onCheckedChange={() => toggleTaskSelection(task.id)}
+                className="mt-2"
+              />
+            )}
             {!isSubtask && hasChildren ? (
               <button
                 onClick={() => toggleExpanded(task.id)}
@@ -1068,6 +1109,16 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
           </div>
         ) : viewMode === "list" ? (
           <div className="glass rounded-xl overflow-hidden">
+            {/* Header with select all */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/30">
+              <Checkbox
+                checked={filteredTasks.length > 0 && selectedTaskIds.size === filteredTasks.length}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedTaskIds.size > 0 ? `${selectedTaskIds.size} נבחרו` : "בחר הכל"}
+              </span>
+            </div>
             {filteredTasks.map((task) => renderTaskRow(task))}
           </div>
         ) : (
@@ -1080,12 +1131,19 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               return (
                 <div 
                   key={task.id}
-                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up group"
+                  className={cn(
+                    "glass rounded-xl card-shadow opacity-0 animate-slide-up group",
+                    selectedTaskIds.has(task.id) && "ring-2 ring-primary"
+                  )}
                   style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: "forwards" }}
                 >
                   <div className="p-4 md:p-5">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedTaskIds.has(task.id)}
+                          onCheckedChange={() => toggleTaskSelection(task.id)}
+                        />
                         <span className={cn("w-2 h-2 rounded-full", priority.color)} />
                         <span className="text-xs text-muted-foreground">{priority.label}</span>
                       </div>
@@ -1523,6 +1581,19 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                 )}
               </div>
             </CollapsibleField>
+
+            {/* Attachments - Only show for existing tasks */}
+            {selectedTask && (
+              <CollapsibleField
+                label="נספחים"
+                icon={<Paperclip className="w-4 h-4" />}
+                isExpanded={expandedSections.has('attachments')}
+                onToggle={() => toggleSection('attachments')}
+                hasValue={false}
+              >
+                <TaskAttachments taskId={selectedTask.id} />
+              </CollapsibleField>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1647,6 +1718,14 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Actions Bar */}
+      <TaskBulkActions
+        selectedTasks={selectedTasksObjects}
+        onClearSelection={clearSelection}
+        teamMembers={teamMembers.map(m => ({ id: m.id, name: m.name }))}
+        categories={categoryOptions}
+      />
     </MainLayout>
   );
 }
