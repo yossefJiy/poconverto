@@ -35,7 +35,9 @@ import {
   LayoutDashboard,
   Settings2,
   Eye,
-  UserPlus
+  UserPlus,
+  Check,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -199,10 +201,41 @@ export default function Tasks() {
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
   const [showReminderPreview, setShowReminderPreview] = useState(false);
   
+  // Quick reminder options
+  type ReminderOption = 'at_time' | 'hour_before' | 'day_before' | 'custom';
+  const [selectedReminders, setSelectedReminders] = useState<ReminderOption[]>([]);
+  
   // Add contact dialog state
   const [addContactDialogOpen, setAddContactDialogOpen] = useState(false);
   const [addContactType, setAddContactType] = useState<'email' | 'phone'>('email');
   const [newContactValue, setNewContactValue] = useState("");
+
+  // Toggle reminder option
+  const toggleReminderOption = (option: ReminderOption) => {
+    setSelectedReminders(prev => 
+      prev.includes(option) 
+        ? prev.filter(r => r !== option)
+        : [...prev, option]
+    );
+  };
+
+  // Calculate reminder time based on option
+  const calculateReminderTime = (option: ReminderOption, dueDate: string, scheduledTime: string): string | null => {
+    if (!dueDate) return null;
+    const baseDate = new Date(`${dueDate}T${scheduledTime || '09:00'}:00`);
+    switch (option) {
+      case 'at_time':
+        return baseDate.toISOString();
+      case 'hour_before':
+        return new Date(baseDate.getTime() - 60 * 60 * 1000).toISOString();
+      case 'day_before':
+        return new Date(baseDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      case 'custom':
+        return formReminderAt ? new Date(formReminderAt).toISOString() : null;
+      default:
+        return null;
+    }
+  };
 
 // Collapsible Field Component for innovative dialog
 interface CollapsibleFieldProps {
@@ -224,15 +257,16 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
       className={cn(
         "w-full flex items-center justify-between p-3 text-sm transition-colors cursor-pointer",
         isExpanded ? "bg-muted/50" : "bg-muted/30 hover:bg-muted/50",
-        hasValue && !isExpanded && "border-r-2 border-primary"
+        hasValue && !isExpanded && "border-r-2 border-success"
       )}
     >
       <div className="flex items-center gap-2 text-muted-foreground">
-        {icon}
-        <span>{label}</span>
-        {hasValue && !isExpanded && (
-          <span className="w-2 h-2 rounded-full bg-primary" />
+        {hasValue && !isExpanded ? (
+          <Check className="w-4 h-4 text-success" />
+        ) : (
+          icon
         )}
+        <span className={cn(hasValue && !isExpanded && "text-success")}>{label}</span>
       </div>
       <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
     </div>
@@ -585,6 +619,8 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormNotificationSms(task?.notification_sms || false);
     setFormNotificationPhone(task?.notification_phone || "");
     setFormNotificationEmailAddress(task?.notification_email_address || "");
+    setSelectedReminders([]);
+    setShowReminderPreview(false);
     setEditDialogOpen(true);
   };
 
@@ -605,6 +641,8 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormNotificationSms(false);
     setFormNotificationPhone("");
     setFormNotificationEmailAddress("");
+    setSelectedReminders([]);
+    setShowReminderPreview(false);
   };
 
   const handleSave = () => {
@@ -1175,30 +1213,6 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               </div>
             </CollapsibleField>
 
-            {/* Date & Time - Collapsible */}
-            <CollapsibleField
-              label="תאריך ושעה"
-              icon={<Calendar className="w-4 h-4" />}
-              isExpanded={expandedSections.has('datetime')}
-              onToggle={() => toggleSection('datetime')}
-              hasValue={!!formDueDate || !!formScheduledTime}
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <StyledDatePicker
-                  value={formDueDate ? parseISO(formDueDate) : undefined}
-                  onChange={(date) => setFormDueDate(date ? format(date, "yyyy-MM-dd") : "")}
-                  placeholder="בחר תאריך"
-                />
-                <Select value={formScheduledTime || "none"} onValueChange={(v) => setFormScheduledTime(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="בחר שעה" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-</SelectItem>
-                    {timeOptions.map((time) => <SelectItem key={time} value={time}>{time}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CollapsibleField>
-
             {/* Category - Collapsible */}
             <CollapsibleField
               label="קטגוריה"
@@ -1216,199 +1230,272 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               </Select>
             </CollapsibleField>
 
-            {/* Reminders - Collapsible */}
+            {/* Date, Time & Reminders - Collapsible */}
             <CollapsibleField
-              label="תזכורת והתראות"
-              icon={<Bell className="w-4 h-4" />}
-              isExpanded={expandedSections.has('reminders')}
-              onToggle={() => toggleSection('reminders')}
-              hasValue={!!formReminderAt || formNotificationEmail || formNotificationSms}
+              label="תאריך, שעה ותזכורות"
+              icon={<Calendar className="w-4 h-4" />}
+              isExpanded={expandedSections.has('datetime')}
+              onToggle={() => toggleSection('datetime')}
+              hasValue={!!formDueDate || !!formScheduledTime || selectedReminders.length > 0}
             >
-              <div className="space-y-3">
-                <Input 
-                  type="datetime-local" 
-                  value={formReminderAt} 
-                  onChange={(e) => setFormReminderAt(e.target.value)} 
-                  placeholder="שעת תזכורת"
-                />
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">שלח מייל</span>
-                  </div>
-                  <Switch checked={formNotificationEmail} onCheckedChange={setFormNotificationEmail} />
+              <div className="space-y-4">
+                {/* Date & Time */}
+                <div className="grid grid-cols-2 gap-3">
+                  <StyledDatePicker
+                    value={formDueDate ? parseISO(formDueDate) : undefined}
+                    onChange={(date) => setFormDueDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    placeholder="בחר תאריך"
+                  />
+                  <Select value={formScheduledTime || "none"} onValueChange={(v) => setFormScheduledTime(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="בחר שעה" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-</SelectItem>
+                      {timeOptions.map((time) => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-                {formNotificationEmail && (
-                  <div className="space-y-2">
-                    {(() => {
-                      const member = teamMembers.find(m => m.name === formAssignee);
-                      const availableEmails = [...(member?.emails || [])];
-                      if (member?.email && !availableEmails.includes(member.email)) {
-                        availableEmails.unshift(member.email);
-                      }
-                      
-                      return (
-                        <div className="space-y-2">
-                          {availableEmails.length > 0 ? (
-                            <Select value={formNotificationEmailAddress} onValueChange={setFormNotificationEmailAddress}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="בחר כתובת מייל" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableEmails.map((email) => (
-                                  <SelectItem key={email} value={email}>{email}</SelectItem>
-                                ))}
-                                <SelectItem value="_custom">הזן ידנית...</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4" />
-                                <span>אין כתובת מייל לאיש הצוות</span>
-                              </div>
-                            </div>
-                          )}
-                          {member && (
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full gap-2"
-                              onClick={() => openAddContactDialog('email')}
-                            >
-                              <UserPlus className="w-4 h-4" />
-                              הוסף מייל לאיש צוות
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {(formNotificationEmailAddress === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.emails?.length) && formNotificationEmailAddress !== '_custom' && !teamMembers.find(m => m.name === formAssignee) && (
-                      <Input 
-                        type="email" 
-                        placeholder="כתובת מייל" 
-                        value={formNotificationEmailAddress} 
-                        onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
-                      />
-                    )}
-                    {formNotificationEmailAddress === '_custom' && (
-                      <Input 
-                        type="email" 
-                        placeholder="כתובת מייל" 
-                        value="" 
-                        onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
-                      />
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">שלח SMS</span>
-                  </div>
-                  <Switch checked={formNotificationSms} onCheckedChange={setFormNotificationSms} />
-                </div>
-                {formNotificationSms && (
-                  <div className="space-y-2">
-                    {(() => {
-                      const member = teamMembers.find(m => m.name === formAssignee);
-                      const availablePhones = member?.phones || [];
-                      
-                      return (
-                        <div className="space-y-2">
-                          {availablePhones.length > 0 ? (
-                            <Select value={formNotificationPhone} onValueChange={setFormNotificationPhone}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="בחר מספר טלפון" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availablePhones.map((phone) => (
-                                  <SelectItem key={phone} value={phone}>{phone}</SelectItem>
-                                ))}
-                                <SelectItem value="_custom">הזן ידנית...</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4" />
-                                <span>אין מספר טלפון לאיש הצוות</span>
-                              </div>
-                            </div>
-                          )}
-                          {member && (
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full gap-2"
-                              onClick={() => openAddContactDialog('phone')}
-                            >
-                              <UserPlus className="w-4 h-4" />
-                              הוסף טלפון לאיש צוות
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {(formNotificationPhone === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.phones?.length) && formNotificationPhone !== '_custom' && !teamMembers.find(m => m.name === formAssignee) && (
-                      <Input 
-                        type="tel" 
-                        placeholder="מספר טלפון" 
-                        value={formNotificationPhone} 
-                        onChange={(e) => setFormNotificationPhone(e.target.value)} 
-                      />
-                    )}
-                    {formNotificationPhone === '_custom' && (
-                      <Input 
-                        type="tel" 
-                        placeholder="מספר טלפון" 
-                        value="" 
-                        onChange={(e) => setFormNotificationPhone(e.target.value)} 
-                      />
-                    )}
-                  </div>
-                )}
 
-                {/* Reminder Preview */}
-                {(formReminderAt && (formNotificationEmail || formNotificationSms)) && (
-                  <div className="border-t border-border pt-3 mt-3">
-                    <Button 
+                {/* Quick Reminder Options */}
+                <div className="border-t border-border pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">תזכורות</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
                       type="button"
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full gap-2 text-muted-foreground"
-                      onClick={() => setShowReminderPreview(!showReminderPreview)}
+                      variant={selectedReminders.includes('at_time') ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleReminderOption('at_time')}
+                      className="gap-1"
                     >
-                      <Eye className="w-4 h-4" />
-                      {showReminderPreview ? "הסתר" : "הצג"} תצוגה מקדימה
+                      {selectedReminders.includes('at_time') && <Check className="w-3 h-3" />}
+                      בשעת המשימה
                     </Button>
-                    {showReminderPreview && (
-                      <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border animate-fade-in">
-                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                          <Bell className="w-3 h-3" />
-                          תצוגה מקדימה של הודעת התזכורת:
-                        </div>
-                        <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
-                          {getReminderPreview()}
-                        </pre>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {formNotificationEmail && formNotificationEmailAddress && (
-                            <div className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              יישלח למייל: {formNotificationEmailAddress}
+                    <Button
+                      type="button"
+                      variant={selectedReminders.includes('hour_before') ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleReminderOption('hour_before')}
+                      className="gap-1"
+                    >
+                      {selectedReminders.includes('hour_before') && <Check className="w-3 h-3" />}
+                      שעה לפני
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedReminders.includes('day_before') ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleReminderOption('day_before')}
+                      className="gap-1"
+                    >
+                      {selectedReminders.includes('day_before') && <Check className="w-3 h-3" />}
+                      יום לפני
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedReminders.includes('custom') ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleReminderOption('custom')}
+                      className="gap-1"
+                    >
+                      {selectedReminders.includes('custom') && <Check className="w-3 h-3" />}
+                      מותאם אישית
+                    </Button>
+                  </div>
+                  
+                  {/* Custom reminder time */}
+                  {selectedReminders.includes('custom') && (
+                    <div className="mt-3 animate-fade-in">
+                      <Input 
+                        type="datetime-local" 
+                        value={formReminderAt} 
+                        onChange={(e) => setFormReminderAt(e.target.value)} 
+                        placeholder="בחר זמן תזכורת"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Notification Settings - Only show when reminders selected */}
+                {selectedReminders.length > 0 && (
+                  <div className="border-t border-border pt-4 space-y-3 animate-fade-in">
+                    <div className="text-sm font-medium text-muted-foreground">שלח התראה ל:</div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">מייל</span>
+                      </div>
+                      <Switch checked={formNotificationEmail} onCheckedChange={setFormNotificationEmail} />
+                    </div>
+                    {formNotificationEmail && (
+                      <div className="space-y-2 animate-fade-in">
+                        {(() => {
+                          const member = teamMembers.find(m => m.name === formAssignee);
+                          const availableEmails = [...(member?.emails || [])];
+                          if (member?.email && !availableEmails.includes(member.email)) {
+                            availableEmails.unshift(member.email);
+                          }
+                          
+                          return (
+                            <div className="space-y-2">
+                              {availableEmails.length > 0 ? (
+                                <Select value={formNotificationEmailAddress} onValueChange={setFormNotificationEmailAddress}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="בחר כתובת מייל" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableEmails.map((email) => (
+                                      <SelectItem key={email} value={email}>{email}</SelectItem>
+                                    ))}
+                                    <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : formAssignee ? (
+                                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                                  <span>אין מייל</span>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 gap-1"
+                                    onClick={() => openAddContactDialog('email')}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    הוסף
+                                  </Button>
+                                </div>
+                              ) : null}
+                              {formNotificationEmailAddress === '_custom' && (
+                                <Input 
+                                  type="email" 
+                                  placeholder="כתובת מייל" 
+                                  onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
+                                />
+                              )}
                             </div>
-                          )}
-                          {formNotificationSms && formNotificationPhone && (
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              יישלח ב-SMS ל: {formNotificationPhone}
+                          );
+                        })()}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">SMS</span>
+                      </div>
+                      <Switch checked={formNotificationSms} onCheckedChange={setFormNotificationSms} />
+                    </div>
+                    {formNotificationSms && (
+                      <div className="space-y-2 animate-fade-in">
+                        {(() => {
+                          const member = teamMembers.find(m => m.name === formAssignee);
+                          const availablePhones = member?.phones || [];
+                          
+                          return (
+                            <div className="space-y-2">
+                              {availablePhones.length > 0 ? (
+                                <Select value={formNotificationPhone} onValueChange={setFormNotificationPhone}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="בחר מספר טלפון" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availablePhones.map((phone) => (
+                                      <SelectItem key={phone} value={phone}>{phone}</SelectItem>
+                                    ))}
+                                    <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : formAssignee ? (
+                                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                                  <span>אין טלפון</span>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 gap-1"
+                                    onClick={() => openAddContactDialog('phone')}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    הוסף
+                                  </Button>
+                                </div>
+                              ) : null}
+                              {formNotificationPhone === '_custom' && (
+                                <Input 
+                                  type="tel" 
+                                  placeholder="מספר טלפון" 
+                                  onChange={(e) => setFormNotificationPhone(e.target.value)} 
+                                />
+                              )}
                             </div>
-                          )}
-                        </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Reminder Preview */}
+                    {(selectedReminders.length > 0 && (formNotificationEmail || formNotificationSms)) && (
+                      <div className="border-t border-border pt-3 mt-3">
+                        <Button 
+                          type="button"
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full gap-2 text-muted-foreground"
+                          onClick={() => setShowReminderPreview(!showReminderPreview)}
+                        >
+                          <Eye className="w-4 h-4" />
+                          {showReminderPreview ? "הסתר" : "הצג"} תצוגה מקדימה
+                        </Button>
+                        {showReminderPreview && (
+                          <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border animate-fade-in">
+                            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                              <Bell className="w-3 h-3" />
+                              תזכורות שיישלחו:
+                            </div>
+                            <div className="space-y-1 text-sm">
+                              {selectedReminders.includes('at_time') && (
+                                <div className="flex items-center gap-2">
+                                  <Check className="w-3 h-3 text-success" />
+                                  <span>בשעת המשימה</span>
+                                </div>
+                              )}
+                              {selectedReminders.includes('hour_before') && (
+                                <div className="flex items-center gap-2">
+                                  <Check className="w-3 h-3 text-success" />
+                                  <span>שעה לפני</span>
+                                </div>
+                              )}
+                              {selectedReminders.includes('day_before') && (
+                                <div className="flex items-center gap-2">
+                                  <Check className="w-3 h-3 text-success" />
+                                  <span>יום לפני</span>
+                                </div>
+                              )}
+                              {selectedReminders.includes('custom') && formReminderAt && (
+                                <div className="flex items-center gap-2">
+                                  <Check className="w-3 h-3 text-success" />
+                                  <span>{new Date(formReminderAt).toLocaleString("he-IL")}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
+                              {formNotificationEmail && formNotificationEmailAddress && (
+                                <div className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  למייל: {formNotificationEmailAddress}
+                                </div>
+                              )}
+                              {formNotificationSms && formNotificationPhone && (
+                                <div className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  ל-SMS: {formNotificationPhone}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
