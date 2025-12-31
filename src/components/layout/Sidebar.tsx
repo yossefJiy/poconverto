@@ -61,6 +61,7 @@ const settingsItems = [
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
   { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
   { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
+  { icon: BarChart3, label: "קרדיטים", path: "/credits", adminOnly: true },
 ];
 
 

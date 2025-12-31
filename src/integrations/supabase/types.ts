@@ -847,6 +847,8 @@ export type Database = {
           notification_phone: string | null
           notification_sms: boolean | null
           priority: string
+          recurrence_end_date: string | null
+          recurrence_type: string | null
           reminder_at: string | null
           reminder_sent: boolean | null
           scheduled_time: string | null
@@ -871,6 +873,8 @@ export type Database = {
           notification_phone?: string | null
           notification_sms?: boolean | null
           priority?: string
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
           reminder_at?: string | null
           reminder_sent?: boolean | null
           scheduled_time?: string | null
@@ -895,6 +899,8 @@ export type Database = {
           notification_phone?: string | null
           notification_sms?: boolean | null
           priority?: string
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
           reminder_at?: string | null
           reminder_sent?: boolean | null
           scheduled_time?: string | null

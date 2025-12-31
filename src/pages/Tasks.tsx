@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -57,6 +58,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -130,8 +137,9 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   
   const [showDashboard, setShowDashboard] = useState(false);
-  const [filter, setFilter] = useState<"all" | "assignee" | "department">("all");
+  const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date">("all");
   const [selectedValue, setSelectedValue] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
@@ -159,13 +167,23 @@ export default function Tasks() {
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
   const [formParentId, setFormParentId] = useState<string | null>(null);
 
+  // Fetch ALL tasks (or filtered by client if selected)
+  const { data: allClients = [] } = useQuery({
+    queryKey: ["all-clients-tasks"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("id, name, is_master_account");
+      return data || [];
+    },
+  });
+
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", selectedClient?.id],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*, clients(name, is_master_account)")
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("scheduled_time", { ascending: true, nullsFirst: false });
       
       if (selectedClient) {
         query = query.eq("client_id", selectedClient.id);
@@ -179,7 +197,8 @@ export default function Tasks() {
         scheduled_time: (task as any).scheduled_time || null,
         parent_id: (task as any).parent_id || null,
         order_index: (task as any).order_index || 0,
-      })) as Task[];
+        clients: (task as any).clients || null,
+      })) as (Task & { clients?: { name: string; is_master_account?: boolean } | null })[];
     },
   });
 
@@ -461,9 +480,18 @@ export default function Tasks() {
   ])];
 
   const filteredTasks = parentTasks.filter(task => {
-    if (filter === "all" || !selectedValue) return true;
-    if (filter === "assignee") return task.assignee === selectedValue;
-    if (filter === "department") return task.department === selectedValue;
+    // Date filter
+    if (filter === "date" && selectedDate) {
+      if (!task.due_date) return false;
+      const taskDate = new Date(task.due_date).toDateString();
+      const filterDate = selectedDate.toDateString();
+      if (taskDate !== filterDate) return false;
+    }
+    // Assignee/Department filter
+    if ((filter === "assignee" || filter === "department") && selectedValue) {
+      if (filter === "assignee" && task.assignee !== selectedValue) return false;
+      if (filter === "department" && task.department !== selectedValue) return false;
+    }
     return true;
   });
 
@@ -676,9 +704,19 @@ export default function Tasks() {
                 <Building2 className="w-3 h-3" />
                 מחלקה
               </button>
+              <button
+                onClick={() => setFilter("date")}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
+                  filter === "date" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                )}
+              >
+                <Calendar className="w-3 h-3" />
+                תאריך
+              </button>
             </div>
 
-            {filter !== "all" && (
+            {(filter === "assignee" || filter === "department") && (
               <Select value={selectedValue} onValueChange={setSelectedValue}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder={filter === "assignee" ? "בחר עובד" : "בחר מחלקה"} />
@@ -688,6 +726,26 @@ export default function Tasks() {
                   {filter === "department" && departments.map(d => <SelectItem key={d} value={d!}>{d}</SelectItem>)}
                 </SelectContent>
               </Select>
+            )}
+
+            {filter === "date" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-40 justify-start text-right">
+                    <Calendar className="w-4 h-4 ml-2" />
+                    {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "בחר תאריך"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 
