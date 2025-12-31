@@ -166,47 +166,57 @@ serve(async (req) => {
           const emailSubject = `⏰ תזכורת: ${task.title}`;
           
           const emailHtml = `
-            <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #4F46E5;">⏰ תזכורת משימה</h2>
-              <div style="background: #F3F4F6; padding: 20px; border-radius: 8px;">
-                <h3 style="margin: 0 0 10px 0;">${task.title}</h3>
-                ${task.description ? `<p style="color: #6B7280; margin: 0 0 15px 0;">${task.description}</p>` : ""}
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>לקוח:</strong></td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${clientName}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>סטטוס:</strong></td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${statusHebrew}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>עדיפות:</strong></td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${priorityHebrew}</td>
-                  </tr>
-                  ${task.due_date ? `
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>תאריך יעד:</strong></td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${new Date(task.due_date).toLocaleDateString("he-IL")}</td>
-                  </tr>
-                  ` : ""}
-                  ${task.assignee ? `
-                  <tr>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>אחראי:</strong></td>
-                    <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${task.assignee}</td>
-                  </tr>
-                  ` : ""}
-                  ${task.category ? `
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>קטגוריה:</strong></td>
-                    <td style="padding: 8px 0;">${task.category}</td>
-                  </tr>
-                  ` : ""}
-                </table>
+            <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f3f4f6; padding: 20px;">
+              <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 24px; text-align: center;">
+                  <img src="https://ovkuabbfubtiwnlksmxd.supabase.co/storage/v1/object/public/assets/converto-logo-white.png" alt="Converto" style="height: 40px; margin-bottom: 15px;" onerror="this.style.display='none'">
+                  <h2 style="color: white; margin: 0;">⏰ תזכורת משימה</h2>
+                </div>
+                <div style="padding: 24px;">
+                  <h3 style="margin: 0 0 10px 0; color: #1e293b;">${task.title}</h3>
+                  ${task.description ? `<p style="color: #6B7280; margin: 0 0 15px 0;">${task.description}</p>` : ""}
+                  <div style="background: #F3F4F6; padding: 16px; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>לקוח:</strong></td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${clientName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>סטטוס:</strong></td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${statusHebrew}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>עדיפות:</strong></td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${priorityHebrew}</td>
+                      </tr>
+                      ${task.due_date ? `
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>תאריך יעד:</strong></td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${new Date(task.due_date).toLocaleDateString("he-IL")}</td>
+                      </tr>
+                      ` : ""}
+                      ${task.assignee ? `
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;"><strong>אחראי:</strong></td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${task.assignee}</td>
+                      </tr>
+                      ` : ""}
+                      ${task.category ? `
+                      <tr>
+                        <td style="padding: 8px 0;"><strong>קטגוריה:</strong></td>
+                        <td style="padding: 8px 0;">${task.category}</td>
+                      </tr>
+                      ` : ""}
+                    </table>
+                  </div>
+                  <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6B7280; font-size: 12px; margin: 0 0 10px 0;">
+                      הודעה זו נשלחה אוטומטית מ-Converto
+                    </p>
+                    <img src="https://ovkuabbfubtiwnlksmxd.supabase.co/storage/v1/object/public/assets/by-jiy-logo.png" alt="by JIY" style="height: 18px;" onerror="this.style.display='none'">
+                  </div>
+                </div>
               </div>
-              <p style="color: #6B7280; font-size: 12px; margin-top: 20px;">
-                הודעה זו נשלחה אוטומטית ממערכת JIY Tasks
-              </p>
             </div>
           `;
 
