@@ -125,6 +125,32 @@ const businessDevFeatures: FutureFeature[] = [
 
 const futureFeatures: FutureFeature[] = [
   {
+    id: "resend-domain-verification",
+    title: "אימות דומיין Resend",
+    description: "לאחר אימות דומיין jiy.co.il ב-Resend, לשנות את כתובת השולח ל-tasks@jiy.co.il",
+    priority: "high",
+    icon: Globe,
+    prompt: `יש לעדכן את כתובת השולח באימיילים:
+
+1. **לאחר אימות הדומיין ב-Resend:**
+   - כנס ל-https://resend.com/domains
+   - אמת את הדומיין jiy.co.il
+   - הוסף את ה-DNS records הנדרשים
+
+2. **עדכון הקוד:**
+   - בקובץ supabase/functions/task-reminder/index.ts
+   - שנה את from: "JIY Tasks <onboarding@resend.dev>"
+   - ל: from: "JIY Tasks <tasks@jiy.co.il>"
+   
+   - בקובץ supabase/functions/send-task-email/index.ts
+   - שנה את from: "JIY Tasks <onboarding@resend.dev>"
+   - ל: from: "JIY Tasks <tasks@jiy.co.il>"
+
+3. **בדיקה:**
+   - שלח מייל בדיקה דרך כפתור "היסטוריית התראות"
+   - וודא שהמייל מגיע מ-tasks@jiy.co.il`
+  },
+  {
     id: "master-account",
     title: "חשבון על - סוכנות הדיגיטל",
     description: "סוכנות הדיגיטל (JIY) תהיה חשבון העל שמציג סיכום של כל הלקוחות בדשבורד ובאנליטיקס",
