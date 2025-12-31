@@ -545,7 +545,8 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
       category: t.category,
     }));
     onImport(validTasks);
-    resetState();
+    // Keep the preview state until the parent closes the dialog on success.
+    // This prevents losing the parsed tasks if the import fails.
   };
 
   const resetState = () => {

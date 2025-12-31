@@ -440,7 +440,7 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
 
   const bulkImportMutation = useMutation({
     mutationFn: async (tasksToCreate: Array<{ title: string; description?: string; due_date?: string; scheduled_time?: string; duration_minutes?: number; assignee?: string; priority?: string; category?: string }>) => {
-      const tasksData = tasksToCreate.map((task, index) => ({
+      const tasksData = tasksToCreate.map((task) => ({
         title: task.title,
         description: task.description || null,
         due_date: task.due_date || null,
@@ -451,7 +451,6 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
         category: task.category || null,
         status: "pending",
         client_id: selectedClient?.id || null,
-        order_index: index,
       }));
 
       const { error } = await supabase.from("tasks").insert(tasksData);
@@ -463,7 +462,14 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
       toast.success(`${count} משימות נוספו בהצלחה`);
       setBulkImportDialogOpen(false);
     },
-    onError: () => toast.error("שגיאה בייבוא משימות"),
+    onError: (err) => {
+      console.error("Bulk task import failed", err);
+      const message =
+        typeof err === "object" && err && "message" in err
+          ? String((err as any).message)
+          : "שגיאה בייבוא משימות";
+      toast.error(message);
+    },
   });
 
   const updateStatusMutation = useMutation({
