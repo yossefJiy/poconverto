@@ -39,7 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientContactsManager } from "@/components/client/ClientContactsManager";
-
+import { ClientTeamManager } from "@/components/client/ClientTeamManager";
 interface TeamMember {
   id: string;
   user_id: string | null;
@@ -250,9 +250,19 @@ export default function Team() {
   return (
     <MainLayout>
       <div className="p-4 md:p-8 space-y-8">
-        {/* Client Contacts Section - Always shown when a client is selected */}
+        {/* Assigned Agency Team Section - Show for all clients */}
         {selectedClient && (
           <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
+            <ClientTeamManager 
+              clientId={selectedClient.id} 
+              clientName={selectedClient.name} 
+            />
+          </div>
+        )}
+
+        {/* Client Contacts Section - Always shown when a client is selected */}
+        {selectedClient && (
+          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
             <ClientContactsManager 
               clientId={selectedClient.id} 
               clientName={selectedClient.name} 
@@ -262,7 +272,7 @@ export default function Team() {
 
         {/* Agency Team Section - Only for master account */}
         {isMasterAccount && (
-          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
             <PageHeader 
               title="צוות הסוכנות"
               description="ניהול חברי צוות JIY"
