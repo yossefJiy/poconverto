@@ -87,8 +87,8 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
         shared_by: userData.user?.id,
         share_type: "view",
         message: message || null,
-        email_sent: sendEmail,
-        email_sent_at: sendEmail ? new Date().toISOString() : null,
+        email_sent: Boolean(sendEmail && recipientEmail),
+        email_sent_at: sendEmail && recipientEmail ? new Date().toISOString() : null,
       }));
 
       const { error: shareError } = await supabase
@@ -256,7 +256,7 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
           </Button>
           <Button
             onClick={() => shareMutation.mutate()}
-            disabled={!selectedClientId || shareMutation.isPending}
+            disabled={!selectedClientId || (sendEmail && !recipientEmail) || shareMutation.isPending}
           >
             {shareMutation.isPending ? (
               <Loader2 className="w-4 h-4 ml-2 animate-spin" />
