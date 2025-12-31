@@ -71,3 +71,9 @@ verify_jwt = false
 
 [functions.task-reminder]
 verify_jwt = false
+
+[functions.send-task-email]
+verify_jwt = false
+
+[functions.send-dev-report]
+verify_jwt = false

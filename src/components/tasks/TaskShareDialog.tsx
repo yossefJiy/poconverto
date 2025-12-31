@@ -118,7 +118,7 @@ export function TaskShareDialog({ open, onOpenChange, tasks }: TaskShareDialogPr
           console.error("Email error:", emailError);
           // Don't fail the whole operation if email fails
           toast.warning("המשימות שותפו, אך היתה בעיה בשליחת המייל");
-          return;
+          return tasks.length; // Return count even if email fails
         }
       }
 
