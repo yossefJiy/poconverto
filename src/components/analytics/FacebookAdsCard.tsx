@@ -49,7 +49,7 @@ import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
 import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
 import { MetricWithComparison } from "./MetricWithComparison";
-import { formatNumber, formatCurrency } from "@/lib/analytics/formatters";
+import { formatNumber, formatCurrency, formatPercentage } from "@/lib/analytics/formatters";
 
 interface Campaign {
   id: string;
@@ -341,6 +341,7 @@ export function FacebookAdsCard({
   const avgCpc = totalClicks > 0 ? totalCost / totalClicks : 0;
   const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
   const frequency = totalReach > 0 ? totalImpressions / totalReach : 0;
+  const frequencyDisplay = Number.isFinite(frequency) ? frequency.toFixed(2) : "0.00";
 
   const summaryMetrics = [
     {
@@ -457,7 +458,7 @@ export function FacebookAdsCard({
         {/* Additional Stats Row */}
         <div className="grid grid-cols-4 gap-4 mt-4">
           <div className="bg-muted/30 rounded-lg p-3 text-center">
-            <p className="text-lg font-bold">{avgCtr.toFixed(2)}%</p>
+            <p className="text-lg font-bold">{formatPercentage(avgCtr, 2)}</p>
             <p className="text-xs text-muted-foreground">CTR</p>
           </div>
           <div className="bg-muted/30 rounded-lg p-3 text-center">
@@ -469,7 +470,7 @@ export function FacebookAdsCard({
             <p className="text-xs text-muted-foreground">עלות להמרה</p>
           </div>
           <div className="bg-muted/30 rounded-lg p-3 text-center">
-            <p className="text-lg font-bold">{frequency.toFixed(2)}</p>
+            <p className="text-lg font-bold">{frequencyDisplay}</p>
             <p className="text-xs text-muted-foreground">תדירות</p>
           </div>
         </div>
@@ -679,7 +680,7 @@ export function FacebookAdsCard({
                         <td className="py-2 px-2">{formatNumber(campaign.impressions)}</td>
                         <td className="py-2 px-2">{formatNumber(campaign.clicks)}</td>
                         <td className="py-2 px-2">{formatCurrency(campaign.cost)}</td>
-                        <td className="py-2 px-2">{campaign.ctr.toFixed(2)}%</td>
+                        <td className="py-2 px-2">{formatPercentage(campaign.ctr, 2)}</td>
                         <td className="py-2 px-2">{formatNumber(campaign.conversions)}</td>
                       </tr>
                     ))}
