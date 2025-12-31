@@ -13,7 +13,10 @@ import {
   DollarSign,
   Eye,
   MousePointer,
-  Loader2
+  Loader2,
+  Circle,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -129,13 +132,14 @@ export default function Dashboard() {
     enabled: !!selectedClient,
   });
 
-  // Fetch tasks with new fields for timeline
+  // Fetch tasks with new fields for timeline (excluding completed)
   const { data: recentTasks = [] } = useQuery({
     queryKey: ["recent-tasks", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
         .select("*, clients(name, is_master_account)")
+        .neq("status", "completed")
         .order("due_date", { ascending: true })
         .limit(50);
       if (selectedClient && !isMasterAccount) {
@@ -145,6 +149,34 @@ export default function Dashboard() {
       return data || [];
     },
   });
+
+  // Fetch completed tasks today for hours calculation
+  const { data: completedTodayTasks = [] } = useQuery({
+    queryKey: ["completed-today-dashboard", selectedClient?.id, isMasterAccount],
+    queryFn: async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      let query = supabase
+        .from("tasks")
+        .select("id, duration_minutes, client_id, updated_at")
+        .eq("status", "completed")
+        .gte("updated_at", todayStart.toISOString());
+      
+      if (selectedClient && !isMasterAccount) {
+        query = query.eq("client_id", selectedClient.id);
+      }
+      const { data } = await query;
+      return data || [];
+    },
+  });
+
+  // Calculate today's stats
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayTasksCount = recentTasks.filter((t: any) => t.due_date === todayStr).length;
+  const totalMinutesToday = completedTodayTasks.reduce((sum: number, t: any) => sum + (t.duration_minutes || 60), 0);
+  const hoursCompletedToday = (totalMinutesToday / 60).toFixed(1);
+  const clientsHandledToday = new Set(completedTodayTasks.map((t: any) => t.client_id).filter(Boolean)).size;
 
   const { data: recentCampaigns = [] } = useQuery({
     queryKey: ["recent-campaigns", selectedClient?.id, isMasterAccount],
@@ -187,6 +219,32 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
+            {/* Compact stats row */}
+            {isModuleEnabled("tasks") && (
+              <div className="flex items-center gap-3 flex-wrap mb-6">
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+                  <Circle className="w-3 h-3 text-primary" />
+                  <span className="font-medium">{stats?.openTasks || 0}</span>
+                  <span className="text-muted-foreground text-xs">פתוחות</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+                  <Calendar className="w-3 h-3 text-warning" />
+                  <span className="font-medium">{todayTasksCount}</span>
+                  <span className="text-muted-foreground text-xs">להיום</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+                  <Clock className="w-3 h-3 text-info" />
+                  <span className="font-medium">{hoursCompletedToday}</span>
+                  <span className="text-muted-foreground text-xs">שעות</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+                  <Users className="w-3 h-3 text-success" />
+                  <span className="font-medium">{clientsHandledToday}</span>
+                  <span className="text-muted-foreground text-xs">לקוחות</span>
+                </div>
+              </div>
+            )}
+
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {isModuleEnabled("campaigns") && (

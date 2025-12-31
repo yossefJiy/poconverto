@@ -31,6 +31,7 @@ import {
   Copy,
   Upload,
   Archive,
+  RotateCcw,
   LayoutDashboard,
   Settings2
 } from "lucide-react";
@@ -386,6 +387,18 @@ export default function Tasks() {
     },
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase.from("tasks").update({ status: "pending" }).eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("המשימה שוחזרה");
+    },
+    onError: () => toast.error("שגיאה בשחזור משימה"),
+  });
+
   const openDialog = (task?: Task) => {
     setSelectedTask(task || null);
     setFormTitle(task?.title || "");
@@ -584,12 +597,20 @@ export default function Tasks() {
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog()} title="משימה חדשה">
-                <Plus className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateMutation.mutate(task)} title="שכפל">
-                <Copy className="w-4 h-4" />
-              </Button>
+              {showArchive ? (
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-success hover:text-success" onClick={() => restoreMutation.mutate(task.id)} title="שחזר">
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog()} title="משימה חדשה">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateMutation.mutate(task)} title="שכפל">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog(task)}>
                 <Edit2 className="w-4 h-4" />
               </Button>
