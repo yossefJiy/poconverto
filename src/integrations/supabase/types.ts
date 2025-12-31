@@ -179,6 +179,99 @@ export type Database = {
           },
         ]
       }
+      client_credit_packages: {
+        Row: {
+          created_at: string | null
+          credits: number
+          hours_equivalent: number
+          id: string
+          is_default: boolean | null
+          name: string
+          price_per_hour: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits: number
+          hours_equivalent: number
+          id?: string
+          is_default?: boolean | null
+          name: string
+          price_per_hour?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits?: number
+          hours_equivalent?: number
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          price_per_hour?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      client_credits: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          notify_at_percentage: number | null
+          package_id: string | null
+          period_end: string
+          period_start: string
+          show_credits_to_client: boolean | null
+          total_credits: number
+          updated_at: string | null
+          used_credits: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notify_at_percentage?: number | null
+          package_id?: string | null
+          period_end?: string
+          period_start?: string
+          show_credits_to_client?: boolean | null
+          total_credits?: number
+          updated_at?: string | null
+          used_credits?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notify_at_percentage?: number | null
+          package_id?: string | null
+          period_end?: string
+          period_start?: string
+          show_credits_to_client?: boolean | null
+          total_credits?: number
+          updated_at?: string | null
+          used_credits?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_credits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credits_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "client_credit_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           access_level: string
@@ -276,6 +369,99 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      credit_alerts: {
+        Row: {
+          alert_type: string
+          client_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+        }
+        Insert: {
+          alert_type: string
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+        }
+        Update: {
+          alert_type?: string
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_alerts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          client_credit_id: string | null
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          credits_amount: number
+          description: string | null
+          id: string
+          task_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          client_credit_id?: string | null
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          credits_amount: number
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          client_credit_id?: string | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          credits_amount?: number
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_client_credit_id_fkey"
+            columns: ["client_credit_id"]
+            isOneToOne: false
+            referencedRelation: "client_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       integrations: {
         Row: {
@@ -580,6 +766,69 @@ export type Database = {
           },
         ]
       }
+      task_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          converted_task_id: string | null
+          created_at: string | null
+          description: string | null
+          estimated_credits: number | null
+          id: string
+          rejection_reason: string | null
+          requested_by: string | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          converted_task_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_credits?: number | null
+          id?: string
+          rejection_reason?: string | null
+          requested_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          converted_task_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_credits?: number | null
+          id?: string
+          rejection_reason?: string | null
+          requested_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_converted_task_id_fkey"
+            columns: ["converted_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee: string | null
@@ -587,6 +836,7 @@ export type Database = {
           category: string | null
           client_id: string | null
           created_at: string
+          credits_cost: number | null
           department: string | null
           description: string | null
           due_date: string | null
@@ -610,6 +860,7 @@ export type Database = {
           category?: string | null
           client_id?: string | null
           created_at?: string
+          credits_cost?: number | null
           department?: string | null
           description?: string | null
           due_date?: string | null
@@ -633,6 +884,7 @@ export type Database = {
           category?: string | null
           client_id?: string | null
           created_at?: string
+          credits_cost?: number | null
           department?: string | null
           description?: string | null
           due_date?: string | null
