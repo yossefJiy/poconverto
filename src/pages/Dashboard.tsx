@@ -35,6 +35,22 @@ export default function Dashboard() {
   const { selectedClient } = useClient();
   const { isModuleEnabled } = useClientModules();
 
+  // Get current user's team member name
+  const { data: currentTeamMember } = useQuery({
+    queryKey: ["current-team-member"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return null;
+      
+      const { data } = await supabase
+        .from("team")
+        .select("name")
+        .eq("email", user.email)
+        .single();
+      return data;
+    },
+  });
+
   // Check if this is the master account (JIY) using is_master_account column
   const { data: masterClient } = useQuery({
     queryKey: ["master-client"],
@@ -218,6 +234,13 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
+            {/* Greeting */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-foreground">
+                {currentTeamMember?.name || "שלום"}, רומא לא נבנתה ביום אחד, גם לא JIY
+              </h2>
+            </div>
+
             {/* Compact stats row */}
             {isModuleEnabled("tasks") && (
               <div className="flex items-center gap-3 flex-wrap mb-6">
