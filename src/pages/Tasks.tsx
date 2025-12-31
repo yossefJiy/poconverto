@@ -163,6 +163,21 @@ export default function Tasks() {
   const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
   const [duplicateDate, setDuplicateDate] = useState<Date | undefined>(undefined);
 
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['title']));
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
+
   // Form state
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -178,7 +193,47 @@ export default function Tasks() {
   const [formNotificationSms, setFormNotificationSms] = useState(false);
   const [formNotificationPhone, setFormNotificationPhone] = useState("");
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
-  
+
+// Collapsible Field Component for innovative dialog
+interface CollapsibleFieldProps {
+  label: string;
+  icon: React.ReactNode;
+  isExpanded: boolean;
+  onToggle: () => void;
+  hasValue?: boolean;
+  children: React.ReactNode;
+}
+
+const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, children }: CollapsibleFieldProps) => (
+  <div className="border border-border rounded-lg overflow-hidden transition-all duration-200">
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "w-full flex items-center justify-between p-3 text-sm transition-colors",
+        isExpanded ? "bg-muted/50" : "bg-muted/30 hover:bg-muted/50",
+        hasValue && !isExpanded && "border-r-2 border-primary"
+      )}
+    >
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+        {hasValue && !isExpanded && (
+          <span className="w-2 h-2 rounded-full bg-primary" />
+        )}
+      </div>
+      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
+    </button>
+    <div className={cn(
+      "overflow-hidden transition-all duration-200",
+      isExpanded ? "max-h-96 p-3 pt-0" : "max-h-0"
+    )}>
+      <div className="pt-3">
+        {children}
+      </div>
+    </div>
+  </div>
+);
 
   // Fetch ALL tasks (or filtered by client if selected)
   const { data: allClients = [] } = useQuery({
@@ -946,26 +1001,57 @@ export default function Tasks() {
         )}
       </div>
 
-      {/* Edit/Create Dialog */}
+      {/* Edit/Create Dialog - Innovative Collapsible Design */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+          {/* Header with centered title and save button on left */}
+          <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-background z-10">
+            <Button 
+              onClick={handleSave} 
+              disabled={saveMutation.isPending || !formTitle.trim()}
+              size="sm"
+              className="gap-2"
+            >
+              {saveMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              שמור
+            </Button>
+            <DialogTitle className="text-center flex-1 font-semibold">
               {selectedTask ? "עריכת משימה" : "משימה חדשה"}
             </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+            <div className="w-16" /> {/* Spacer for centering */}
+          </div>
+
+          <div className="p-4 space-y-2">
+            {/* Title - Always visible */}
             <div className="space-y-2">
-              <Label>כותרת</Label>
-              <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="כותרת המשימה" />
+              <Input 
+                value={formTitle} 
+                onChange={(e) => setFormTitle(e.target.value)} 
+                placeholder="כותרת המשימה" 
+                className="text-lg font-medium border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+              />
             </div>
-            <div className="space-y-2">
-              <Label>תיאור</Label>
+
+            {/* Description - Collapsible */}
+            <CollapsibleField
+              label="תיאור"
+              icon={<Edit2 className="w-4 h-4" />}
+              isExpanded={expandedSections.has('description')}
+              onToggle={() => toggleSection('description')}
+              hasValue={!!formDescription}
+            >
               <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="תיאור המשימה" rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>סטטוס</Label>
+            </CollapsibleField>
+
+            {/* Status & Priority - Collapsible */}
+            <CollapsibleField
+              label="סטטוס ועדיפות"
+              icon={<Circle className="w-4 h-4" />}
+              isExpanded={expandedSections.has('status')}
+              onToggle={() => toggleSection('status')}
+              hasValue={formStatus !== 'pending' || formPriority !== 'medium'}
+            >
+              <div className="grid grid-cols-2 gap-3">
                 <Select value={formStatus} onValueChange={setFormStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -974,9 +1060,6 @@ export default function Tasks() {
                     <SelectItem value="completed">הושלם</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>עדיפות</Label>
                 <Select value={formPriority} onValueChange={setFormPriority}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -986,10 +1069,17 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>אחראי</Label>
+            </CollapsibleField>
+
+            {/* Assignee & Department - Collapsible */}
+            <CollapsibleField
+              label="אחראי ומחלקה"
+              icon={<User className="w-4 h-4" />}
+              isExpanded={expandedSections.has('assignee')}
+              onToggle={() => toggleSection('assignee')}
+              hasValue={!!formAssignee || !!formDepartment}
+            >
+              <div className="grid grid-cols-2 gap-3">
                 <Select value={formAssignee || "none"} onValueChange={(v) => handleAssigneeChange(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="בחר אחראי" /></SelectTrigger>
                   <SelectContent>
@@ -997,9 +1087,6 @@ export default function Tasks() {
                     {teamMembers.map((m) => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>מחלקה</Label>
                 <Select value={formDepartment || "none"} onValueChange={(v) => handleDepartmentChange(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="בחר מחלקה" /></SelectTrigger>
                   <SelectContent>
@@ -1008,18 +1095,22 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>תאריך יעד</Label>
+            </CollapsibleField>
+
+            {/* Date & Time - Collapsible */}
+            <CollapsibleField
+              label="תאריך ושעה"
+              icon={<Calendar className="w-4 h-4" />}
+              isExpanded={expandedSections.has('datetime')}
+              onToggle={() => toggleSection('datetime')}
+              hasValue={!!formDueDate || !!formScheduledTime}
+            >
+              <div className="grid grid-cols-2 gap-3">
                 <StyledDatePicker
                   value={formDueDate ? parseISO(formDueDate) : undefined}
                   onChange={(date) => setFormDueDate(date ? format(date, "yyyy-MM-dd") : "")}
                   placeholder="בחר תאריך"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>שעה מתוכננת</Label>
                 <Select value={formScheduledTime || "none"} onValueChange={(v) => setFormScheduledTime(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="בחר שעה" /></SelectTrigger>
                   <SelectContent>
@@ -1028,9 +1119,16 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>קטגוריה</Label>
+            </CollapsibleField>
+
+            {/* Category - Collapsible */}
+            <CollapsibleField
+              label="קטגוריה"
+              icon={<ListTree className="w-4 h-4" />}
+              isExpanded={expandedSections.has('category')}
+              onToggle={() => toggleSection('category')}
+              hasValue={!!formCategory}
+            >
               <Select value={formCategory || "none"} onValueChange={(v) => handleCategoryChange(v === "none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
                 <SelectContent>
@@ -1038,71 +1136,55 @@ export default function Tasks() {
                   {categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </CollapsibleField>
 
-            {/* Reminder Section */}
-            <div className="border-t border-border pt-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-muted-foreground" />
-                <Label className="font-medium">תזכורת והתראות</Label>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>שעת תזכורת</Label>
+            {/* Reminders - Collapsible */}
+            <CollapsibleField
+              label="תזכורת והתראות"
+              icon={<Bell className="w-4 h-4" />}
+              isExpanded={expandedSections.has('reminders')}
+              onToggle={() => toggleSection('reminders')}
+              hasValue={!!formReminderAt || formNotificationEmail || formNotificationSms}
+            >
+              <div className="space-y-3">
                 <Input 
                   type="datetime-local" 
                   value={formReminderAt} 
                   onChange={(e) => setFormReminderAt(e.target.value)} 
+                  placeholder="שעת תזכורת"
                 />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <Label>שלח מייל</Label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">שלח מייל</span>
+                  </div>
+                  <Switch checked={formNotificationEmail} onCheckedChange={setFormNotificationEmail} />
                 </div>
-                <Switch 
-                  checked={formNotificationEmail} 
-                  onCheckedChange={setFormNotificationEmail} 
-                />
-              </div>
-
-              {formNotificationEmail && (
-                <Input 
-                  type="email" 
-                  placeholder="כתובת מייל" 
-                  value={formNotificationEmailAddress} 
-                  onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
-                />
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <Label>שלח SMS</Label>
+                {formNotificationEmail && (
+                  <Input 
+                    type="email" 
+                    placeholder="כתובת מייל" 
+                    value={formNotificationEmailAddress} 
+                    onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
+                  />
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">שלח SMS</span>
+                  </div>
+                  <Switch checked={formNotificationSms} onCheckedChange={setFormNotificationSms} />
                 </div>
-                <Switch 
-                  checked={formNotificationSms} 
-                  onCheckedChange={setFormNotificationSms} 
-                />
+                {formNotificationSms && (
+                  <Input 
+                    type="tel" 
+                    placeholder="מספר טלפון" 
+                    value={formNotificationPhone} 
+                    onChange={(e) => setFormNotificationPhone(e.target.value)} 
+                  />
+                )}
               </div>
-
-              {formNotificationSms && (
-                <Input 
-                  type="tel" 
-                  placeholder="מספר טלפון" 
-                  value={formNotificationPhone} 
-                  onChange={(e) => setFormNotificationPhone(e.target.value)} 
-                />
-              )}
-            </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={closeDialog}>ביטול</Button>
-              <Button onClick={handleSave} disabled={saveMutation.isPending}>
-                {saveMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                שמור
-              </Button>
-            </DialogFooter>
+            </CollapsibleField>
           </div>
         </DialogContent>
       </Dialog>
