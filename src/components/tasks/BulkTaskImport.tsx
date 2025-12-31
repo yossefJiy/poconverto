@@ -22,7 +22,8 @@ import {
   Users,
   Calendar,
   Target,
-  Sparkles
+  Sparkles,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +118,8 @@ interface ParsedTask {
   title: string;
   description?: string;
   due_date?: string;
+  scheduled_time?: string;
+  duration_minutes?: number;
   assignee?: string;
   priority?: string;
   category?: string;
@@ -127,7 +130,16 @@ interface ParsedTask {
 interface BulkTaskImportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImport: (tasks: Array<{ title: string; description?: string; due_date?: string; assignee?: string; priority?: string; category?: string }>) => void;
+  onImport: (tasks: Array<{ 
+    title: string; 
+    description?: string; 
+    due_date?: string; 
+    scheduled_time?: string;
+    duration_minutes?: number;
+    assignee?: string; 
+    priority?: string; 
+    category?: string 
+  }>) => void;
   teamMembers?: Array<{ id: string; name: string }>;
   isLoading?: boolean;
 }
@@ -144,6 +156,25 @@ const categoryOptions = [
   "מנהל מוצר",
 ];
 
+const durationOptions = [
+  { value: 15, label: "15 דקות" },
+  { value: 30, label: "30 דקות" },
+  { value: 45, label: "45 דקות" },
+  { value: 60, label: "שעה" },
+  { value: 90, label: "שעה וחצי" },
+  { value: 120, label: "שעתיים" },
+  { value: 180, label: "3 שעות" },
+  { value: 240, label: "4 שעות" },
+];
+
+const timeOptions = [
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
+  "20:00", "20:30", "21:00", "21:30", "22:00"
+];
+
 export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [], isLoading }: BulkTaskImportProps) {
   const [activeTab, setActiveTab] = useState<"templates" | "text" | "file" | "url">("templates");
   const [textInput, setTextInput] = useState("");
@@ -152,6 +183,8 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   const [defaultPriority, setDefaultPriority] = useState("medium");
   const [defaultAssignee, setDefaultAssignee] = useState("");
   const [defaultCategory, setDefaultCategory] = useState("");
+  const [defaultDuration, setDefaultDuration] = useState<number>(60);
+  const [defaultTime, setDefaultTime] = useState("");
   const [googleDocsUrl, setGoogleDocsUrl] = useState("");
   const [urlError, setUrlError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -202,21 +235,28 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   };
 
   // Parse text input - each line is a task
+  // Format: כותרת, תיאור, תאריך, שעה, אחראי, עדיפות, קטגוריה, משך
   const parseTextInput = useCallback((text: string): ParsedTask[] => {
     const lines = text.split("\n").filter(line => line.trim());
     return lines.map(line => {
       const trimmed = line.trim();
-      // Check if line has CSV-like format (title, description, date, assignee)
+      // Check if line has CSV-like format
       const parts = trimmed.split(/[,\t]/).map(p => p.trim());
       
       if (parts.length >= 2) {
+        const priority = parts[5] || defaultPriority;
+        const validPriority = ["low", "medium", "high"].includes(priority) ? priority : defaultPriority;
+        const duration = parts[7] ? parseInt(parts[7]) : defaultDuration;
+        
         return {
           title: parts[0],
           description: parts[1] || undefined,
-          due_date: parts[2] || undefined,
-          assignee: parts[3] || defaultAssignee || undefined,
-          priority: defaultPriority,
-          category: defaultCategory || undefined,
+          due_date: parts[2] ? formatDate(parts[2]) : undefined,
+          scheduled_time: parts[3] || defaultTime || undefined,
+          assignee: parts[4] || defaultAssignee || undefined,
+          priority: validPriority,
+          category: parts[6] || defaultCategory || undefined,
+          duration_minutes: isNaN(duration) ? defaultDuration : duration,
           valid: !!parts[0],
           error: !parts[0] ? "חסרה כותרת" : undefined,
         };
@@ -227,11 +267,13 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
         priority: defaultPriority,
         assignee: defaultAssignee || undefined,
         category: defaultCategory || undefined,
+        scheduled_time: defaultTime || undefined,
+        duration_minutes: defaultDuration,
         valid: !!trimmed,
         error: !trimmed ? "שורה ריקה" : undefined,
       };
     });
-  }, [defaultPriority, defaultAssignee, defaultCategory]);
+  }, [defaultPriority, defaultAssignee, defaultCategory, defaultDuration, defaultTime]);
 
   // Parse CSV/Excel content
   const parseCSVContent = useCallback((content: string): ParsedTask[] => {
@@ -247,19 +289,24 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
     
     return dataLines.filter(line => line.trim()).map(line => {
       const parts = line.split(/[,\t]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+      const priority = parts[5] || defaultPriority;
+      const validPriority = ["low", "medium", "high"].includes(priority) ? priority : defaultPriority;
+      const duration = parts[7] ? parseInt(parts[7]) : defaultDuration;
       
       return {
         title: parts[0] || "",
         description: parts[1] || undefined,
         due_date: parts[2] ? formatDate(parts[2]) : undefined,
-        assignee: parts[3] || defaultAssignee || undefined,
-        priority: parts[4] || defaultPriority,
-        category: parts[5] || defaultCategory || undefined,
+        scheduled_time: parts[3] || defaultTime || undefined,
+        assignee: parts[4] || defaultAssignee || undefined,
+        priority: validPriority,
+        category: parts[6] || defaultCategory || undefined,
+        duration_minutes: isNaN(duration) ? defaultDuration : duration,
         valid: !!parts[0],
         error: !parts[0] ? "חסרה כותרת" : undefined,
       };
     });
-  }, [defaultPriority, defaultAssignee, defaultCategory]);
+  }, [defaultPriority, defaultAssignee, defaultCategory, defaultDuration, defaultTime]);
 
   // Format date to YYYY-MM-DD
   const formatDate = (dateStr: string): string | undefined => {
@@ -320,7 +367,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   }, []);
 
   // Update task with validation
-  const updateTaskWithValidation = useCallback((index: number, field: keyof ParsedTask, value: string) => {
+  const updateTaskWithValidation = useCallback((index: number, field: keyof ParsedTask, value: string | number) => {
     setParsedTasks(prev => prev.map((task, i) => {
       if (i !== index) return task;
       const updatedTask = { ...task, [field]: value };
@@ -349,19 +396,14 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
     setParsedTasks(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Update task in preview
-  const updateTask = (index: number, field: keyof ParsedTask, value: string) => {
-    setParsedTasks(prev => prev.map((task, i) => 
-      i === index ? { ...task, [field]: value, valid: field === "title" ? !!value : task.valid } : task
-    ));
-  };
-
   // Handle import
   const handleImport = () => {
     const validTasks = parsedTasks.filter(t => t.valid).map(t => ({
       title: t.title,
       description: t.description,
       due_date: t.due_date,
+      scheduled_time: t.scheduled_time,
+      duration_minutes: t.duration_minutes,
       assignee: t.assignee,
       priority: t.priority,
       category: t.category,
@@ -388,7 +430,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -437,6 +479,8 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                                 ...t,
                                 valid: true,
                                 assignee: defaultAssignee || undefined,
+                                scheduled_time: defaultTime || undefined,
+                                duration_minutes: defaultDuration,
                               }));
                               setParsedTasks(tasks);
                               setShowPreview(true);
@@ -479,9 +523,9 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
               </TabsContent>
 
               {/* Default values section */}
-              <div className="grid grid-cols-3 gap-3 py-4 border-b border-border">
+              <div className="grid grid-cols-5 gap-3 py-4 border-b border-border">
                 <div>
-                  <Label className="text-xs text-muted-foreground">עדיפות ברירת מחדל</Label>
+                  <Label className="text-xs text-muted-foreground">עדיפות</Label>
                   <Select value={defaultPriority} onValueChange={setDefaultPriority}>
                     <SelectTrigger className="h-9 mt-1">
                       <SelectValue />
@@ -494,7 +538,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">אחראי ברירת מחדל</Label>
+                  <Label className="text-xs text-muted-foreground">אחראי</Label>
                   <Select value={defaultAssignee || "none"} onValueChange={(v) => setDefaultAssignee(v === "none" ? "" : v)}>
                     <SelectTrigger className="h-9 mt-1">
                       <SelectValue placeholder="לא נבחר" />
@@ -508,7 +552,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">קטגוריה ברירת מחדל</Label>
+                  <Label className="text-xs text-muted-foreground">קטגוריה</Label>
                   <Select value={defaultCategory || "none"} onValueChange={(v) => setDefaultCategory(v === "none" ? "" : v)}>
                     <SelectTrigger className="h-9 mt-1">
                       <SelectValue placeholder="לא נבחרה" />
@@ -521,20 +565,55 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">שעה</Label>
+                  <Select value={defaultTime || "none"} onValueChange={(v) => setDefaultTime(v === "none" ? "" : v)}>
+                    <SelectTrigger className="h-9 mt-1">
+                      <SelectValue placeholder="לא נבחרה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">לא נבחרה</SelectItem>
+                      {timeOptions.map(time => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">משך</Label>
+                  <Select value={String(defaultDuration)} onValueChange={(v) => setDefaultDuration(parseInt(v))}>
+                    <SelectTrigger className="h-9 mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {durationOptions.map(opt => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <TabsContent value="text" className="flex-1 mt-4">
                 <div className="space-y-3">
                   <div className="text-sm text-muted-foreground">
                     הדביקו רשימת משימות - כל שורה תהפוך למשימה נפרדת.
-                    <br />
-                    <span className="text-xs">פורמט אופציונלי: כותרת, תיאור, תאריך, אחראי (מופרדים בפסיק או טאב)</span>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
+                    <div className="font-medium text-foreground mb-2">פורמט אופציונלי (מופרדים בפסיק או טאב):</div>
+                    <div className="text-muted-foreground">כותרת, תיאור, תאריך, שעה, אחראי, עדיפות, קטגוריה, משך</div>
+                    <div className="text-muted-foreground mt-2">דוגמאות:</div>
+                    <div className="font-mono text-xs bg-background rounded p-2 mt-1">
+                      <div>פגישת לקוח</div>
+                      <div>בדיקת קמפיין, בדיקת ביצועים, 25/12/2024, 10:00, יוסי, high, קמפיינים ופרסום, 60</div>
+                      <div>עדכון אתר, שינויי עיצוב, 26/12/2024</div>
+                    </div>
                   </div>
                   <Textarea 
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    placeholder="משימה ראשונה&#10;משימה שנייה, תיאור, 25/12/2024, שם העובד&#10;משימה שלישית"
-                    className="min-h-[200px] font-mono text-sm"
+                    placeholder="משימה ראשונה&#10;משימה שנייה, תיאור, 25/12/2024, 10:00, שם העובד&#10;משימה שלישית"
+                    className="min-h-[180px] font-mono text-sm"
                     dir="rtl"
                   />
                   <Button onClick={handleParseText} disabled={!textInput.trim()} className="w-full">
@@ -548,13 +627,16 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                 <div className="space-y-4">
                   <div className="text-sm text-muted-foreground">
                     העלו קובץ Excel או CSV עם העמודות הבאות:
-                    <br />
-                    <Badge variant="outline" className="mt-2 text-xs">כותרת (חובה)</Badge>
-                    <Badge variant="outline" className="mr-1 text-xs">תיאור</Badge>
-                    <Badge variant="outline" className="mr-1 text-xs">תאריך</Badge>
-                    <Badge variant="outline" className="mr-1 text-xs">אחראי</Badge>
-                    <Badge variant="outline" className="mr-1 text-xs">עדיפות</Badge>
-                    <Badge variant="outline" className="mr-1 text-xs">קטגוריה</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge variant="outline" className="text-xs">כותרת (חובה)</Badge>
+                    <Badge variant="outline" className="text-xs">תיאור</Badge>
+                    <Badge variant="outline" className="text-xs">תאריך</Badge>
+                    <Badge variant="outline" className="text-xs">שעה</Badge>
+                    <Badge variant="outline" className="text-xs">אחראי</Badge>
+                    <Badge variant="outline" className="text-xs">עדיפות</Badge>
+                    <Badge variant="outline" className="text-xs">קטגוריה</Badge>
+                    <Badge variant="outline" className="text-xs">משך (דקות)</Badge>
                   </div>
                   
                   <div 
@@ -623,8 +705,8 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
             </Tabs>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Badge variant="default" className="bg-success/20 text-success">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -642,26 +724,29 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
               </Button>
             </div>
 
-            <ScrollArea className="flex-1 -mx-6 px-6">
-              <div className="space-y-2">
-                {parsedTasks.map((task, index) => (
-                  <div 
-                    key={index}
-                    className={cn(
-                      "border rounded-lg p-3 transition-colors",
-                      task.valid ? "border-border bg-card" : "border-destructive/50 bg-destructive/5"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 space-y-2">
-                        <Input 
-                          value={task.title}
-                          onChange={(e) => updateTaskWithValidation(index, "title", e.target.value)}
-                          placeholder="כותרת משימה"
-                          className={cn("font-medium", !task.valid && "border-destructive")}
-                          maxLength={200}
-                        />
-                        <div className="grid grid-cols-4 gap-2">
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2 pr-4">
+                  {parsedTasks.map((task, index) => (
+                    <div 
+                      key={index}
+                      className={cn(
+                        "border rounded-lg p-3 transition-colors",
+                        task.valid ? "border-border bg-card" : "border-destructive/50 bg-destructive/5"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 space-y-3">
+                          {/* Row 1: Title */}
+                          <Input 
+                            value={task.title}
+                            onChange={(e) => updateTaskWithValidation(index, "title", e.target.value)}
+                            placeholder="כותרת משימה"
+                            className={cn("font-medium", !task.valid && "border-destructive")}
+                            maxLength={200}
+                          />
+                          
+                          {/* Row 2: Description */}
                           <Input 
                             value={task.description || ""}
                             onChange={(e) => updateTaskWithValidation(index, "description", e.target.value)}
@@ -669,61 +754,134 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                             className="text-sm"
                             maxLength={1000}
                           />
-                          <Input 
-                            type="date"
-                            value={task.due_date || ""}
-                            onChange={(e) => updateTaskWithValidation(index, "due_date", e.target.value)}
-                            className="text-sm"
-                          />
-                          <Select 
-                            value={task.assignee || "none"} 
-                            onValueChange={(v) => updateTaskWithValidation(index, "assignee", v === "none" ? "" : v)}
-                          >
-                            <SelectTrigger className="text-sm">
-                              <SelectValue placeholder="אחראי" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">לא נבחר</SelectItem>
-                              {teamMembers.map(m => (
-                                <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select 
-                            value={task.priority || "medium"} 
-                            onValueChange={(v) => updateTaskWithValidation(index, "priority", v)}
-                          >
-                            <SelectTrigger className="text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">נמוכה</SelectItem>
-                              <SelectItem value="medium">בינונית</SelectItem>
-                              <SelectItem value="high">גבוהה</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          
+                          {/* Row 3: Date, Time, Duration */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">תאריך</Label>
+                              <Input 
+                                type="date"
+                                value={task.due_date || ""}
+                                onChange={(e) => updateTaskWithValidation(index, "due_date", e.target.value)}
+                                className="text-sm mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">שעה</Label>
+                              <Select 
+                                value={task.scheduled_time || "none"} 
+                                onValueChange={(v) => updateTaskWithValidation(index, "scheduled_time", v === "none" ? "" : v)}
+                              >
+                                <SelectTrigger className="text-sm mt-1">
+                                  <SelectValue placeholder="לא נבחרה" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">לא נבחרה</SelectItem>
+                                  {timeOptions.map(time => (
+                                    <SelectItem key={time} value={time}>
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {time}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">משך</Label>
+                              <Select 
+                                value={String(task.duration_minutes || 60)} 
+                                onValueChange={(v) => updateTaskWithValidation(index, "duration_minutes", parseInt(v))}
+                              >
+                                <SelectTrigger className="text-sm mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {durationOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {/* Row 4: Assignee, Priority, Category */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">אחראי</Label>
+                              <Select 
+                                value={task.assignee || "none"} 
+                                onValueChange={(v) => updateTaskWithValidation(index, "assignee", v === "none" ? "" : v)}
+                              >
+                                <SelectTrigger className="text-sm mt-1">
+                                  <SelectValue placeholder="אחראי" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">לא נבחר</SelectItem>
+                                  {teamMembers.map(m => (
+                                    <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">עדיפות</Label>
+                              <Select 
+                                value={task.priority || "medium"} 
+                                onValueChange={(v) => updateTaskWithValidation(index, "priority", v)}
+                              >
+                                <SelectTrigger className="text-sm mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="low">נמוכה</SelectItem>
+                                  <SelectItem value="medium">בינונית</SelectItem>
+                                  <SelectItem value="high">גבוהה</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">קטגוריה</Label>
+                              <Select 
+                                value={task.category || "none"} 
+                                onValueChange={(v) => updateTaskWithValidation(index, "category", v === "none" ? "" : v)}
+                              >
+                                <SelectTrigger className="text-sm mt-1">
+                                  <SelectValue placeholder="קטגוריה" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">לא נבחרה</SelectItem>
+                                  {categoryOptions.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {task.error && (
+                            <p className="text-xs text-destructive">{task.error}</p>
+                          )}
                         </div>
-                        {task.error && (
-                          <p className="text-xs text-destructive">{task.error}</p>
-                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeTask(index)}
+                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeTask(index)}
-                        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
         )}
 
-        <DialogFooter className="mt-4 pt-4 border-t border-border">
+        <DialogFooter className="mt-4 pt-4 border-t border-border flex-shrink-0">
           <Button variant="outline" onClick={() => handleClose(false)}>
             ביטול
           </Button>

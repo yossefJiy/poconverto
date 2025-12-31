@@ -439,11 +439,13 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
   });
 
   const bulkImportMutation = useMutation({
-    mutationFn: async (tasksToCreate: Array<{ title: string; description?: string; due_date?: string; assignee?: string; priority?: string; category?: string }>) => {
+    mutationFn: async (tasksToCreate: Array<{ title: string; description?: string; due_date?: string; scheduled_time?: string; duration_minutes?: number; assignee?: string; priority?: string; category?: string }>) => {
       const tasksData = tasksToCreate.map((task, index) => ({
         title: task.title,
         description: task.description || null,
         due_date: task.due_date || null,
+        scheduled_time: task.scheduled_time || null,
+        duration_minutes: task.duration_minutes || 60,
         assignee: task.assignee || null,
         priority: task.priority || "medium",
         category: task.category || null,
