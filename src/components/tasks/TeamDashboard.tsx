@@ -246,12 +246,42 @@ export function TeamDashboard() {
     );
   }
 
+  // Calculate stats
+  const openTasksCount = tasks.length;
+  const todayTasksCount = todayTasks.length;
+  const hoursCompletedToday = 0; // Would need completed tasks data with duration
+  const clientsHandledToday = new Set(tasks.filter(t => t.due_date === todayStr).map((t: any) => t.client_id).filter(Boolean)).size;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Compact stats row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+          <Circle className="w-3 h-3 text-primary" />
+          <span className="font-medium">{openTasksCount}</span>
+          <span className="text-muted-foreground text-xs">פתוחות</span>
+        </div>
+        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+          <Calendar className="w-3 h-3 text-warning" />
+          <span className="font-medium">{todayTasksCount}</span>
+          <span className="text-muted-foreground text-xs">להיום</span>
+        </div>
+        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+          <Clock className="w-3 h-3 text-info" />
+          <span className="font-medium">{hoursCompletedToday}</span>
+          <span className="text-muted-foreground text-xs">שעות</span>
+        </div>
+        <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+          <User className="w-3 h-3 text-success" />
+          <span className="font-medium">{clientsHandledToday}</span>
+          <span className="text-muted-foreground text-xs">לקוחות</span>
+        </div>
+      </div>
+
       {/* Header with greeting */}
-      <div className="glass rounded-xl p-6">
-        <h1 className="text-2xl font-bold mb-1">{greeting}, {displayName}!</h1>
-        <p className="text-muted-foreground">
+      <div className="glass rounded-xl p-4">
+        <h1 className="text-xl font-bold mb-0.5">{greeting}, {displayName}!</h1>
+        <p className="text-sm text-muted-foreground">
           יום {dayOfWeek}, {dayOfMonth} ב{month} {year}
         </p>
       </div>
@@ -347,21 +377,6 @@ export function TeamDashboard() {
         </div>
       )}
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-primary">{todayTasks.length}</div>
-          <div className="text-sm text-muted-foreground">משימות להיום</div>
-        </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-warning">{upcomingTasks.length}</div>
-          <div className="text-sm text-muted-foreground">משימות קרובות</div>
-        </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-destructive">{overdueTasks.length}</div>
-          <div className="text-sm text-muted-foreground">באיחור</div>
-        </div>
-      </div>
     </div>
   );
 }
