@@ -23,17 +23,24 @@ import {
   Calendar,
   Target,
   Sparkles,
-  Clock
+  Clock,
+  Package,
+  PartyPopper,
+  RefreshCcw,
+  Plus,
+  Save,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Task templates
-const taskTemplates = [
+const defaultTaskTemplates = [
   {
     id: "campaign-launch",
     name: "השקת קמפיין",
     icon: Megaphone,
     description: "רשימת משימות להשקת קמפיין פרסומי",
+    isCustom: false,
     tasks: [
       { title: "הגדרת יעדי קמפיין ו-KPIs", category: "אסטרטגיה ותכנון", priority: "high" },
       { title: "בחירת קהלי יעד וסגמנטציה", category: "אסטרטגיה ותכנון", priority: "high" },
@@ -48,10 +55,72 @@ const taskTemplates = [
     ]
   },
   {
+    id: "product-launch",
+    name: "השקת מוצר",
+    icon: Package,
+    description: "תהליך מלא להשקת מוצר חדש",
+    isCustom: false,
+    tasks: [
+      { title: "מחקר שוק ותחרות", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "הגדרת USP ומסרים", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "צילום מוצר מקצועי", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "עיצוב דף נחיתה למוצר", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "כתיבת תיאורי מוצר", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "הכנת קמפיין לונצ'", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "יצירת תוכן לסושיאל", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "הכנת מיילים לרשימת תפוצה", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "הגדרת מבצע השקה", category: "לקוחות ומכירות", priority: "high" },
+      { title: "בניית funnel המכירה", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "תיאום עם משפיענים", category: "לקוחות ומכירות", priority: "medium" },
+      { title: "מעקב אחרי ביצועי לונצ'", category: "ניתוח נתונים", priority: "high" },
+    ]
+  },
+  {
+    id: "event",
+    name: "אירוע",
+    icon: PartyPopper,
+    description: "ניהול וקידום אירוע",
+    isCustom: false,
+    tasks: [
+      { title: "הגדרת מטרות ויעדי האירוע", category: "אסטרטגיה ותכנון", priority: "high" },
+      { title: "קביעת תאריך ומיקום", category: "תפעול וניהול", priority: "high" },
+      { title: "בניית תקציב אירוע", category: "תפעול וניהול", priority: "high" },
+      { title: "עיצוב זמנת אירוע", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "בניית דף הרשמה", category: "פיתוח ומערכות", priority: "high" },
+      { title: "קמפיין פרסום לאירוע", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "שליחת הזמנות במייל", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "פרסום בסושיאל", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "תזכורת למשתתפים", category: "תפעול וניהול", priority: "medium" },
+      { title: "הכנת חומרים לאירוע", category: "קריאייטיב ועיצוב", priority: "medium" },
+      { title: "צילום ותיעוד האירוע", category: "קריאייטיב ועיצוב", priority: "medium" },
+      { title: "סיכום ופולואפ למשתתפים", category: "לקוחות ומכירות", priority: "high" },
+    ]
+  },
+  {
+    id: "remarketing",
+    name: "קמפיין רימרקטינג",
+    icon: RefreshCcw,
+    description: "הקמת קמפיין רימרקטינג אפקטיבי",
+    isCustom: false,
+    tasks: [
+      { title: "הגדרת קהלי רימרקטינג", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "בדיקת פיקסלים וטאגים", category: "ניתוח נתונים", priority: "high" },
+      { title: "יצירת קהלים לפי התנהגות", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "עיצוב באנרים לרימרקטינג", category: "קריאייטיב ועיצוב", priority: "high" },
+      { title: "כתיבת מסרים מותאמים", category: "תוכן ו-SEO", priority: "medium" },
+      { title: "הגדרת תקציב ובידים", category: "קמפיינים ופרסום", priority: "high" },
+      { title: "הגדרת סיקוונס מודעות", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "קביעת תדירות הצגה", category: "קמפיינים ופרסום", priority: "medium" },
+      { title: "הגדרת המרות ו-attribution", category: "ניתוח נתונים", priority: "high" },
+      { title: "מעקב ואופטימיזציה", category: "ניתוח נתונים", priority: "high" },
+    ]
+  },
+  {
     id: "new-client",
     name: "הקמת לקוח חדש",
     icon: Users,
     description: "תהליך אונבורדינג ללקוח חדש",
+    isCustom: false,
     tasks: [
       { title: "פגישת היכרות ובריף", category: "לקוחות ומכירות", priority: "high" },
       { title: "איסוף נכסים דיגיטליים (לוגו, צבעים, פונטים)", category: "קריאייטיב ועיצוב", priority: "high" },
@@ -68,6 +137,7 @@ const taskTemplates = [
     name: "דו״ח חודשי",
     icon: Calendar,
     description: "הכנת דו״ח ביצועים חודשי",
+    isCustom: false,
     tasks: [
       { title: "איסוף נתוני קמפיינים", category: "ניתוח נתונים", priority: "high" },
       { title: "ניתוח Google Analytics", category: "ניתוח נתונים", priority: "high" },
@@ -84,6 +154,7 @@ const taskTemplates = [
     name: "השקת אתר",
     icon: Target,
     description: "רשימת בדיקות להשקת אתר",
+    isCustom: false,
     tasks: [
       { title: "בדיקת תאימות מובייל", category: "פיתוח ומערכות", priority: "high" },
       { title: "בדיקת מהירות טעינה", category: "פיתוח ומערכות", priority: "high" },
@@ -101,6 +172,7 @@ const taskTemplates = [
     name: "תוכנית תוכן",
     icon: Sparkles,
     description: "הכנת תוכנית תוכן לסושיאל",
+    isCustom: false,
     tasks: [
       { title: "מחקר מתחרים", category: "אסטרטגיה ותכנון", priority: "high" },
       { title: "הגדרת נושאי תוכן מרכזיים", category: "אסטרטגיה ותכנון", priority: "high" },
@@ -125,6 +197,14 @@ interface ParsedTask {
   category?: string;
   valid: boolean;
   error?: string;
+}
+
+interface CustomTemplate {
+  id: string;
+  name: string;
+  description: string;
+  isCustom: true;
+  tasks: Array<{ title: string; category?: string; priority?: string }>;
 }
 
 interface BulkTaskImportProps {
@@ -175,6 +255,8 @@ const timeOptions = [
   "20:00", "20:30", "21:00", "21:30", "22:00"
 ];
 
+const CUSTOM_TEMPLATES_KEY = "jiy-custom-task-templates";
+
 export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [], isLoading }: BulkTaskImportProps) {
   const [activeTab, setActiveTab] = useState<"templates" | "text" | "file" | "url">("templates");
   const [textInput, setTextInput] = useState("");
@@ -190,6 +272,60 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Custom templates state
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDescription, setNewTemplateDescription] = useState("");
+  const [newTemplateTasks, setNewTemplateTasks] = useState("");
+
+  // Save custom templates to localStorage
+  const saveCustomTemplates = (templates: CustomTemplate[]) => {
+    setCustomTemplates(templates);
+    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
+  };
+
+  const handleCreateCustomTemplate = () => {
+    if (!newTemplateName.trim() || !newTemplateTasks.trim()) return;
+
+    const tasks = newTemplateTasks.split("\n").filter(line => line.trim()).map(line => {
+      const parts = line.split(",").map(p => p.trim());
+      return {
+        title: parts[0],
+        category: parts[1] || undefined,
+        priority: parts[2] || "medium"
+      };
+    });
+
+    const newTemplate: CustomTemplate = {
+      id: `custom-${Date.now()}`,
+      name: newTemplateName,
+      description: newTemplateDescription || "תבנית מותאמת אישית",
+      isCustom: true,
+      tasks
+    };
+
+    saveCustomTemplates([...customTemplates, newTemplate]);
+    setNewTemplateName("");
+    setNewTemplateDescription("");
+    setNewTemplateTasks("");
+    setShowCreateTemplate(false);
+  };
+
+  const handleDeleteCustomTemplate = (templateId: string) => {
+    saveCustomTemplates(customTemplates.filter(t => t.id !== templateId));
+  };
+
+  // All templates combined
+  const allTemplates = [...defaultTaskTemplates, ...customTemplates];
 
   // Drag and drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -418,6 +554,10 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
     setShowPreview(false);
     setGoogleDocsUrl("");
     setUrlError("");
+    setShowCreateTemplate(false);
+    setNewTemplateName("");
+    setNewTemplateDescription("");
+    setNewTemplateTasks("");
   };
 
   const handleClose = (isOpen: boolean) => {
@@ -430,9 +570,9 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-right">
             <Upload className="w-5 h-5" />
             ייבוא משימות בכמות
           </DialogTitle>
@@ -440,7 +580,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
         {!showPreview ? (
           <div className="flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col" dir="rtl">
               <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="templates" className="flex items-center gap-2">
                   <LayoutTemplate className="w-4 h-4" />
@@ -463,17 +603,88 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
               {/* Templates section */}
               <TabsContent value="templates" className="flex-1 mt-4">
                 <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground mb-4">
-                    בחרו תבנית מוכנה להתחלה מהירה
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm text-muted-foreground">
+                      בחרו תבנית מוכנה להתחלה מהירה
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowCreateTemplate(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      צור תבנית חדשה
+                    </Button>
                   </div>
+
+                  {/* Create Custom Template Form */}
+                  {showCreateTemplate && (
+                    <div className="border border-primary/30 rounded-lg p-4 bg-primary/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Plus className="w-4 h-4 text-primary" />
+                          יצירת תבנית מותאמת אישית
+                        </h4>
+                        <Button variant="ghost" size="icon" onClick={() => setShowCreateTemplate(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">שם התבנית</Label>
+                          <Input 
+                            value={newTemplateName}
+                            onChange={(e) => setNewTemplateName(e.target.value)}
+                            placeholder="למשל: השקת קולקציה"
+                            className="mt-1 text-right"
+                            dir="rtl"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">תיאור (אופציונלי)</Label>
+                          <Input 
+                            value={newTemplateDescription}
+                            onChange={(e) => setNewTemplateDescription(e.target.value)}
+                            placeholder="תיאור קצר של התבנית"
+                            className="mt-1 text-right"
+                            dir="rtl"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">משימות (שורה לכל משימה, אפשר להוסיף קטגוריה ועדיפות מופרדות בפסיק)</Label>
+                        <Textarea 
+                          value={newTemplateTasks}
+                          onChange={(e) => setNewTemplateTasks(e.target.value)}
+                          placeholder={"פגישת תכנון\nעיצוב קריאייטיב, קריאייטיב ועיצוב, high\nכתיבת תוכן, תוכן ו-SEO"}
+                          className="mt-1 min-h-[100px] font-mono text-sm text-right"
+                          dir="rtl"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleCreateCustomTemplate} 
+                        disabled={!newTemplateName.trim() || !newTemplateTasks.trim()}
+                        className="w-full"
+                      >
+                        <Save className="w-4 h-4 ml-2" />
+                        שמור תבנית
+                      </Button>
+                    </div>
+                  )}
+
                   <ScrollArea className="h-[300px]">
-                    <div className="grid grid-cols-1 gap-3 pr-2">
-                      {taskTemplates.map((template) => {
-                        const Icon = template.icon;
+                    <div className="grid grid-cols-1 gap-3 pl-2">
+                      {allTemplates.map((template) => {
+                        const Icon = 'icon' in template ? template.icon : Sparkles;
+                        const isCustom = 'isCustom' in template && template.isCustom;
                         return (
                           <div
                             key={template.id}
-                            className="border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                            className={cn(
+                              "border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer",
+                              isCustom ? "border-primary/30 bg-primary/5" : "border-border"
+                            )}
                             onClick={() => {
                               const tasks = template.tasks.map(t => ({
                                 ...t,
@@ -487,15 +698,38 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                             }}
                           >
                             <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                              <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                isCustom ? "bg-primary/30" : "bg-primary/20"
+                              )}>
                                 <Icon className="w-5 h-5 text-primary" />
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between">
-                                  <h4 className="font-medium">{template.name}</h4>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {template.tasks.length} משימות
-                                  </Badge>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-medium">{template.name}</h4>
+                                    {isCustom && (
+                                      <Badge variant="secondary" className="text-xs">מותאם</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {template.tasks.length} משימות
+                                    </Badge>
+                                    {isCustom && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteCustomTemplate(template.id);
+                                        }}
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {template.description}
@@ -523,14 +757,14 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
               </TabsContent>
 
               {/* Default values section */}
-              <div className="grid grid-cols-5 gap-3 py-4 border-b border-border">
+              <div className="grid grid-cols-5 gap-3 py-4 border-b border-border" dir="rtl">
                 <div>
-                  <Label className="text-xs text-muted-foreground">עדיפות</Label>
+                  <Label className="text-xs text-muted-foreground text-right block">עדיפות</Label>
                   <Select value={defaultPriority} onValueChange={setDefaultPriority}>
-                    <SelectTrigger className="h-9 mt-1">
+                    <SelectTrigger className="h-9 mt-1 text-right" dir="rtl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                       <SelectItem value="low">נמוכה</SelectItem>
                       <SelectItem value="medium">בינונית</SelectItem>
                       <SelectItem value="high">גבוהה</SelectItem>
@@ -538,12 +772,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">אחראי</Label>
+                  <Label className="text-xs text-muted-foreground text-right block">אחראי</Label>
                   <Select value={defaultAssignee || "none"} onValueChange={(v) => setDefaultAssignee(v === "none" ? "" : v)}>
-                    <SelectTrigger className="h-9 mt-1">
+                    <SelectTrigger className="h-9 mt-1 text-right" dir="rtl">
                       <SelectValue placeholder="לא נבחר" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                       <SelectItem value="none">לא נבחר</SelectItem>
                       {teamMembers.map(m => (
                         <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
@@ -552,12 +786,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">קטגוריה</Label>
+                  <Label className="text-xs text-muted-foreground text-right block">קטגוריה</Label>
                   <Select value={defaultCategory || "none"} onValueChange={(v) => setDefaultCategory(v === "none" ? "" : v)}>
-                    <SelectTrigger className="h-9 mt-1">
+                    <SelectTrigger className="h-9 mt-1 text-right" dir="rtl">
                       <SelectValue placeholder="לא נבחרה" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                       <SelectItem value="none">לא נבחרה</SelectItem>
                       {categoryOptions.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
@@ -566,12 +800,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">שעה</Label>
+                  <Label className="text-xs text-muted-foreground text-right block">שעה</Label>
                   <Select value={defaultTime || "none"} onValueChange={(v) => setDefaultTime(v === "none" ? "" : v)}>
-                    <SelectTrigger className="h-9 mt-1">
+                    <SelectTrigger className="h-9 mt-1 text-right" dir="rtl">
                       <SelectValue placeholder="לא נבחרה" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                       <SelectItem value="none">לא נבחרה</SelectItem>
                       {timeOptions.map(time => (
                         <SelectItem key={time} value={time}>{time}</SelectItem>
@@ -580,12 +814,12 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">משך</Label>
+                  <Label className="text-xs text-muted-foreground text-right block">משך</Label>
                   <Select value={String(defaultDuration)} onValueChange={(v) => setDefaultDuration(parseInt(v))}>
-                    <SelectTrigger className="h-9 mt-1">
+                    <SelectTrigger className="h-9 mt-1 text-right" dir="rtl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent dir="rtl">
                       {durationOptions.map(opt => (
                         <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
                       ))}
@@ -596,14 +830,14 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
               <TabsContent value="text" className="flex-1 mt-4">
                 <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground text-right">
                     הדביקו רשימת משימות - כל שורה תהפוך למשימה נפרדת.
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
+                  <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1 text-right" dir="rtl">
                     <div className="font-medium text-foreground mb-2">פורמט אופציונלי (מופרדים בפסיק או טאב):</div>
                     <div className="text-muted-foreground">כותרת, תיאור, תאריך, שעה, אחראי, עדיפות, קטגוריה, משך</div>
                     <div className="text-muted-foreground mt-2">דוגמאות:</div>
-                    <div className="font-mono text-xs bg-background rounded p-2 mt-1">
+                    <div className="font-mono text-xs bg-background rounded p-2 mt-1 text-right" dir="rtl">
                       <div>פגישת לקוח</div>
                       <div>בדיקת קמפיין, בדיקת ביצועים, 25/12/2024, 10:00, יוסי, high, קמפיינים ופרסום, 60</div>
                       <div>עדכון אתר, שינויי עיצוב, 26/12/2024</div>
@@ -613,11 +847,11 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     placeholder="משימה ראשונה&#10;משימה שנייה, תיאור, 25/12/2024, 10:00, שם העובד&#10;משימה שלישית"
-                    className="min-h-[180px] font-mono text-sm"
+                    className="min-h-[180px] font-mono text-sm text-right"
                     dir="rtl"
                   />
                   <Button onClick={handleParseText} disabled={!textInput.trim()} className="w-full">
-                    <Table className="w-4 h-4 mr-2" />
+                    <Table className="w-4 h-4 ml-2" />
                     ניתוח והצגת תצוגה מקדימה
                   </Button>
                 </div>
@@ -625,10 +859,10 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
               <TabsContent value="file" className="flex-1 mt-4">
                 <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground text-right">
                     העלו קובץ Excel או CSV עם העמודות הבאות:
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 justify-end" dir="rtl">
                     <Badge variant="outline" className="text-xs">כותרת (חובה)</Badge>
                     <Badge variant="outline" className="text-xs">תיאור</Badge>
                     <Badge variant="outline" className="text-xs">תאריך</Badge>
@@ -677,27 +911,28 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
               <TabsContent value="url" className="flex-1 mt-4">
                 <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground text-right">
                     הדביקו קישור למסמך Google Docs שמכיל רשימת משימות
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" dir="rtl">
                     <Input 
                       value={googleDocsUrl}
                       onChange={(e) => { setGoogleDocsUrl(e.target.value); setUrlError(""); }}
                       placeholder="https://docs.google.com/document/d/..."
                       dir="ltr"
+                      className="text-left"
                     />
                     <Button onClick={handleGoogleDocsUrl} disabled={!googleDocsUrl.trim()}>
                       ייבוא
                     </Button>
                   </div>
                   {urlError && (
-                    <div className="text-sm text-warning bg-warning/10 rounded-lg p-3 flex items-start gap-2">
+                    <div className="text-sm text-warning bg-warning/10 rounded-lg p-3 flex items-start gap-2 text-right" dir="rtl">
                       <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       {urlError}
                     </div>
                   )}
-                  <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 text-right" dir="rtl">
                     💡 אינטגרציה מלאה עם Google Workspace (Docs, Sheets, Drive, Calendar) תתאפשר לאחר חיבור חשבון Google
                   </div>
                 </div>
@@ -706,15 +941,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0" dir="rtl">
               <div className="flex items-center gap-3">
                 <Badge variant="default" className="bg-success/20 text-success">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  <CheckCircle2 className="w-3 h-3 ml-1" />
                   {validCount} תקינות
                 </Badge>
                 {invalidCount > 0 && (
                   <Badge variant="destructive" className="bg-destructive/20 text-destructive">
-                    <AlertCircle className="w-3 h-3 mr-1" />
+                    <AlertCircle className="w-3 h-3 ml-1" />
                     {invalidCount} עם שגיאות
                   </Badge>
                 )}
@@ -726,7 +961,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
 
             <div className="flex-1 min-h-0 overflow-hidden">
               <ScrollArea className="h-[400px]">
-                <div className="space-y-2 pr-4">
+                <div className="space-y-2 pl-4" dir="rtl">
                   {parsedTasks.map((task, index) => (
                     <div 
                       key={index}
@@ -742,8 +977,9 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                             value={task.title}
                             onChange={(e) => updateTaskWithValidation(index, "title", e.target.value)}
                             placeholder="כותרת משימה"
-                            className={cn("font-medium", !task.valid && "border-destructive")}
+                            className={cn("font-medium text-right", !task.valid && "border-destructive")}
                             maxLength={200}
+                            dir="rtl"
                           />
                           
                           {/* Row 2: Description */}
@@ -751,14 +987,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                             value={task.description || ""}
                             onChange={(e) => updateTaskWithValidation(index, "description", e.target.value)}
                             placeholder="תיאור"
-                            className="text-sm"
+                            className="text-sm text-right"
                             maxLength={1000}
+                            dir="rtl"
                           />
                           
                           {/* Row 3: Date, Time, Duration */}
                           <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <Label className="text-xs text-muted-foreground">תאריך</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">תאריך</Label>
                               <Input 
                                 type="date"
                                 value={task.due_date || ""}
@@ -767,15 +1004,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-muted-foreground">שעה</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">שעה</Label>
                               <Select 
                                 value={task.scheduled_time || "none"} 
                                 onValueChange={(v) => updateTaskWithValidation(index, "scheduled_time", v === "none" ? "" : v)}
                               >
-                                <SelectTrigger className="text-sm mt-1">
+                                <SelectTrigger className="text-sm mt-1 text-right" dir="rtl">
                                   <SelectValue placeholder="לא נבחרה" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent dir="rtl">
                                   <SelectItem value="none">לא נבחרה</SelectItem>
                                   {timeOptions.map(time => (
                                     <SelectItem key={time} value={time}>
@@ -789,15 +1026,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs text-muted-foreground">משך</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">משך</Label>
                               <Select 
                                 value={String(task.duration_minutes || 60)} 
                                 onValueChange={(v) => updateTaskWithValidation(index, "duration_minutes", parseInt(v))}
                               >
-                                <SelectTrigger className="text-sm mt-1">
+                                <SelectTrigger className="text-sm mt-1 text-right" dir="rtl">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent dir="rtl">
                                   {durationOptions.map(opt => (
                                     <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
                                   ))}
@@ -809,15 +1046,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                           {/* Row 4: Assignee, Priority, Category */}
                           <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <Label className="text-xs text-muted-foreground">אחראי</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">אחראי</Label>
                               <Select 
                                 value={task.assignee || "none"} 
                                 onValueChange={(v) => updateTaskWithValidation(index, "assignee", v === "none" ? "" : v)}
                               >
-                                <SelectTrigger className="text-sm mt-1">
+                                <SelectTrigger className="text-sm mt-1 text-right" dir="rtl">
                                   <SelectValue placeholder="אחראי" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent dir="rtl">
                                   <SelectItem value="none">לא נבחר</SelectItem>
                                   {teamMembers.map(m => (
                                     <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
@@ -826,15 +1063,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs text-muted-foreground">עדיפות</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">עדיפות</Label>
                               <Select 
                                 value={task.priority || "medium"} 
                                 onValueChange={(v) => updateTaskWithValidation(index, "priority", v)}
                               >
-                                <SelectTrigger className="text-sm mt-1">
+                                <SelectTrigger className="text-sm mt-1 text-right" dir="rtl">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent dir="rtl">
                                   <SelectItem value="low">נמוכה</SelectItem>
                                   <SelectItem value="medium">בינונית</SelectItem>
                                   <SelectItem value="high">גבוהה</SelectItem>
@@ -842,15 +1079,15 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs text-muted-foreground">קטגוריה</Label>
+                              <Label className="text-xs text-muted-foreground text-right block">קטגוריה</Label>
                               <Select 
                                 value={task.category || "none"} 
                                 onValueChange={(v) => updateTaskWithValidation(index, "category", v === "none" ? "" : v)}
                               >
-                                <SelectTrigger className="text-sm mt-1">
+                                <SelectTrigger className="text-sm mt-1 text-right" dir="rtl">
                                   <SelectValue placeholder="קטגוריה" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent dir="rtl">
                                   <SelectItem value="none">לא נבחרה</SelectItem>
                                   {categoryOptions.map(cat => (
                                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
@@ -861,7 +1098,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
                           </div>
                           
                           {task.error && (
-                            <p className="text-xs text-destructive">{task.error}</p>
+                            <p className="text-xs text-destructive text-right">{task.error}</p>
                           )}
                         </div>
                         <Button 
@@ -881,7 +1118,7 @@ export function BulkTaskImport({ open, onOpenChange, onImport, teamMembers = [],
           </div>
         )}
 
-        <DialogFooter className="mt-4 pt-4 border-t border-border flex-shrink-0">
+        <DialogFooter className="mt-4 pt-4 border-t border-border flex-shrink-0 flex-row-reverse gap-2" dir="rtl">
           <Button variant="outline" onClick={() => handleClose(false)}>
             ביטול
           </Button>
