@@ -16,7 +16,8 @@ import {
   Loader2,
   Circle,
   Calendar,
-  Clock
+  Clock,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -251,45 +252,56 @@ export default function Dashboard() {
             {/* Stats sections */}
             {isModuleEnabled("tasks") && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* All pending tasks */}
-                <div className="bg-card border border-border rounded-xl p-5">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-4">כל המשימות הממתינות</h3>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Circle className="w-5 h-5 text-primary" />
+                {/* All pending tasks + active clients */}
+                <div className="bg-card border border-border rounded-xl p-5 animate-fade-in hover:shadow-lg transition-shadow duration-300">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-4">סקירה כללית</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
+                        <Circle className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-3xl font-bold text-foreground">{stats?.openTasks || 0}</span>
+                        <p className="text-sm text-muted-foreground">משימות פתוחות</p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-3xl font-bold text-foreground">{stats?.openTasks || 0}</span>
-                      <p className="text-sm text-muted-foreground">משימות פתוחות</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
+                        <Building2 className="w-5 h-5 text-accent-foreground" />
+                      </div>
+                      <div>
+                        <span className="text-3xl font-bold text-foreground">{stats?.uniqueClients || 0}</span>
+                        <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Today's stats */}
-                <div className="bg-card border border-border rounded-xl p-5">
+                <div className="bg-card border border-border rounded-xl p-5 animate-fade-in hover:shadow-lg transition-shadow duration-300" style={{ animationDelay: '0.1s' }}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-medium text-muted-foreground">היום</h3>
-                    <span className="text-xs text-muted-foreground/70 font-medium">
+                    <span className="text-xs text-muted-foreground/70 font-medium bg-muted/50 px-2 py-1 rounded-md">
                       {new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-2">
+                    <div className="text-center group">
+                      <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
                         <Calendar className="w-4 h-4 text-warning" />
                       </div>
                       <span className="text-xl font-bold text-foreground block">{todayTasksCount}</span>
                       <p className="text-xs text-muted-foreground">משימות</p>
                     </div>
-                    <div className="text-center">
-                      <div className="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center mx-auto mb-2">
+                    <div className="text-center group">
+                      <div className="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
                         <Clock className="w-4 h-4 text-info" />
                       </div>
                       <span className="text-xl font-bold text-foreground block">{hoursCompletedToday}</span>
                       <p className="text-xs text-muted-foreground">שעות</p>
                     </div>
-                    <div className="text-center">
-                      <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-2">
+                    <div className="text-center group">
+                      <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
                         <Users className="w-4 h-4 text-success" />
                       </div>
                       <span className="text-xl font-bold text-foreground block">{clientsHandledToday}</span>
