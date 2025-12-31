@@ -25,13 +25,28 @@ import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
 import { ClientLinksCard } from "@/components/dashboard/ClientLinksCard";
 import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
+import { DailyTimelineWidget } from "@/components/dashboard/DailyTimelineWidget";
+import { JiyPremiumCard, JiyPremiumBadge } from "@/components/dashboard/JiyPremiumCard";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
   const { isModuleEnabled } = useClientModules();
 
-  // Check if this is the master account (JIY)
-  const isMasterAccount = selectedClient?.name?.toLowerCase().includes("jiy") || 
+  // Check if this is the master account (JIY) using is_master_account column
+  const { data: masterClient } = useQuery({
+    queryKey: ["master-client"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("is_master_account", true)
+        .single();
+      return data;
+    },
+  });
+
+  const isMasterAccount = selectedClient?.id === masterClient?.id ||
+                          selectedClient?.name?.toLowerCase().includes("jiy") || 
                           selectedClient?.name?.includes("סוכנות") ||
                           !selectedClient; // No client selected = show all
 
@@ -113,14 +128,15 @@ export default function Dashboard() {
     enabled: !!selectedClient,
   });
 
+  // Fetch tasks with new fields for timeline
   const { data: recentTasks = [] } = useQuery({
     queryKey: ["recent-tasks", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, clients(name)")
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .select("*, clients(name, is_master_account)")
+        .order("due_date", { ascending: true })
+        .limit(50);
       if (selectedClient && !isMasterAccount) {
         query = query.eq("client_id", selectedClient.id);
       }
@@ -270,11 +286,21 @@ export default function Dashboard() {
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Recent Tasks & Campaigns */}
+              {/* Left Column - Daily Timeline Widget */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Recent Tasks */}
+                {/* Daily Timeline Widget */}
                 {isModuleEnabled("tasks") && (
-                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+                  <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
+                    <DailyTimelineWidget 
+                      tasks={recentTasks} 
+                      masterClientId={masterClient?.id}
+                    />
+                  </div>
+                )}
+
+                {/* Recent Tasks List - with JIY gold border */}
+                {isModuleEnabled("tasks") && (
+                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
                     <div className="p-4 border-b border-border">
                       <h3 className="font-bold">משימות אחרונות</h3>
                     </div>
@@ -282,25 +308,43 @@ export default function Dashboard() {
                       {recentTasks.length === 0 ? (
                         <div className="p-6 text-center text-muted-foreground">אין משימות</div>
                       ) : (
-                        recentTasks.map((task: any) => (
-                          <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{task.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {task.team_members?.name || task.assignee || "לא משויך"}
-                                </p>
+                        recentTasks.slice(0, 10).map((task: any) => {
+                          const isJiyTask = task.clients?.is_master_account || 
+                                            task.client_id === masterClient?.id ||
+                                            task.clients?.name?.toLowerCase().includes("jiy");
+                          return (
+                            <div 
+                              key={task.id} 
+                              className={cn(
+                                "p-4 transition-colors",
+                                isJiyTask 
+                                  ? "bg-[hsl(var(--jiy-gold))]/5 hover:bg-[hsl(var(--jiy-gold))]/10 border-r-2 border-[hsl(var(--jiy-gold))]" 
+                                  : "hover:bg-muted/30"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {isJiyTask && <JiyPremiumBadge />}
+                                  <div>
+                                    <p className="font-medium">{task.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {task.clients?.name || task.assignee || "לא משויך"}
+                                      {task.scheduled_time && ` • ${task.scheduled_time.slice(0, 5)}`}
+                                      {task.duration_minutes && ` • ${task.duration_minutes} דק׳`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className={cn(
+                                  "px-2 py-1 rounded-full text-xs font-medium",
+                                  statusConfig[task.status]?.color || "bg-muted",
+                                  "text-foreground"
+                                )}>
+                                  {statusConfig[task.status]?.label || task.status}
+                                </span>
                               </div>
-                              <span className={cn(
-                                "px-2 py-1 rounded-full text-xs font-medium",
-                                statusConfig[task.status]?.color || "bg-muted",
-                                "text-foreground"
-                              )}>
-                                {statusConfig[task.status]?.label || task.status}
-                              </span>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -308,7 +352,7 @@ export default function Dashboard() {
 
                 {/* Recent Campaigns */}
                 {isModuleEnabled("campaigns") && (
-                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
+                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.55s", animationFillMode: "forwards" }}>
                     <div className="p-4 border-b border-border">
                       <h3 className="font-bold">קמפיינים אחרונים</h3>
                     </div>
@@ -339,16 +383,39 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Right Column - Links, Integrations, Quick Actions */}
+              {/* Right Column - Links, Integrations, Quick Actions or JIY Premium Card */}
               {selectedClient && (
-                <div className="space-y-4 opacity-0 animate-slide-up" style={{ animationDelay: "0.55s", animationFillMode: "forwards" }}>
-                  <ClientLinksCard 
-                    website={clientData?.website}
-                    instagram_url={(clientData as any)?.instagram_url}
-                    facebook_url={(clientData as any)?.facebook_url}
-                    tiktok_url={(clientData as any)?.tiktok_url}
-                  />
-                  <IntegrationsCard integrations={integrations} />
+                <div className="space-y-4 opacity-0 animate-slide-up" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
+                  {isMasterAccount ? (
+                    <JiyPremiumCard title="סוכנות הדיגיטל">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-muted/30 rounded-lg p-3 text-center">
+                            <p className="text-2xl font-bold text-[hsl(var(--jiy-gold))]">{stats?.uniqueClients || 0}</p>
+                            <p className="text-xs text-muted-foreground">לקוחות פעילים</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-3 text-center">
+                            <p className="text-2xl font-bold text-[hsl(var(--jiy-gold))]">{stats?.openTasks || 0}</p>
+                            <p className="text-xs text-muted-foreground">משימות פתוחות</p>
+                          </div>
+                        </div>
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <p className="text-sm text-muted-foreground mb-1">תקציב כולל</p>
+                          <p className="text-xl font-bold">₪{formatNumber(stats?.totalBudget || 0)}</p>
+                        </div>
+                      </div>
+                    </JiyPremiumCard>
+                  ) : (
+                    <>
+                      <ClientLinksCard 
+                        website={clientData?.website}
+                        instagram_url={(clientData as any)?.instagram_url}
+                        facebook_url={(clientData as any)?.facebook_url}
+                        tiktok_url={(clientData as any)?.tiktok_url}
+                      />
+                      <IntegrationsCard integrations={integrations} />
+                    </>
+                  )}
                   <QuickActionsCard isModuleEnabled={isModuleEnabled} />
                 </div>
               )}

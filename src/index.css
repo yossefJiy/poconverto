@@ -55,6 +55,13 @@
     --info: 217 91% 60%;
     --info-foreground: 222 47% 6%;
 
+    /* JIY Premium Gold theme */
+    --jiy-gold: 45 93% 47%;
+    --jiy-gold-light: 45 93% 60%;
+    --jiy-gold-dark: 45 80% 35%;
+    --gradient-gold: linear-gradient(135deg, hsl(45 93% 47%), hsl(38 90% 50%), hsl(45 93% 55%));
+    --shadow-gold: 0 0 20px hsl(45 93% 47% / 0.4);
+
     --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 217 91% 60%;
@@ -169,4 +176,47 @@
   .stagger-3 { animation-delay: 0.3s; }
   .stagger-4 { animation-delay: 0.4s; }
   .stagger-5 { animation-delay: 0.5s; }
+
+  /* JIY Premium Gold styling */
+  .jiy-gold-border {
+    border: 2px solid hsl(var(--jiy-gold));
+    box-shadow: 0 0 15px hsl(var(--jiy-gold) / 0.3), inset 0 0 10px hsl(var(--jiy-gold) / 0.1);
+  }
+
+  .jiy-premium-card {
+    background: linear-gradient(135deg, hsl(222 47% 10%), hsl(222 47% 8%));
+    border: 2px solid hsl(var(--jiy-gold));
+    box-shadow: 0 0 30px hsl(var(--jiy-gold) / 0.25), 0 8px 32px hsl(0 0% 0% / 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .jiy-premium-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-gold);
+  }
+
+  .jiy-premium-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(var(--jiy-gold) / 0.05), transparent 50%);
+    pointer-events: none;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .jiy-shimmer {
+    background: linear-gradient(90deg, transparent, hsl(var(--jiy-gold) / 0.3), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+  }
 }
