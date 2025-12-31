@@ -35,6 +35,37 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 const extraApiToken = Deno.env.get("EXTRA_API_TOKEN");
 
+// Helper function to log notification to history
+async function logNotification(
+  supabase: any,
+  taskId: string,
+  clientId: string | null,
+  type: 'email' | 'sms',
+  recipient: string,
+  status: 'sent' | 'failed',
+  subject?: string,
+  message?: string,
+  errorMessage?: string
+) {
+  const { error } = await supabase
+    .from("notification_history")
+    .insert({
+      task_id: taskId,
+      client_id: clientId,
+      notification_type: type,
+      recipient,
+      status,
+      subject,
+      message,
+      error_message: errorMessage,
+      sent_at: status === 'sent' ? new Date().toISOString() : null,
+    });
+
+  if (error) {
+    console.error(`[task-reminder] Failed to log ${type} notification:`, error);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -46,14 +77,47 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get tasks that need reminders (reminder_at has passed and not yet sent)
-    const now = new Date().toISOString();
-    const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
-      .select("*, clients(name)")
-      .lte("reminder_at", now)
-      .eq("reminder_sent", false)
-      .not("reminder_at", "is", null);
+    // Check if this is a test request
+    let testMode = false;
+    let testTaskId: string | null = null;
+    
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        testMode = body.test === true;
+        testTaskId = body.taskId || null;
+        console.log("[task-reminder] Test mode:", testMode, "Task ID:", testTaskId);
+      } catch (e) {
+        // Not a JSON body, continue normally
+      }
+    }
+
+    let tasks;
+    let tasksError;
+
+    if (testMode && testTaskId) {
+      // Fetch specific task for testing (ignore reminder_sent flag)
+      const result = await supabase
+        .from("tasks")
+        .select("*, clients(name)")
+        .eq("id", testTaskId)
+        .maybeSingle();
+      
+      tasks = result.data ? [result.data] : [];
+      tasksError = result.error;
+    } else {
+      // Get tasks that need reminders (reminder_at has passed and not yet sent)
+      const now = new Date().toISOString();
+      const result = await supabase
+        .from("tasks")
+        .select("*, clients(name)")
+        .lte("reminder_at", now)
+        .eq("reminder_sent", false)
+        .not("reminder_at", "is", null);
+      
+      tasks = result.data;
+      tasksError = result.error;
+    }
 
     if (tasksError) {
       console.error("[task-reminder] Error fetching tasks:", tasksError);
@@ -99,6 +163,7 @@ serve(async (req) => {
         // Send email if enabled
         if (task.notification_email && task.notification_email_address && resendApiKey) {
           const resend = new Resend(resendApiKey);
+          const emailSubject = `⏰ תזכורת: ${task.title}`;
           
           const emailHtml = `
             <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -140,24 +205,45 @@ serve(async (req) => {
                 </table>
               </div>
               <p style="color: #6B7280; font-size: 12px; margin-top: 20px;">
-                הודעה זו נשלחה אוטומטית ממערכת Converto
+                הודעה זו נשלחה אוטומטית ממערכת JIY Tasks
               </p>
             </div>
           `;
 
           const { error: emailError } = await resend.emails.send({
-            from: "Converto <onboarding@resend.dev>",
+            from: "JIY Tasks <tasks@jiy.co.il>",
             to: [task.notification_email_address],
-            subject: `⏰ תזכורת: ${task.title}`,
+            subject: emailSubject,
             html: emailHtml,
           });
 
           if (emailError) {
             console.error(`[task-reminder] Email error for task ${task.id}:`, emailError);
             results.errors.push(`Email error for ${task.id}: ${emailError.message}`);
+            await logNotification(
+              supabase,
+              task.id,
+              task.client_id,
+              'email',
+              task.notification_email_address,
+              'failed',
+              emailSubject,
+              emailHtml,
+              emailError.message
+            );
           } else {
-            console.log(`[task-reminder] Email sent for task ${task.id}`);
+            console.log(`[task-reminder] Email sent for task ${task.id} to ${task.notification_email_address}`);
             results.emailsSent++;
+            await logNotification(
+              supabase,
+              task.id,
+              task.client_id,
+              'email',
+              task.notification_email_address,
+              'sent',
+              emailSubject,
+              emailHtml
+            );
           }
         }
 
@@ -182,7 +268,7 @@ serve(async (req) => {
             body: JSON.stringify({
               message: smsMessage,
               destination: phone,
-              sender: "Converto",
+              sender: "JIY",
             }),
           });
 
@@ -190,21 +276,46 @@ serve(async (req) => {
             const smsError = await smsResponse.text();
             console.error(`[task-reminder] SMS error for task ${task.id}:`, smsError);
             results.errors.push(`SMS error for ${task.id}: ${smsError}`);
+            await logNotification(
+              supabase,
+              task.id,
+              task.client_id,
+              'sms',
+              task.notification_phone,
+              'failed',
+              undefined,
+              smsMessage,
+              smsError
+            );
           } else {
-            console.log(`[task-reminder] SMS sent for task ${task.id}`);
+            console.log(`[task-reminder] SMS sent for task ${task.id} to ${task.notification_phone}`);
             results.smsSent++;
+            await logNotification(
+              supabase,
+              task.id,
+              task.client_id,
+              'sms',
+              task.notification_phone,
+              'sent',
+              undefined,
+              smsMessage
+            );
           }
         }
 
-        // Mark reminder as sent
-        const { error: updateError } = await supabase
-          .from("tasks")
-          .update({ reminder_sent: true })
-          .eq("id", task.id);
+        // Mark reminder as sent (skip in test mode to allow retesting)
+        if (!testMode) {
+          const { error: updateError } = await supabase
+            .from("tasks")
+            .update({ reminder_sent: true })
+            .eq("id", task.id);
 
-        if (updateError) {
-          console.error(`[task-reminder] Error updating task ${task.id}:`, updateError);
-          results.errors.push(`Update error for ${task.id}: ${updateError.message}`);
+          if (updateError) {
+            console.error(`[task-reminder] Error updating task ${task.id}:`, updateError);
+            results.errors.push(`Update error for ${task.id}: ${updateError.message}`);
+          } else {
+            results.processed++;
+          }
         } else {
           results.processed++;
         }
@@ -217,7 +328,7 @@ serve(async (req) => {
     console.log("[task-reminder] Reminder check complete:", results);
 
     return new Response(
-      JSON.stringify({ success: true, results }),
+      JSON.stringify({ success: true, results, testMode }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
