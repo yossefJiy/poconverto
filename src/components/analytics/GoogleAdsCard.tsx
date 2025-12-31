@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { 
   Target, 
-  TrendingUp, 
-  TrendingDown,
   DollarSign,
   MousePointerClick,
   Eye,
@@ -44,9 +42,10 @@ import {
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
+import { MetricWithComparison } from "./MetricWithComparison";
+import { formatNumber, formatCurrency } from "@/lib/analytics/formatters";
 import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
 
 interface Campaign {
@@ -105,51 +104,8 @@ interface GoogleAdsCardProps {
   onRefresh?: () => void;
 }
 
-function formatNumber(num: number): string {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-  return num.toLocaleString("he-IL");
-}
-
-function formatCurrency(num: number, currency = "ILS"): string {
-  const symbol = currency === "USD" ? "$" : "₪";
-  return symbol + formatNumber(num);
-}
-
-interface MetricWithComparisonProps {
-  label: string;
-  value: string | number;
-  change?: number;
-  icon: React.ReactNode;
-  color: string;
-}
-
-function MetricWithComparison({ label, value, change, icon, color }: MetricWithComparisonProps) {
-  const isPositive = change !== undefined && change >= 0;
-  
-  return (
-    <div className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
-          {icon}
-        </div>
-      </div>
-      <p className="text-xl font-bold">{value}</p>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {change !== undefined && (
-          <span className={cn(
-            "text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-0.5",
-            isPositive ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-          )}>
-            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {isPositive ? "+" : ""}{change}%
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
+// formatNumber and formatCurrency imported from shared module
+// MetricWithComparison imported from shared component
 
 export function GoogleAdsCard({ 
   globalDateFrom,
