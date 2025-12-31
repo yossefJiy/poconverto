@@ -20,6 +20,14 @@ interface FacebookAdsRequest {
   clientId?: string;
 }
 
+// Known Facebook API error codes
+const FB_ERROR_CODES = {
+  OAUTH_ERROR: 190, // Invalid or expired token
+  PERMISSIONS_ERROR: 200, // Missing permissions
+  API_TOO_MANY_CALLS: 4, // Rate limit
+  API_USER_TOO_MANY_CALLS: 17, // User rate limit
+} as const;
+
 // Helper function to get access token
 async function getAccessToken(): Promise<string> {
   const accessToken = Deno.env.get('FACEBOOK_ACCESS_TOKEN');
@@ -27,6 +35,24 @@ async function getAccessToken(): Promise<string> {
     throw new Error('FACEBOOK_ACCESS_TOKEN is not configured');
   }
   return accessToken;
+}
+
+// Parse Facebook API error for user-friendly message
+function parseFacebookError(error: any): { message: string; code: number; type: string } {
+  const code = error?.code || 0;
+  const type = error?.type || 'UnknownError';
+  let message = error?.message || 'Unknown Facebook API error';
+
+  // Provide clearer Hebrew messages for known errors
+  if (code === FB_ERROR_CODES.OAUTH_ERROR) {
+    message = 'טוקן הגישה לא תקין או שפג תוקפו. יש ליצור טוקן חדש.';
+  } else if (code === FB_ERROR_CODES.PERMISSIONS_ERROR) {
+    message = 'חסרות הרשאות נדרשות (ads_read / ads_management). יש לוודא שהאפליקציה מורשית לגשת לנתוני פרסום.';
+  } else if (code === FB_ERROR_CODES.API_TOO_MANY_CALLS || code === FB_ERROR_CODES.API_USER_TOO_MANY_CALLS) {
+    message = 'חריגה ממכסת הבקשות ל-API. יש לנסות שוב מאוחר יותר.';
+  }
+
+  return { message, code, type };
 }
 
 // Fetch campaigns from Facebook Ads API
@@ -46,8 +72,9 @@ async function fetchCampaigns(accessToken: string, adAccountId: string): Promise
   const data = await response.json();
 
   if (data.error) {
-    log.error('Facebook API error:', data.error);
-    throw new Error(data.error.message || 'Facebook API error');
+    const parsedError = parseFacebookError(data.error);
+    log.error('Facebook API error:', JSON.stringify({ ...parsedError, raw: data.error }));
+    throw new Error(parsedError.message);
   }
 
   return data.data || [];
@@ -77,8 +104,9 @@ async function fetchInsights(
   const data = await response.json();
 
   if (data.error) {
-    log.error('Facebook API error:', data.error);
-    throw new Error(data.error.message || 'Facebook API error');
+    const parsedError = parseFacebookError(data.error);
+    log.error('Facebook API error (insights):', JSON.stringify({ ...parsedError, raw: data.error }));
+    throw new Error(parsedError.message);
   }
 
   return data.data || [];
@@ -109,8 +137,9 @@ async function fetchDailyInsights(
   const data = await response.json();
 
   if (data.error) {
-    log.error('Facebook API error:', data.error);
-    throw new Error(data.error.message || 'Facebook API error');
+    const parsedError = parseFacebookError(data.error);
+    log.error('Facebook API error (daily):', JSON.stringify({ ...parsedError, raw: data.error }));
+    throw new Error(parsedError.message);
   }
 
   return data.data || [];
