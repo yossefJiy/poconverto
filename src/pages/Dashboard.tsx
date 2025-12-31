@@ -29,8 +29,7 @@ import { ClientLinksCard } from "@/components/dashboard/ClientLinksCard";
 import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
 import { DraggableTimelineWidget } from "@/components/dashboard/DraggableTimelineWidget";
-import { TaskQuickActions } from "@/components/tasks/TaskQuickActions";
-import { JiyPremiumCard, JiyPremiumBadge } from "@/components/dashboard/JiyPremiumCard";
+import { JiyPremiumCard } from "@/components/dashboard/JiyPremiumCard";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
@@ -357,56 +356,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Recent Tasks List - with JIY gold border */}
-                {isModuleEnabled("tasks") && (
-                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
-                    <div className="p-4 border-b border-border">
-                      <h3 className="font-bold">משימות אחרונות</h3>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {recentTasks.length === 0 ? (
-                        <div className="p-6 text-center text-muted-foreground">אין משימות</div>
-                      ) : (
-                        recentTasks.slice(0, 10).map((task: any) => {
-                          const isJiyTask = task.clients?.is_master_account || 
-                                            task.client_id === masterClient?.id ||
-                                            task.clients?.name?.toLowerCase().includes("jiy");
-                          return (
-                            <div 
-                              key={task.id} 
-                              className={cn(
-                                "p-4 transition-colors",
-                                isJiyTask 
-                                  ? "bg-[hsl(var(--jiy-gold))]/5 hover:bg-[hsl(var(--jiy-gold))]/10 border-r-2 border-[hsl(var(--jiy-gold))]" 
-                                  : "hover:bg-muted/30"
-                              )}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  {isJiyTask && <JiyPremiumBadge />}
-                                  <div>
-                                    <p className="font-medium">{task.title}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {task.clients?.name || task.assignee || "לא משויך"}
-                                      {task.scheduled_time && ` • ${task.scheduled_time.slice(0, 5)}`}
-                                      {task.duration_minutes && ` • ${task.duration_minutes} דק׳`}
-                                    </p>
-                                  </div>
-                                </div>
-                                <TaskQuickActions
-                                  taskId={task.id}
-                                  currentStatus={task.status}
-                                  currentTime={task.scheduled_time}
-                                  compact
-                                />
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Recent Campaigns */}
                 {isModuleEnabled("campaigns") && (

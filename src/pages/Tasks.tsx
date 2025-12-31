@@ -144,7 +144,7 @@ export default function Tasks() {
   
   const [showDashboard, setShowDashboard] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
-  const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date">("all");
+  const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date" | "client">("all");
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -156,6 +156,11 @@ export default function Tasks() {
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
   const [integrationsDialogOpen, setIntegrationsDialogOpen] = useState(false);
+  
+  // Duplicate with date dialog
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
+  const [duplicateDate, setDuplicateDate] = useState<Date | undefined>(undefined);
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -371,13 +376,13 @@ export default function Tasks() {
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: async (task: Task) => {
+    mutationFn: async ({ task, newDate }: { task: Task; newDate?: string }) => {
       const { error } = await supabase.from("tasks").insert({
         title: `${task.title} (העתק)`,
         description: task.description,
         status: "pending",
         priority: task.priority,
-        due_date: task.due_date,
+        due_date: newDate || task.due_date,
         scheduled_time: task.scheduled_time,
         assignee: task.assignee,
         department: task.department,
@@ -395,9 +400,28 @@ export default function Tasks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("המשימה שוכפלה בהצלחה");
+      setDuplicateDialogOpen(false);
+      setTaskToDuplicate(null);
+      setDuplicateDate(undefined);
     },
     onError: () => toast.error("שגיאה בשכפול משימה"),
   });
+  
+  // Open duplicate dialog
+  const openDuplicateDialog = (task: Task) => {
+    setTaskToDuplicate(task);
+    setDuplicateDate(task.due_date ? new Date(task.due_date) : undefined);
+    setDuplicateDialogOpen(true);
+  };
+  
+  // Handle duplicate with date
+  const handleDuplicateWithDate = () => {
+    if (!taskToDuplicate) return;
+    duplicateMutation.mutate({
+      task: taskToDuplicate,
+      newDate: duplicateDate ? format(duplicateDate, "yyyy-MM-dd") : undefined,
+    });
+  };
 
   const restoreMutation = useMutation({
     mutationFn: async (taskId: string) => {
@@ -498,6 +522,11 @@ export default function Tasks() {
   const activeTasks = parentTasks.filter(task => task.status !== "completed");
   const archivedTasks = parentTasks.filter(task => task.status === "completed");
 
+  // Get client names for filtering
+  const clientsForFilter = allClients.filter(c => {
+    return tasks.some(t => t.client_id === c.id);
+  });
+
   const filteredTasks = (showArchive ? archivedTasks : activeTasks).filter(task => {
     // Date filter
     if (filter === "date" && selectedDate) {
@@ -510,6 +539,10 @@ export default function Tasks() {
     if ((filter === "assignee" || filter === "department") && selectedValue) {
       if (filter === "assignee" && task.assignee !== selectedValue) return false;
       if (filter === "department" && task.department !== selectedValue) return false;
+    }
+    // Client filter
+    if (filter === "client" && selectedValue) {
+      if (task.client_id !== selectedValue) return false;
     }
     return true;
   });
@@ -574,12 +607,6 @@ export default function Tasks() {
               </div>
 
               <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                {task.assignee && (
-                  <span className="flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    {task.assignee}
-                  </span>
-                )}
                 {task.department && (
                   <span className="flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
@@ -608,6 +635,16 @@ export default function Tasks() {
               )}
             </div>
 
+            {/* Assignee Avatar */}
+            {task.assignee && (
+              <div 
+                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary flex-shrink-0"
+                title={task.assignee}
+              >
+                {task.assignee.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </div>
+            )}
+
             <div className="flex items-center gap-1 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               {showArchive ? (
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-success hover:text-success" onClick={() => restoreMutation.mutate(task.id)} title="שחזר">
@@ -618,7 +655,7 @@ export default function Tasks() {
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog()} title="משימה חדשה">
                     <Plus className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateMutation.mutate(task)} title="שכפל">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDuplicateDialog(task)} title="שכפל עם בחירת תאריך">
                     <Copy className="w-4 h-4" />
                   </Button>
                 </>
@@ -752,16 +789,31 @@ export default function Tasks() {
                 <Calendar className="w-3 h-3" />
                 תאריך
               </button>
+              <button
+                onClick={() => setFilter("client")}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
+                  filter === "client" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                )}
+              >
+                <Building2 className="w-3 h-3" />
+                לקוח
+              </button>
             </div>
 
-            {(filter === "assignee" || filter === "department") && (
+            {(filter === "assignee" || filter === "department" || filter === "client") && (
               <Select value={selectedValue} onValueChange={setSelectedValue}>
                 <SelectTrigger className="w-40">
-                  <SelectValue placeholder={filter === "assignee" ? "בחר עובד" : "בחר מחלקה"} />
+                  <SelectValue placeholder={
+                    filter === "assignee" ? "בחר עובד" : 
+                    filter === "department" ? "בחר מחלקה" : 
+                    "בחר לקוח"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
                   {filter === "assignee" && assignees.map(a => <SelectItem key={a} value={a!}>{a}</SelectItem>)}
                   {filter === "department" && departments.map(d => <SelectItem key={d} value={d!}>{d}</SelectItem>)}
+                  {filter === "client" && clientsForFilter.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
@@ -1059,6 +1111,47 @@ export default function Tasks() {
         open={integrationsDialogOpen}
         onOpenChange={setIntegrationsDialogOpen}
       />
+
+      {/* Duplicate with Date Dialog */}
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>שכפול משימה</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              שכפול: <span className="font-medium text-foreground">{taskToDuplicate?.title}</span>
+            </p>
+            <div className="space-y-2">
+              <Label>בחר תאריך יעד חדש</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-right">
+                    <Calendar className="w-4 h-4 ml-2" />
+                    {duplicateDate ? format(duplicateDate, "dd/MM/yyyy") : "ללא תאריך"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={duplicateDate}
+                    onSelect={setDuplicateDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>ביטול</Button>
+            <Button onClick={handleDuplicateWithDate} disabled={duplicateMutation.isPending}>
+              {duplicateMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              שכפל
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
