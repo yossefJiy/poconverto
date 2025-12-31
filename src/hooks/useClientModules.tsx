@@ -11,6 +11,7 @@ export interface ClientModules {
   campaigns: boolean;
   tasks: boolean;
   team: boolean;
+  features: boolean;
 }
 
 const defaultModules: ClientModules = {
@@ -21,6 +22,7 @@ const defaultModules: ClientModules = {
   campaigns: true,
   tasks: true,
   team: true,
+  features: true,
 };
 
 export function useClientModules() {
