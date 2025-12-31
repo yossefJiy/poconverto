@@ -84,6 +84,7 @@ import { BulkTaskImport } from "@/components/tasks/BulkTaskImport";
 import { TaskBulkActions } from "@/components/tasks/TaskBulkActions";
 import { TaskShareDialog } from "@/components/tasks/TaskShareDialog";
 import { TaskAttachments } from "@/components/tasks/TaskAttachments";
+import { TaskAttachmentsBadge } from "@/components/tasks/TaskAttachmentsBadge";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 
 interface Task {
@@ -869,6 +870,9 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               {task.description && (
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-1">{task.description}</p>
               )}
+
+              {/* Attachments badge */}
+              <TaskAttachmentsBadge taskId={task.id} className="mt-2" />
             </div>
 
             {/* Assignee Avatar */}
@@ -1167,6 +1171,9 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                     {task.description && (
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
                     )}
+
+                    {/* Attachments badge in grid */}
+                    <TaskAttachmentsBadge taskId={task.id} className="mb-2" />
 
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1725,6 +1732,14 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
         onClearSelection={clearSelection}
         teamMembers={teamMembers.map(m => ({ id: m.id, name: m.name }))}
         categories={categoryOptions}
+        onShareClick={() => setShareDialogOpen(true)}
+      />
+
+      {/* Share Dialog */}
+      <TaskShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        tasks={selectedTasksObjects}
       />
     </MainLayout>
   );
