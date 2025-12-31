@@ -1138,26 +1138,32 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
           </div>
 
           <div className="p-4 space-y-2">
-            {/* Title - Always visible */}
+            {/* Title - Always visible with green check when filled */}
             <div className="space-y-2">
-              <Input 
-                value={formTitle} 
-                onChange={(e) => setFormTitle(e.target.value)} 
-                placeholder="כותרת המשימה" 
-                className="text-lg font-medium border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
-              />
+              <div className="flex items-center gap-2">
+                {formTitle.trim() && <Check className="w-4 h-4 text-success flex-shrink-0" />}
+                <Input 
+                  value={formTitle} 
+                  onChange={(e) => setFormTitle(e.target.value)} 
+                  placeholder="כותרת המשימה" 
+                  className="text-lg font-medium border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary flex-1"
+                />
+              </div>
             </div>
 
-            {/* Description - Collapsible */}
-            <CollapsibleField
-              label="תיאור"
-              icon={<Edit2 className="w-4 h-4" />}
-              isExpanded={expandedSections.has('description')}
-              onToggle={() => toggleSection('description')}
-              hasValue={!!formDescription}
-            >
-              <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="תיאור המשימה" rows={3} />
-            </CollapsibleField>
+            {/* Description - Always visible like title with green check when filled */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                {formDescription.trim() && <Check className="w-4 h-4 text-success flex-shrink-0" />}
+                <Textarea 
+                  value={formDescription} 
+                  onChange={(e) => setFormDescription(e.target.value)} 
+                  placeholder="תיאור המשימה" 
+                  rows={3}
+                  className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary flex-1 resize-none"
+                />
+              </div>
+            </div>
 
             {/* Status & Priority - Collapsible */}
             <CollapsibleField
