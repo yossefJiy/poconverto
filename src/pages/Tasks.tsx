@@ -33,7 +33,9 @@ import {
   Archive,
   RotateCcw,
   LayoutDashboard,
-  Settings2
+  Settings2,
+  Eye,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -195,6 +197,12 @@ export default function Tasks() {
   const [formNotificationSms, setFormNotificationSms] = useState(false);
   const [formNotificationPhone, setFormNotificationPhone] = useState("");
   const [formNotificationEmailAddress, setFormNotificationEmailAddress] = useState("");
+  const [showReminderPreview, setShowReminderPreview] = useState(false);
+  
+  // Add contact dialog state
+  const [addContactDialogOpen, setAddContactDialogOpen] = useState(false);
+  const [addContactType, setAddContactType] = useState<'email' | 'phone'>('email');
+  const [newContactValue, setNewContactValue] = useState("");
 
 // Collapsible Field Component for innovative dialog
 interface CollapsibleFieldProps {
@@ -208,11 +216,13 @@ interface CollapsibleFieldProps {
 
 const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, children }: CollapsibleFieldProps) => (
   <div className="border border-border rounded-lg overflow-hidden transition-all duration-200">
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={(e) => e.key === 'Enter' && onToggle()}
       className={cn(
-        "w-full flex items-center justify-between p-3 text-sm transition-colors",
+        "w-full flex items-center justify-between p-3 text-sm transition-colors cursor-pointer",
         isExpanded ? "bg-muted/50" : "bg-muted/30 hover:bg-muted/50",
         hasValue && !isExpanded && "border-r-2 border-primary"
       )}
@@ -225,22 +235,17 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
         )}
       </div>
       <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-180")} />
-    </button>
-    <div className={cn(
-      "grid transition-all duration-300 ease-in-out",
-      isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-    )}>
-      <div className="overflow-hidden">
-        <div className={cn(
-          "p-3 pt-0 transition-all duration-300",
-          isExpanded ? "translate-y-0" : "-translate-y-2"
-        )}>
-          <div className="pt-3 animate-fade-in">
-            {children}
-          </div>
+    </div>
+    {isExpanded && (
+      <div 
+        className="p-3 pt-0 animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="pt-3">
+          {children}
         </div>
       </div>
-    </div>
+    )}
   </div>
 );
 
@@ -509,6 +514,60 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
     },
     onError: () => toast.error("שגיאה בשחזור משימה"),
   });
+
+  // Add contact to team member mutation
+  const addContactMutation = useMutation({
+    mutationFn: async ({ memberId, type, value }: { memberId: string; type: 'email' | 'phone'; value: string }) => {
+      const member = teamMembers.find(m => m.id === memberId);
+      if (!member) throw new Error("Team member not found");
+      
+      if (type === 'email') {
+        const newEmails = [...(member.emails || []), value];
+        const { error } = await supabase.from("team").update({ emails: newEmails }).eq("id", memberId);
+        if (error) throw error;
+      } else {
+        const newPhones = [...(member.phones || []), value];
+        const { error } = await supabase.from("team").update({ phones: newPhones }).eq("id", memberId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["team-active"] });
+      toast.success(variables.type === 'email' ? "מייל נוסף בהצלחה" : "טלפון נוסף בהצלחה");
+      setAddContactDialogOpen(false);
+      setNewContactValue("");
+      // Auto-select the new value
+      if (variables.type === 'email') {
+        setFormNotificationEmailAddress(variables.value);
+      } else {
+        setFormNotificationPhone(variables.value);
+      }
+    },
+    onError: () => toast.error("שגיאה בהוספת פרטי קשר"),
+  });
+
+  // Open add contact dialog
+  const openAddContactDialog = (type: 'email' | 'phone') => {
+    setAddContactType(type);
+    setNewContactValue("");
+    setAddContactDialogOpen(true);
+  };
+
+  // Generate reminder preview message
+  const getReminderPreview = () => {
+    if (!formReminderAt) return null;
+    const reminderDate = new Date(formReminderAt);
+    const formattedDate = reminderDate.toLocaleDateString("he-IL");
+    const formattedTime = reminderDate.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+    
+    const message = `תזכורת: ${formTitle || "משימה ללא כותרת"}
+${formDescription ? `תיאור: ${formDescription}` : ""}
+תאריך יעד: ${formDueDate ? new Date(formDueDate).toLocaleDateString("he-IL") : "לא נקבע"}${formScheduledTime ? ` בשעה ${formScheduledTime}` : ""}
+נשלח ל: ${formAssignee || "לא שויך"}
+זמן שליחה: ${formattedDate} בשעה ${formattedTime}`;
+    
+    return message;
+  };
 
   const openDialog = (task?: Task) => {
     setSelectedTask(task || null);
@@ -1172,6 +1231,7 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
                   onChange={(e) => setFormReminderAt(e.target.value)} 
                   placeholder="שעת תזכורת"
                 />
+                
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-muted-foreground" />
@@ -1188,35 +1248,62 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
                         availableEmails.unshift(member.email);
                       }
                       
-                      return availableEmails.length > 0 ? (
-                        <Select value={formNotificationEmailAddress} onValueChange={setFormNotificationEmailAddress}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="בחר כתובת מייל" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableEmails.map((email) => (
-                              <SelectItem key={email} value={email}>{email}</SelectItem>
-                            ))}
-                            <SelectItem value="_custom">הזן ידנית...</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                          <Mail className="w-4 h-4" />
-                          <span>אין כתובת מייל לאיש הצוות</span>
+                      return (
+                        <div className="space-y-2">
+                          {availableEmails.length > 0 ? (
+                            <Select value={formNotificationEmailAddress} onValueChange={setFormNotificationEmailAddress}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="בחר כתובת מייל" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableEmails.map((email) => (
+                                  <SelectItem key={email} value={email}>{email}</SelectItem>
+                                ))}
+                                <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4" />
+                                <span>אין כתובת מייל לאיש הצוות</span>
+                              </div>
+                            </div>
+                          )}
+                          {member && (
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full gap-2"
+                              onClick={() => openAddContactDialog('email')}
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              הוסף מייל לאיש צוות
+                            </Button>
+                          )}
                         </div>
                       );
                     })()}
-                    {(formNotificationEmailAddress === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.emails?.length) && (
+                    {(formNotificationEmailAddress === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.emails?.length) && formNotificationEmailAddress !== '_custom' && !teamMembers.find(m => m.name === formAssignee) && (
                       <Input 
                         type="email" 
                         placeholder="כתובת מייל" 
-                        value={formNotificationEmailAddress === '_custom' ? '' : formNotificationEmailAddress} 
+                        value={formNotificationEmailAddress} 
+                        onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
+                      />
+                    )}
+                    {formNotificationEmailAddress === '_custom' && (
+                      <Input 
+                        type="email" 
+                        placeholder="כתובת מייל" 
+                        value="" 
                         onChange={(e) => setFormNotificationEmailAddress(e.target.value)} 
                       />
                     )}
                   </div>
                 )}
+                
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
@@ -1230,32 +1317,99 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
                       const member = teamMembers.find(m => m.name === formAssignee);
                       const availablePhones = member?.phones || [];
                       
-                      return availablePhones.length > 0 ? (
-                        <Select value={formNotificationPhone} onValueChange={setFormNotificationPhone}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="בחר מספר טלפון" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availablePhones.map((phone) => (
-                              <SelectItem key={phone} value={phone}>{phone}</SelectItem>
-                            ))}
-                            <SelectItem value="_custom">הזן ידנית...</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                          <Phone className="w-4 h-4" />
-                          <span>אין מספר טלפון לאיש הצוות</span>
+                      return (
+                        <div className="space-y-2">
+                          {availablePhones.length > 0 ? (
+                            <Select value={formNotificationPhone} onValueChange={setFormNotificationPhone}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="בחר מספר טלפון" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availablePhones.map((phone) => (
+                                  <SelectItem key={phone} value={phone}>{phone}</SelectItem>
+                                ))}
+                                <SelectItem value="_custom">הזן ידנית...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4" />
+                                <span>אין מספר טלפון לאיש הצוות</span>
+                              </div>
+                            </div>
+                          )}
+                          {member && (
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full gap-2"
+                              onClick={() => openAddContactDialog('phone')}
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              הוסף טלפון לאיש צוות
+                            </Button>
+                          )}
                         </div>
                       );
                     })()}
-                    {(formNotificationPhone === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.phones?.length) && (
+                    {(formNotificationPhone === '_custom' || !teamMembers.find(m => m.name === formAssignee)?.phones?.length) && formNotificationPhone !== '_custom' && !teamMembers.find(m => m.name === formAssignee) && (
                       <Input 
                         type="tel" 
                         placeholder="מספר טלפון" 
-                        value={formNotificationPhone === '_custom' ? '' : formNotificationPhone} 
+                        value={formNotificationPhone} 
                         onChange={(e) => setFormNotificationPhone(e.target.value)} 
                       />
+                    )}
+                    {formNotificationPhone === '_custom' && (
+                      <Input 
+                        type="tel" 
+                        placeholder="מספר טלפון" 
+                        value="" 
+                        onChange={(e) => setFormNotificationPhone(e.target.value)} 
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Reminder Preview */}
+                {(formReminderAt && (formNotificationEmail || formNotificationSms)) && (
+                  <div className="border-t border-border pt-3 mt-3">
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full gap-2 text-muted-foreground"
+                      onClick={() => setShowReminderPreview(!showReminderPreview)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      {showReminderPreview ? "הסתר" : "הצג"} תצוגה מקדימה
+                    </Button>
+                    {showReminderPreview && (
+                      <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border animate-fade-in">
+                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                          <Bell className="w-3 h-3" />
+                          תצוגה מקדימה של הודעת התזכורת:
+                        </div>
+                        <pre className="text-sm whitespace-pre-wrap font-sans text-foreground">
+                          {getReminderPreview()}
+                        </pre>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {formNotificationEmail && formNotificationEmailAddress && (
+                            <div className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              יישלח למייל: {formNotificationEmailAddress}
+                            </div>
+                          )}
+                          {formNotificationSms && formNotificationPhone && (
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              יישלח ב-SMS ל: {formNotificationPhone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1344,6 +1498,47 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Contact Dialog */}
+      <Dialog open={addContactDialogOpen} onOpenChange={setAddContactDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {addContactType === 'email' ? 'הוסף כתובת מייל' : 'הוסף מספר טלפון'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              הוספה עבור: <span className="font-medium text-foreground">{formAssignee}</span>
+            </p>
+            <Input 
+              type={addContactType === 'email' ? 'email' : 'tel'}
+              placeholder={addContactType === 'email' ? 'example@email.com' : '050-1234567'}
+              value={newContactValue}
+              onChange={(e) => setNewContactValue(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAddContactDialogOpen(false)}>ביטול</Button>
+            <Button 
+              onClick={() => {
+                const member = teamMembers.find(m => m.name === formAssignee);
+                if (member && newContactValue) {
+                  addContactMutation.mutate({
+                    memberId: member.id,
+                    type: addContactType,
+                    value: newContactValue
+                  });
+                }
+              }}
+              disabled={addContactMutation.isPending || !newContactValue}
+            >
+              {addContactMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              הוסף
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
