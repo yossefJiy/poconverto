@@ -85,6 +85,8 @@ import { TaskBulkActions } from "@/components/tasks/TaskBulkActions";
 import { TaskShareDialog } from "@/components/tasks/TaskShareDialog";
 import { TaskAttachments } from "@/components/tasks/TaskAttachments";
 import { TaskAttachmentsBadge } from "@/components/tasks/TaskAttachmentsBadge";
+import { NewTaskAttachments, PendingAttachment } from "@/components/tasks/NewTaskAttachments";
+import { NotificationHistoryDialog } from "@/components/tasks/NotificationHistoryDialog";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 
 interface Task {
@@ -178,6 +180,13 @@ export default function Tasks() {
   // Bulk selection state
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  
+  // Notification history dialog
+  const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false);
+  const [notificationHistoryTaskId, setNotificationHistoryTaskId] = useState<string | undefined>();
+
+  // Pending attachments for new tasks
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
 
   // Toggle single task selection
   const toggleTaskSelection = (taskId: string) => {
@@ -444,15 +453,49 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
           .update(taskData)
           .eq("id", task.id);
         if (error) throw error;
+        return task.id;
       } else {
-        const { error } = await supabase.from("tasks").insert({
+        const { data, error } = await supabase.from("tasks").insert({
           ...taskData,
           client_id: selectedClient?.id || null,
-        });
+        }).select('id').single();
         if (error) throw error;
+        return data.id;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (newTaskId) => {
+      // Upload pending attachments if any
+      if (pendingAttachments.length > 0 && newTaskId) {
+        for (const attachment of pendingAttachments) {
+          try {
+            const fileExt = attachment.file.name.split('.').pop();
+            const fileName = `${newTaskId}/${crypto.randomUUID()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('task-attachments')
+              .upload(fileName, attachment.file);
+            
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage
+                .from('task-attachments')
+                .getPublicUrl(fileName);
+              
+              await supabase.from('task_attachments').insert({
+                task_id: newTaskId,
+                name: attachment.file.name,
+                url: urlData.publicUrl,
+                attachment_type: attachment.file.type.startsWith('image/') ? 'image' : 'file',
+                mime_type: attachment.file.type,
+                file_size: attachment.file.size,
+              });
+            }
+          } catch (err) {
+            console.error('Failed to upload attachment:', err);
+          }
+        }
+        setPendingAttachments([]);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("המשימה נשמרה");
       closeDialog();
@@ -673,6 +716,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormNotificationEmailAddress("");
     setSelectedReminders([]);
     setShowReminderPreview(false);
+    setPendingAttachments([]);
   };
 
   const handleSave = () => {
@@ -959,6 +1003,10 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
           description={showArchive ? "משימות שהושלמו" : "לפי עובד, לקוח ומחלקה"}
           actions={
             <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => { setNotificationHistoryTaskId(undefined); setNotificationHistoryOpen(true); }}>
+                <Bell className="w-4 h-4 ml-2" />
+                היסטוריית התראות
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setIntegrationsDialogOpen(true)}>
                 <Settings2 className="w-4 h-4 ml-2" />
                 אינטגרציות
@@ -1589,18 +1637,23 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               </div>
             </CollapsibleField>
 
-            {/* Attachments - Only show for existing tasks */}
-            {selectedTask && (
-              <CollapsibleField
-                label="נספחים"
-                icon={<Paperclip className="w-4 h-4" />}
-                isExpanded={expandedSections.has('attachments')}
-                onToggle={() => toggleSection('attachments')}
-                hasValue={false}
-              >
+            {/* Attachments - Show for both new and existing tasks */}
+            <CollapsibleField
+              label="נספחים"
+              icon={<Paperclip className="w-4 h-4" />}
+              isExpanded={expandedSections.has('attachments')}
+              onToggle={() => toggleSection('attachments')}
+              hasValue={selectedTask ? false : pendingAttachments.length > 0}
+            >
+              {selectedTask ? (
                 <TaskAttachments taskId={selectedTask.id} />
-              </CollapsibleField>
-            )}
+              ) : (
+                <NewTaskAttachments 
+                  attachments={pendingAttachments}
+                  onAttachmentsChange={setPendingAttachments}
+                />
+              )}
+            </CollapsibleField>
           </div>
         </DialogContent>
       </Dialog>
@@ -1740,6 +1793,13 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
         open={shareDialogOpen}
         onOpenChange={setShareDialogOpen}
         tasks={selectedTasksObjects}
+      />
+
+      {/* Notification History Dialog */}
+      <NotificationHistoryDialog
+        open={notificationHistoryOpen}
+        onOpenChange={setNotificationHistoryOpen}
+        taskId={notificationHistoryTaskId}
       />
     </MainLayout>
   );
