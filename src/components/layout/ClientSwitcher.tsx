@@ -1,5 +1,7 @@
-import { Building2, ChevronDown, Check, X, Plus, Loader2 } from "lucide-react";
+import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -12,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import logoIcon from "@/assets/logo-icon.svg";
+import logoText from "@/assets/logo-text.svg";
 
 interface ClientSwitcherProps {
   collapsed?: boolean;
@@ -19,6 +22,23 @@ interface ClientSwitcherProps {
 
 export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
   const { selectedClient, setSelectedClient, clients, isLoading } = useClient();
+
+  // Check if selected client is the master account (JIY)
+  const { data: masterClient } = useQuery({
+    queryKey: ["master-client-switcher"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("is_master_account", true)
+        .single();
+      return data;
+    },
+  });
+
+  const isJiySelected = selectedClient?.id === masterClient?.id ||
+                        selectedClient?.name?.toLowerCase().includes("jiy") ||
+                        selectedClient?.name?.includes("סוכנות");
 
   if (isLoading) {
     return (
@@ -41,6 +61,102 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
           </div>
         )}
       </div>
+    );
+  }
+
+  // Premium JIY display when selected
+  if (isJiySelected && !collapsed) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full h-auto p-3 justify-between gap-2 jiy-gold-border bg-gradient-to-br from-[hsl(var(--jiy-gold))]/10 to-[hsl(var(--jiy-gold-light))]/5 hover:from-[hsl(var(--jiy-gold))]/20 hover:to-[hsl(var(--jiy-gold-light))]/10"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] flex items-center justify-center shadow-lg">
+                  <img src={logoIcon} alt="JIY" className="w-7 h-7" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[hsl(var(--jiy-gold))] flex items-center justify-center shadow-md">
+                  <Crown className="w-3 h-3 text-black" />
+                </div>
+              </div>
+              <div className="flex flex-col items-start text-right">
+                <div className="flex items-center gap-2">
+                  <img src={logoText} alt="Converto" className="h-4" />
+                </div>
+                <span className="text-[10px] font-medium text-[hsl(var(--jiy-gold))] tracking-wider uppercase mt-1">
+                  switch to converting
+                </span>
+              </div>
+            </div>
+            <ChevronDown className="w-4 h-4 text-[hsl(var(--jiy-gold))] shrink-0" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuLabel className="flex items-center justify-between">
+            <span>לקוחות</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                setSelectedClient(null);
+              }}
+            >
+              <X className="w-3 h-3 ml-1" />
+              נקה
+            </Button>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {clients.map((client) => {
+            const isClientMaster = client.id === masterClient?.id || 
+                                   client.name?.toLowerCase().includes("jiy") ||
+                                   client.name?.includes("סוכנות");
+            return (
+              <DropdownMenuItem
+                key={client.id}
+                onClick={() => setSelectedClient(client)}
+                className={cn(
+                  "flex items-center gap-3 cursor-pointer",
+                  isClientMaster && "bg-[hsl(var(--jiy-gold))]/10"
+                )}
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+                  isClientMaster 
+                    ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
+                    : "bg-primary/10 text-primary"
+                )}>
+                  {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{client.name}</p>
+                  {client.industry && (
+                    <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+                  )}
+                </div>
+                {selectedClient?.id === client.id && (
+                  <Check className="w-4 h-4 text-[hsl(var(--jiy-gold))] shrink-0" />
+                )}
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
+          <div className="p-1">
+            <CreateClientDialog 
+              trigger={
+                <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-primary">
+                  <Plus className="w-4 h-4" />
+                  לקוח חדש
+                </Button>
+              }
+            />
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
@@ -105,26 +221,39 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
             אין לקוחות עדיין
           </div>
         ) : (
-          clients.map((client) => (
-            <DropdownMenuItem
-              key={client.id}
-              onClick={() => setSelectedClient(client)}
-              className="flex items-center gap-3 cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                {client.name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{client.name}</p>
-                {client.industry && (
-                  <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+          clients.map((client) => {
+            const isClientMaster = client.id === masterClient?.id || 
+                                   client.name?.toLowerCase().includes("jiy") ||
+                                   client.name?.includes("סוכנות");
+            return (
+              <DropdownMenuItem
+                key={client.id}
+                onClick={() => setSelectedClient(client)}
+                className={cn(
+                  "flex items-center gap-3 cursor-pointer",
+                  isClientMaster && "bg-[hsl(var(--jiy-gold))]/5"
                 )}
-              </div>
-              {selectedClient?.id === client.id && (
-                <Check className="w-4 h-4 text-primary shrink-0" />
-              )}
-            </DropdownMenuItem>
-          ))
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+                  isClientMaster 
+                    ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
+                    : "bg-primary/10 text-primary"
+                )}>
+                  {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{client.name}</p>
+                  {client.industry && (
+                    <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+                  )}
+                </div>
+                {selectedClient?.id === client.id && (
+                  <Check className="w-4 h-4 text-primary shrink-0" />
+                )}
+              </DropdownMenuItem>
+            );
+          })
         )}
         <DropdownMenuSeparator />
         <div className="p-1">

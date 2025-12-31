@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
@@ -9,7 +10,8 @@ import {
   Save,
   Loader2,
   Shield,
-  Sparkles
+  Sparkles,
+  Coins
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ const settingsSections = [
   { id: "notifications", icon: Bell, title: "התראות", description: "הגדרת התראות ועדכונים" },
   { id: "appearance", icon: Palette, title: "מראה", description: "התאמה אישית של הממשק" },
   { id: "users", icon: Shield, title: "משתמשים", description: "ניהול משתמשים מורשים", adminOnly: true },
+  { id: "credits", icon: Coins, title: "קרדיטים", description: "ניהול קרדיטים לקוחות", adminOnly: true },
   { id: "features", icon: Sparkles, title: "פיצ'רים עתידיים", description: "רשימת פיצ'רים לפיתוח", adminOnly: true },
 ];
 
@@ -158,6 +161,20 @@ export default function Settings() {
 
             {activeSection === "users" && isAdmin && (
               <AuthorizedUsersManager />
+            )}
+
+            {activeSection === "credits" && isAdmin && (
+              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up p-6" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold">ניהול קרדיטים</h2>
+                  <Link to="/credits">
+                    <Button>מעבר לעמוד קרדיטים</Button>
+                  </Link>
+                </div>
+                <p className="text-muted-foreground">
+                  נהל את הקרדיטים של הלקוחות, צפה בהיסטוריית שימוש ואשר בקשות משימות.
+                </p>
+              </div>
             )}
 
             {activeSection === "features" && isAdmin && (
