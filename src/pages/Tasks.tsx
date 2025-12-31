@@ -30,6 +30,7 @@ import {
   ListTree,
   Copy,
   Upload,
+  Archive,
   LayoutDashboard,
   Settings2
 } from "lucide-react";
@@ -141,6 +142,7 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
   const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date">("all");
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -467,7 +469,11 @@ export default function Tasks() {
     ...teamMembers.flatMap(m => m.departments)
   ])];
 
-  const filteredTasks = parentTasks.filter(task => {
+  // Separate active and archived (completed) tasks
+  const activeTasks = parentTasks.filter(task => task.status !== "completed");
+  const archivedTasks = parentTasks.filter(task => task.status === "completed");
+
+  const filteredTasks = (showArchive ? archivedTasks : activeTasks).filter(task => {
     // Date filter
     if (filter === "date" && selectedDate) {
       if (!task.due_date) return false;
@@ -638,8 +644,8 @@ export default function Tasks() {
     <MainLayout>
       <div className="p-4 md:p-8">
         <PageHeader 
-          title={selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"}
-          description="לפי עובד, לקוח ומחלקה"
+          title={showArchive ? "ארכיון משימות" : (selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות")}
+          description={showArchive ? "משימות שהושלמו" : "לפי עובד, לקוח ומחלקה"}
           actions={
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => setIntegrationsDialogOpen(true)}>
@@ -653,6 +659,14 @@ export default function Tasks() {
               <Button variant="outline" size="sm" onClick={() => setBulkImportDialogOpen(true)}>
                 <Upload className="w-4 h-4 ml-2" />
                 ייבוא בכמות
+              </Button>
+              <Button 
+                variant={showArchive ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setShowArchive(!showArchive)}
+              >
+                <Archive className="w-4 h-4 ml-2" />
+                ארכיון ({archivedTasks.length})
               </Button>
               <Button className="glow" size="sm" onClick={() => openDialog()}>
                 <Plus className="w-4 h-4 ml-2" />
