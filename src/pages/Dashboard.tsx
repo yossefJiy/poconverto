@@ -254,14 +254,6 @@ export default function Dashboard() {
                   delay={0.1}
                 />
               )}
-              {isModuleEnabled("tasks") && (
-                <MetricCard
-                  title="משימות פתוחות"
-                  value={stats?.openTasks || 0}
-                  icon={<CheckSquare className="w-5 h-5" />}
-                  delay={0.15}
-                />
-              )}
               {isModuleEnabled("campaigns") && (
                 <MetricCard
                   title="חשיפות"
