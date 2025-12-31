@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoText from "@/assets/logo-text.svg";
@@ -46,17 +47,23 @@ interface JiyPremiumBadgeProps {
   className?: string;
 }
 
-export function JiyPremiumBadge({ className }: JiyPremiumBadgeProps) {
-  return (
-    <div className={cn(
-      "inline-flex items-center gap-1.5 px-2 py-1 rounded-full",
-      "bg-gradient-to-r from-[hsl(var(--jiy-gold))]/20 to-[hsl(var(--jiy-gold-light))]/20",
-      "border border-[hsl(var(--jiy-gold))]/50",
-      "text-[hsl(var(--jiy-gold))] text-xs font-medium",
-      className
-    )}>
-      <Crown className="w-3 h-3" />
-      <span>JIY</span>
-    </div>
-  );
-}
+export const JiyPremiumBadge = forwardRef<HTMLDivElement, JiyPremiumBadgeProps>(
+  ({ className }, ref) => {
+    return (
+      <div 
+        ref={ref}
+        className={cn(
+          "inline-flex items-center gap-1.5 px-2 py-1 rounded-full",
+          "bg-gradient-to-r from-[hsl(var(--jiy-gold))]/20 to-[hsl(var(--jiy-gold-light))]/20",
+          "border border-[hsl(var(--jiy-gold))]/50",
+          "text-[hsl(var(--jiy-gold))] text-xs font-medium",
+          className
+        )}>
+        <Crown className="w-3 h-3" />
+        <span>JIY</span>
+      </div>
+    );
+  }
+);
+
+JiyPremiumBadge.displayName = "JiyPremiumBadge";
