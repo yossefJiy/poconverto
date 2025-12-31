@@ -6,38 +6,38 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { LeadForm } from "@/components/home/LeadForm";
 import { WelcomeGateCTA } from "@/components/home/WelcomeGateCTA";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Target, 
-  ShoppingCart, 
-  BarChart3, 
-  ArrowLeft, 
-  Sparkles,
-  Clock,
-  DollarSign,
-  Zap,
-  CheckCircle2,
-  ChevronDown
-} from "lucide-react";
-
+import { Target, ShoppingCart, BarChart3, ArrowLeft, Sparkles, Clock, DollarSign, Zap, CheckCircle2, ChevronDown } from "lucide-react";
 const fadeInUp: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-};
-
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
+  hidden: {
+    opacity: 0,
+    y: 30
+  },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    y: 0,
+    transition: {
+      duration: 0.6
+    }
   }
 };
-
+const staggerContainer: Variants = {
+  hidden: {
+    opacity: 0
+  },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
 const Home = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const authHref = user ? "/dashboard" : "/auth";
-
-  return (
-    <PublicLayout>
+  return <PublicLayout>
       {/* Hero Section */}
       <section className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
         {/* Animated Background */}
@@ -51,12 +51,15 @@ const Home = () => {
 
         <div className="relative z-10 container mx-auto px-4 py-20 text-center">
           {/* Main Headline */}
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
-          >
+          <motion.h1 initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.6
+        }} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
             <span className="text-foreground">הפסיקו לבזבז.</span>
             <br />
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -65,24 +68,32 @@ const Home = () => {
           </motion.h1>
 
           {/* Subheadline */}
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-          >
+          <motion.p initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.6,
+          delay: 0.1
+        }} className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
             דפי נחיתה שמייצרים לידים. חנויות שמוכרות. דשבורד שחושב בשבילכם.
             <br />
             <span className="text-primary font-medium">חוסכים זמן. חוסכים כסף. מונעים תסכול.</span>
           </motion.p>
 
           {/* CTA Buttons */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          duration: 0.6,
+          delay: 0.2
+        }} className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button asChild size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all shadow-lg shadow-primary/20">
               <Link to={authHref}>
                 {user ? "לדשבורד" : "התחילו בחינם"}
@@ -98,12 +109,14 @@ const Home = () => {
           </motion.div>
 
           {/* Trust Indicators */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground"
-          >
+          <motion.div initial={{
+          opacity: 0
+        }} animate={{
+          opacity: 1
+        }} transition={{
+          duration: 0.6,
+          delay: 0.4
+        }} className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-accent" />
               <span>ללא התחייבות</span>
@@ -120,11 +133,12 @@ const Home = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <motion.div 
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2"
-        >
+        <motion.div animate={{
+        y: [0, 10, 0]
+      }} transition={{
+        repeat: Infinity,
+        duration: 2
+      }} className="absolute bottom-6 left-1/2 -translate-x-1/2">
           <ChevronDown className="h-6 w-6 text-muted-foreground/40" />
         </motion.div>
       </section>
@@ -132,13 +146,10 @@ const Home = () => {
       {/* Products Section */}
       <section id="products" className="py-20 bg-muted/20">
         <div className="container mx-auto px-4">
-          <motion.div 
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fadeInUp}
-            className="text-center mb-14"
-          >
+          <motion.div initial="hidden" whileInView="visible" viewport={{
+          once: true,
+          margin: "-100px"
+        }} variants={fadeInUp} className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               שלושה פתרונות.{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -150,13 +161,10 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <motion.div 
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            variants={staggerContainer}
-            className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
-          >
+          <motion.div initial="hidden" whileInView="visible" viewport={{
+          once: true,
+          margin: "-50px"
+        }} variants={staggerContainer} className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Landing Pages */}
             <motion.div variants={fadeInUp}>
               <Card className="group h-full p-6 bg-card/50 backdrop-blur border-border/50 hover:border-primary/30 transition-all duration-300 hover:-translate-y-1">
@@ -250,13 +258,10 @@ const Home = () => {
       {/* Value Proposition */}
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
-          <motion.div 
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fadeInUp}
-            className="text-center mb-14"
-          >
+          <motion.div initial="hidden" whileInView="visible" viewport={{
+          once: true,
+          margin: "-100px"
+        }} variants={fadeInUp} className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               למה{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -268,13 +273,10 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <motion.div 
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            variants={staggerContainer}
-            className="grid md:grid-cols-3 gap-8 max-w-3xl mx-auto"
-          >
+          <motion.div initial="hidden" whileInView="visible" viewport={{
+          once: true,
+          margin: "-50px"
+        }} variants={staggerContainer} className="grid md:grid-cols-3 gap-8 max-w-3xl mx-auto">
             <motion.div variants={fadeInUp} className="text-center p-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Clock className="h-6 w-6 text-primary" />
@@ -311,30 +313,8 @@ const Home = () => {
 
       {/* Contact Section */}
       <section id="contact" className="py-20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="container mx-auto px-4">
-          <motion.div 
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fadeInUp}
-            className="max-w-xl mx-auto"
-          >
-            <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                בואו נדבר
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                השאירו פרטים ונחזור אליכם תוך 24 שעות
-              </p>
-            </div>
-            <Card className="p-6 md:p-8 bg-card/80 backdrop-blur border-border/50">
-              <LeadForm source="home_contact" />
-            </Card>
-          </motion.div>
-        </div>
+        
       </section>
-    </PublicLayout>
-  );
+    </PublicLayout>;
 };
-
 export default Home;
