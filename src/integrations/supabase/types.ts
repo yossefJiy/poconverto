@@ -322,6 +322,51 @@ export type Database = {
           },
         ]
       }
+      client_team: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          is_lead: boolean | null
+          role: string | null
+          team_member_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_lead?: boolean | null
+          role?: string | null
+          team_member_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_lead?: boolean | null
+          role?: string | null
+          team_member_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_team_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_team_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           access_level: string
