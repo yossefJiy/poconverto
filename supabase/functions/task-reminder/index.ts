@@ -211,7 +211,7 @@ serve(async (req) => {
           `;
 
           const { error: emailError } = await resend.emails.send({
-            from: "JIY Tasks <tasks@jiy.co.il>",
+            from: "JIY Tasks <onboarding@resend.dev>",
             to: [task.notification_email_address],
             subject: emailSubject,
             html: emailHtml,
