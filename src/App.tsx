@@ -27,6 +27,8 @@ import Analytics from "./pages/Analytics";
 import GoogleAdsDetail from "./pages/analytics/GoogleAdsDetail";
 import ShopifyDetail from "./pages/analytics/ShopifyDetail";
 import FacebookAdsDetail from "./pages/analytics/FacebookAdsDetail";
+import WooCommerceDetail from "./pages/analytics/WooCommerceDetail";
+import GoogleAnalyticsDetail from "./pages/analytics/GoogleAnalyticsDetail";
 import Ecommerce from "./pages/Ecommerce";
 import SystemDiagram from "./pages/SystemDiagram";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -63,6 +65,8 @@ const App = () => (
               <Route path="/analytics/google-ads" element={<ProtectedRoute><GoogleAdsDetail /></ProtectedRoute>} />
               <Route path="/analytics/shopify" element={<ProtectedRoute><ShopifyDetail /></ProtectedRoute>} />
               <Route path="/analytics/facebook-ads" element={<ProtectedRoute><FacebookAdsDetail /></ProtectedRoute>} />
+              <Route path="/analytics/woocommerce" element={<ProtectedRoute><WooCommerceDetail /></ProtectedRoute>} />
+              <Route path="/analytics/google-analytics" element={<ProtectedRoute><GoogleAnalyticsDetail /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
               <Route path="/system-diagram" element={<SystemDiagram />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
