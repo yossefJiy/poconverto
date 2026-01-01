@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-export type DateFilterValue = "today" | "yesterday" | "mtd" | "custom" | "7" | "14" | "30" | "90";
+export type DateFilterValue = "today" | "yesterday" | "mtd" | "ytd" | "custom" | "7" | "14" | "30" | "90";
 
 interface GlobalDateFilterProps {
   value: DateFilterValue;
@@ -63,6 +63,8 @@ export function GlobalDateFilter({
         return "אתמול";
       case "mtd":
         return "מתחילת החודש";
+      case "ytd":
+        return "מתחילת השנה";
       case "custom":
         if (customDateRange?.from && customDateRange?.to) {
           return `${format(customDateRange.from, "dd/MM")} - ${format(customDateRange.to, "dd/MM")}`;
@@ -93,6 +95,7 @@ export function GlobalDateFilter({
             <SelectItem value="today">היום</SelectItem>
             <SelectItem value="yesterday">אתמול</SelectItem>
             <SelectItem value="mtd">מתחילת החודש</SelectItem>
+            <SelectItem value="ytd">מתחילת השנה</SelectItem>
             <SelectItem value="7">7 ימים</SelectItem>
             <SelectItem value="14">14 ימים</SelectItem>
             <SelectItem value="30">30 ימים</SelectItem>
@@ -170,6 +173,9 @@ export function getDateRangeFromFilter(
       break;
     case "mtd":
       start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case "ytd":
+      start = new Date(now.getFullYear(), 0, 1);
       break;
     case "custom":
       if (customRange?.from && customRange?.to) {

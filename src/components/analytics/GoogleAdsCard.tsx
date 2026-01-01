@@ -102,7 +102,6 @@ interface GoogleAdsCardProps {
   clientId?: string;
   isAdmin?: boolean;
   onAddIntegration?: () => void;
-  onRefresh?: () => void;
 }
 
 function formatNumber(num: number): string {
@@ -157,7 +156,6 @@ export function GoogleAdsCard({
   clientId,
   isAdmin = false,
   onAddIntegration,
-  onRefresh,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [useLocalFilter, setUseLocalFilter] = useState(false);
