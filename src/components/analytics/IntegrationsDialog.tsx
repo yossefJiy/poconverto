@@ -97,6 +97,7 @@ interface PlatformOption {
   useApiCredentials?: boolean; // For platforms needing consumer key/secret
   useGACredentials?: boolean; // For Google Analytics with property ID + measurement ID
   useOAuth?: boolean; // For Google Workspace integrations requiring OAuth
+  useFacebookCredentials?: boolean; // For Facebook Ads with access token + ad account ID
   category: "ecommerce" | "analytics" | "google_workspace" | "ai";
   comingSoon?: boolean;
   steps: { title: string; description: string }[];
@@ -202,13 +203,15 @@ const platformOptions: PlatformOption[] = [
     category: "analytics",
     description: "קבלת נתוני קמפיינים מ-Facebook Business",
     credentialKey: "ad_account_id",
-    placeholder: "act_123456789",
+    placeholder: "123456789",
+    useFacebookCredentials: true,
     steps: [
-      { title: "היכנס ל-Business Manager", description: "עבור ל-business.facebook.com" },
-      { title: "לחץ על Business Settings", description: "בחר Accounts > Ad Accounts" },
-      { title: "העתק את Ad Account ID", description: "המזהה מתחיל ב-act_" },
+      { title: "צור Access Token", description: "עבור ל-Facebook Developer > Tools > Graph API Explorer" },
+      { title: "הגדר הרשאות ads_read", description: "בחר הרשאות ads_read ו-ads_management" },
+      { title: "צור Long-Lived Token", description: "בחר User Token ארוך-טווח (60 ימים)" },
+      { title: "העתק את מספר חשבון המודעות", description: "מספרים בלבד - נוסיף act_ אוטומטית" },
     ],
-    helpUrl: "https://www.facebook.com/business/help/1492627900875762",
+    helpUrl: "https://developers.facebook.com/docs/marketing-api/overview",
     features: ["קמפיינים", "קבוצות מודעות", "Insights", "המרות"],
   },
   // Google Workspace
@@ -336,6 +339,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
   const [measurementId, setMeasurementId] = useState(""); // For Google Analytics Measurement ID (G-XXXXXX)
+  const [facebookAccessToken, setFacebookAccessToken] = useState(""); // For Facebook Ads access token
   const [selectedMccAccount, setSelectedMccAccount] = useState<MccAccount | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
@@ -411,6 +415,12 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           property_id: credential,
           measurement_id: measurementId || "",
         };
+      } else if (selectedPlatform.useFacebookCredentials) {
+        // Facebook Ads with access token + ad account ID
+        credentials = {
+          ad_account_id: credential,
+          access_token: facebookAccessToken,
+        };
       } else {
         credentials[selectedPlatform.credentialKey] = credential;
       }
@@ -485,6 +495,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConsumerKey("");
     setConsumerSecret("");
     setMeasurementId("");
+    setFacebookAccessToken("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -542,6 +553,18 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
         }
       }
     }
+
+    // Validate Facebook Ads
+    if (selectedPlatform?.useFacebookCredentials) {
+      if (!credential) {
+        setValidationError("יש להזין מספר חשבון מודעות");
+        return;
+      }
+      if (!facebookAccessToken) {
+        setValidationError("יש להזין Access Token");
+        return;
+      }
+    }
     
     setValidationError("");
     setConnectionStatus("testing");
@@ -556,6 +579,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConsumerKey("");
     setConsumerSecret("");
     setMeasurementId("");
+    setFacebookAccessToken("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -573,7 +597,9 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
       ? !!credential && !!consumerKey && !!consumerSecret
       : selectedPlatform?.useGACredentials
         ? !!credential
-        : !!credential;
+        : selectedPlatform?.useFacebookCredentials
+          ? !!credential && !!facebookAccessToken
+          : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -842,6 +868,58 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                   />
                   <p className="text-xs text-muted-foreground">
                     נמצא ב-Data Streams → Web → Measurement ID
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Facebook Ads with access token + ad account ID */}
+            {selectedPlatform.useFacebookCredentials && (
+              <div className="space-y-4">
+                <Alert className="border-blue-500/50 bg-blue-500/5">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <AlertTitle className="text-sm">חיבור Facebook Ads</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    יש ליצור User Access Token עם הרשאת ads_read דרך Graph API Explorer
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="space-y-2">
+                  <Label>Ad Account ID (מספרים בלבד):</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      // Remove non-digits and act_ prefix if entered
+                      const cleanValue = e.target.value.replace(/\D/g, '');
+                      setCredential(cleanValue);
+                      setCurrentStep(cleanValue ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="123456789012345"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    מספר חשבון המודעות (ספרות בלבד). נמצא ב-Business Settings → Ad Accounts
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Access Token:</Label>
+                  <Input
+                    type="password"
+                    value={facebookAccessToken}
+                    onChange={(e) => {
+                      setFacebookAccessToken(e.target.value);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="EAAxxxxxxx..."
+                    dir="ltr"
+                    className="text-left font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    צור ב-Graph API Explorer עם הרשאות ads_read. מומלץ ליצור Long-Lived Token
                   </p>
                 </div>
               </div>

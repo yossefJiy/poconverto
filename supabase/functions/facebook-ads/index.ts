@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
 import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
@@ -14,19 +15,65 @@ const FACEBOOK_API_VERSION = 'v18.0';
 
 interface FacebookAdsRequest {
   action?: 'health' | 'campaigns' | 'insights';
-  adAccountId: string;
+  adAccountId?: string;
   startDate?: string;
   endDate?: string;
-  clientId?: string;
+  clientId: string;
 }
 
-// Helper function to get access token
-async function getAccessToken(): Promise<string> {
-  const accessToken = Deno.env.get('FACEBOOK_ACCESS_TOKEN');
-  if (!accessToken) {
-    throw new Error('FACEBOOK_ACCESS_TOKEN is not configured');
+// Helper function to get access token from client's encrypted credentials
+async function getClientAccessToken(clientId: string): Promise<{ accessToken: string; adAccountId: string }> {
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+  
+  // Get the Facebook Ads integration for this client
+  const { data: integration, error: fetchError } = await supabaseClient
+    .from('integrations')
+    .select('id, encrypted_credentials, settings, external_account_id')
+    .eq('client_id', clientId)
+    .eq('platform', 'facebook_ads')
+    .eq('is_connected', true)
+    .single();
+  
+  if (fetchError || !integration) {
+    log.error('No Facebook Ads integration found for client:', clientId);
+    throw new Error('לא נמצא חיבור Facebook Ads עבור לקוח זה');
   }
-  return accessToken;
+  
+  if (!integration.encrypted_credentials) {
+    log.error('No encrypted credentials found for integration:', integration.id);
+    throw new Error('לא נמצאו פרטי התחברות לחשבון Facebook Ads');
+  }
+  
+  // Decrypt the credentials
+  const { data: decryptedData, error: decryptError } = await supabaseClient
+    .rpc('decrypt_integration_credentials', { encrypted_data: integration.encrypted_credentials });
+  
+  if (decryptError || !decryptedData) {
+    log.error('Failed to decrypt credentials:', decryptError);
+    throw new Error('שגיאה בפענוח פרטי ההתחברות');
+  }
+  
+  const credentials = decryptedData as { access_token?: string };
+  
+  if (!credentials.access_token) {
+    throw new Error('Access Token לא נמצא בפרטי ההתחברות');
+  }
+  
+  // Get ad account ID from settings or external_account_id
+  const settings = integration.settings as { ad_account_id?: string } | null;
+  const adAccountId = settings?.ad_account_id || integration.external_account_id || '';
+  
+  if (!adAccountId) {
+    throw new Error('מספר חשבון מודעות לא נמצא');
+  }
+  
+  return { 
+    accessToken: credentials.access_token,
+    adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
+  };
 }
 
 // Fetch campaigns from Facebook Ads API
@@ -143,11 +190,11 @@ serve(async (req) => {
 
   try {
     const body: FacebookAdsRequest = await req.json();
-    const { action, adAccountId, startDate, endDate, clientId } = body;
+    const { action, adAccountId: requestAdAccountId, startDate, endDate, clientId } = body;
     
     // Health check endpoint - no auth required
     if (action === 'health') {
-      const envCheck = checkEnvVars(REQUIRED_ENV_VARS.FACEBOOK_ADS || ['FACEBOOK_ACCESS_TOKEN']);
+      const envCheck = { name: 'Client Credentials', status: 'pass' as const, message: 'Uses per-client tokens' };
       return healthCheckResponse('facebook-ads', SERVICE_VERSIONS.FACEBOOK_ADS || '1.0.0', [envCheck]);
     }
     
@@ -159,14 +206,16 @@ serve(async (req) => {
     }
     log.info('Authenticated user:', auth.user.id);
     
-    if (!adAccountId) {
-      return new Response(JSON.stringify({ error: 'Ad Account ID is required' }), {
+    if (!clientId) {
+      return new Response(JSON.stringify({ error: 'Client ID is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const accessToken = await getAccessToken();
+    // Get access token and ad account ID from client's integration
+    const { accessToken, adAccountId } = await getClientAccessToken(clientId);
+    log.info(`Using client-specific credentials for account: ${adAccountId}`);
     
     // Default date range: last 30 days
     const today = new Date();

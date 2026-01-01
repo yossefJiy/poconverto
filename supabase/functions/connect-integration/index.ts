@@ -203,22 +203,77 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
   facebook_ads: async (credentials) => {
     console.log("Testing Facebook Ads connection:", credentials.ad_account_id);
     
-    if (!credentials.ad_account_id || !credentials.ad_account_id.startsWith('act_')) {
+    // Validate ad account ID - can be with or without act_ prefix
+    let adAccountId = credentials.ad_account_id;
+    if (!adAccountId) {
       return { 
         success: false, 
-        message: 'Ad Account ID חייב להתחיל ב-act_ (לדוגמה: act_123456789)' 
+        message: 'Ad Account ID נדרש לחיבור Facebook Ads' 
       };
     }
     
-    return { 
-      success: true, 
-      message: 'החיבור ל-Facebook Ads הצליח!',
-      data: {
-        ad_account_id: credentials.ad_account_id,
-        connected_at: new Date().toISOString(),
-        features: ['campaigns', 'ad_sets', 'ads', 'insights']
+    // Clean the ad account ID - ensure it has act_ prefix
+    const cleanAccountId = adAccountId.replace(/^act_/, '').replace(/\D/g, '');
+    if (!cleanAccountId) {
+      return { 
+        success: false, 
+        message: 'Ad Account ID חייב להכיל מספרים' 
+      };
+    }
+    
+    // Validate access token
+    if (!credentials.access_token) {
+      return { 
+        success: false, 
+        message: 'Access Token נדרש לחיבור Facebook Ads' 
+      };
+    }
+    
+    // Test the connection by fetching account info
+    try {
+      const accountId = `act_${cleanAccountId}`;
+      const url = `https://graph.facebook.com/v18.0/${accountId}?fields=id,name,account_status,currency&access_token=${credentials.access_token}`;
+      
+      console.log('[Facebook Ads] Testing API with account:', accountId);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('[Facebook Ads] API error:', data.error);
+        
+        // Handle specific error codes
+        if (data.error.code === 190) {
+          return { success: false, message: 'Access Token לא תקין או פג תוקף. נא ליצור טוקן חדש.' };
+        }
+        if (data.error.code === 100 && data.error.error_subcode === 33) {
+          return { success: false, message: 'מספר חשבון המודעות לא קיים או אין לך גישה אליו.' };
+        }
+        if (data.error.code === 10 || data.error.code === 200) {
+          return { success: false, message: 'חסרות הרשאות. ודא שה-Token מכיל הרשאת ads_read.' };
+        }
+        
+        return { success: false, message: data.error.message || 'שגיאה בחיבור ל-Facebook API' };
       }
-    };
+      
+      console.log('[Facebook Ads] Connection successful:', data.name);
+      
+      return { 
+        success: true, 
+        message: `החיבור ל-Facebook Ads הצליח! חשבון: ${data.name}`,
+        data: {
+          ad_account_id: accountId,
+          account_name: data.name,
+          currency: data.currency,
+          account_status: data.account_status,
+          connected_at: new Date().toISOString(),
+          features: ['campaigns', 'ad_sets', 'ads', 'insights']
+        }
+      };
+    } catch (error) {
+      console.error('[Facebook Ads] Connection error:', error);
+      return { success: false, message: `שגיאת חיבור: ${(error as Error).message}` };
+    }
   },
 
   woocommerce: async (credentials) => {
@@ -580,6 +635,13 @@ serve(async (req) => {
           sensitiveCredentials = {
             consumer_key: credentials.consumer_key,
             consumer_secret: credentials.consumer_secret,
+          };
+        }
+        
+        // For Facebook Ads, store the access token
+        if (platform === 'facebook_ads') {
+          sensitiveCredentials = {
+            access_token: credentials.access_token,
           };
         }
         

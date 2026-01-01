@@ -8,6 +8,7 @@ import { usePermissions, useAuth } from "@/hooks/useAuth";
 import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
 import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
 import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
+import { FacebookAdsCard } from "@/components/analytics/FacebookAdsCard";
 import { WooCommerceCard } from "@/components/analytics/WooCommerceCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
@@ -86,6 +87,7 @@ export default function Analytics() {
   // Check which integrations the client has
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
   const hasGoogleAds = integrations.some(i => i.platform === 'google_ads' && i.is_connected);
+  const hasFacebookAds = integrations.some(i => i.platform === 'facebook_ads' && i.is_connected);
   const hasWooCommerce = integrations.some(i => i.platform === 'woocommerce' && i.is_connected);
   const queryClient = useQueryClient();
 
@@ -173,6 +175,7 @@ export default function Analytics() {
   if (hasWooCommerce) dataSources.push("WooCommerce");
   if (hasAnalytics) dataSources.push("Google Analytics");
   if (hasGoogleAds) dataSources.push("Google Ads");
+  if (hasFacebookAds) dataSources.push("Facebook Ads");
 
   return (
     <MainLayout>
@@ -302,6 +305,18 @@ export default function Analytics() {
             {/* Google Ads - Only show if connected */}
             {hasGoogleAds && (
               <GoogleAdsCard
+                globalDateFrom={dateRange.dateFrom}
+                globalDateTo={dateRange.dateTo}
+                clientId={selectedClient?.id}
+                isAdmin={isAdmin}
+                onAddIntegration={() => setShowIntegrationsDialog(true)}
+                onRefresh={handleRefreshAll}
+              />
+            )}
+
+            {/* Facebook Ads - Only show if connected */}
+            {hasFacebookAds && (
+              <FacebookAdsCard
                 globalDateFrom={dateRange.dateFrom}
                 globalDateTo={dateRange.dateTo}
                 clientId={selectedClient?.id}
