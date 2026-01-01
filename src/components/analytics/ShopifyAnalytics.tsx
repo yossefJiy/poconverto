@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { 
   ShoppingCart, 
   DollarSign, 
@@ -6,10 +6,8 @@ import {
   TrendingDown,
   Package,
   Users,
-  RefreshCw,
   Loader2,
   AlertCircle,
-  Calendar,
   Eye,
   Percent,
   Globe,
@@ -23,13 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useShopifyAnalytics } from "@/hooks/useShopifyData";
 import { useShopifyComparison } from "@/hooks/useShopifyComparison";
 import { Progress } from "@/components/ui/progress";
@@ -68,8 +59,6 @@ export function ShopifyAnalytics({
   clientProfitMargin = 0,
   clientJiyCommission = 0,
 }: ShopifyAnalyticsProps) {
-  const [useLocalFilter, setUseLocalFilter] = useState(false);
-  const [localDateFilter, setLocalDateFilter] = useState("mtd");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const navigate = useNavigate();
@@ -78,87 +67,19 @@ export function ShopifyAnalytics({
   // Fetch snapshot fallback
   const { data: snapshot } = useAnalyticsSnapshot(selectedClient?.id, 'shopify');
 
-  // Calculate local date range if using local filter
-  const { dateFrom, dateTo } = useMemo(() => {
-    if (!useLocalFilter) {
-      return { dateFrom: globalDateFrom, dateTo: globalDateTo };
-    }
-    
-    const now = new Date();
-    // Use end of today to include today's data
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    let start: Date;
-    let end: Date = today;
-    
-    switch (localDateFilter) {
-      case "today":
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "yesterday":
-        start = new Date(today);
-        start.setDate(start.getDate() - 1);
-        end = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59);
-        break;
-      case "mtd":
-        // First day of current month
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "7":
-        start = new Date(today);
-        start.setDate(start.getDate() - 6); // 7 days including today
-        break;
-      case "30":
-        start = new Date(today);
-        start.setDate(start.getDate() - 29); // 30 days including today
-        break;
-      case "90":
-        start = new Date(today);
-        start.setDate(start.getDate() - 89); // 90 days including today
-        break;
-      case "ytd":
-        start = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    
-    // Format as YYYY-MM-DD
-    const formatDateOnly = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
-    return {
-      dateFrom: formatDateOnly(start),
-      dateTo: formatDateOnly(end),
-    };
-  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
+  // Use global dates directly
+  const dateFrom = globalDateFrom;
+  const dateTo = globalDateTo;
   
   const { 
     data: analyticsData, 
     isLoading, 
     isError, 
     error, 
-    refetch 
   } = useShopifyAnalytics(dateFrom, dateTo);
 
   // Fetch comparison data for previous period
   const { data: comparisonData, isLoading: isLoadingComparison } = useShopifyComparison(dateFrom, dateTo);
-  const handleRefresh = () => {
-    // Only refetch this component's data, not all components
-    refetch();
-  };
-
-  const handleLocalFilterChange = (value: string) => {
-    setLocalDateFilter(value);
-    setUseLocalFilter(true);
-  };
-
-  const handleResetToGlobal = () => {
-    setUseLocalFilter(false);
-  };
 
   const handleSendAdminEmail = async (issue: string) => {
     setIsSendingEmail(true);
@@ -208,10 +129,6 @@ export function ShopifyAnalytics({
         <AlertTitle>שגיאה בטעינת נתוני Shopify</AlertTitle>
         <AlertDescription className="flex items-center gap-4">
           {error?.message || 'לא ניתן לטעון נתונים'}
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 ml-2" />
-            נסה שוב
-          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -361,9 +278,6 @@ export function ShopifyAnalytics({
               <div className="flex items-center gap-2">
                 <div>
                   <h3 className="font-bold text-lg">נתוני Shopify</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-                  </p>
                 </div>
                 {usingSnapshot && snapshot && (
                   <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
@@ -375,42 +289,11 @@ export function ShopifyAnalytics({
             </div>
           </CollapsibleTrigger>
 
-          <div className="flex items-center gap-2">
-            {useLocalFilter && (
-              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
-                חזור לסינון גלובלי
-              </Button>
-            )}
-            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue placeholder="שנה תאריכים" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">היום</SelectItem>
-                <SelectItem value="yesterday">אתמול</SelectItem>
-                <SelectItem value="mtd">מתחילת החודש</SelectItem>
-                <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                <SelectItem value="90">90 ימים אחרונים</SelectItem>
-                <SelectItem value="ytd">מתחילת השנה</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline" size="icon" disabled={isLoading} onClick={handleRefresh}>
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon">
+              {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </Button>
-            
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon">
-                {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          </CollapsibleTrigger>
         </div>
 
         {isLoading ? (

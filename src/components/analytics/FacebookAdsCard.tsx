@@ -126,12 +126,7 @@ export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmi
                   </Badge>
                 )}
               </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); refetch(); }}>
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </div>
+              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </div>
           </CardHeader>
         </CollapsibleTrigger>

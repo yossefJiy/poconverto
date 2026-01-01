@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
+import { useState } from "react";
 import { 
   Target, 
   TrendingUp, 
@@ -8,8 +9,6 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
-  Calendar,
-  RefreshCw,
   Loader2,
   AlertCircle,
   Plus,
@@ -24,13 +23,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   AreaChart, 
   Area, 
@@ -44,7 +36,6 @@ import {
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { isAuthError } from "@/lib/authError";
 import { useNavigate } from "react-router-dom";
 import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSnapshot";
@@ -158,60 +149,17 @@ export function GoogleAdsCard({
   onAddIntegration,
 }: GoogleAdsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [useLocalFilter, setUseLocalFilter] = useState(false);
-  const [localDateFilter, setLocalDateFilter] = useState("mtd");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  const getLocalStartDate = (filter: string): string => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let start: Date;
-    
-    switch (filter) {
-      case "today":
-        start = today;
-        break;
-      case "yesterday":
-        start = new Date(today);
-        start.setDate(start.getDate() - 1);
-        break;
-      case "mtd":
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "7":
-        start = new Date(today);
-        start.setDate(start.getDate() - 7);
-        break;
-      case "30":
-        start = new Date(today);
-        start.setDate(start.getDate() - 30);
-        break;
-      case "90":
-        start = new Date(today);
-        start.setDate(start.getDate() - 90);
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    
-    return start.toISOString().split('T')[0];
-  };
-
+  // Use global dates directly
   const effectiveDates = useMemo(() => {
-    if (useLocalFilter) {
-      return {
-        startDate: getLocalStartDate(localDateFilter),
-        endDate: new Date().toISOString().split('T')[0],
-      };
-    }
     return {
       startDate: globalDateFrom.split('T')[0],
       endDate: globalDateTo.split('T')[0],
     };
-  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
+  }, [globalDateFrom, globalDateTo]);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["google-ads", clientId, effectiveDates.startDate, effectiveDates.endDate],
     queryFn: async () => {
       const { data: responseData, error: functionError } = await supabase.functions.invoke('google-ads', {
@@ -229,28 +177,13 @@ export function GoogleAdsCard({
       return responseData as GoogleAdsData;
     },
     enabled: !!clientId,
-    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    staleTime: 8 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
     retry: 1,
   });
 
   // Fetch snapshot fallback
   const { data: snapshot } = useAnalyticsSnapshot(clientId, 'google_ads');
-
-  const handleLocalFilterChange = (value: string) => {
-    setLocalDateFilter(value);
-    setUseLocalFilter(true);
-  };
-
-  const handleResetToGlobal = () => {
-    setUseLocalFilter(false);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setIsRefreshing(false);
-  };
 
   if (isLoading && !data) {
     return (
@@ -340,10 +273,6 @@ export function GoogleAdsCard({
               <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
               <p className="text-sm text-muted-foreground">{errorMessage}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
-              <RefreshCw className="w-4 h-4 ml-2" />
-              נסה שוב
-            </Button>
           </div>
         </div>
       );
@@ -407,9 +336,9 @@ export function GoogleAdsCard({
               <div className="flex items-center gap-2">
                 <div>
                   <h3 className="font-bold text-lg">Google Ads</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {account?.name || (useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי")}
-                  </p>
+                  {account?.name && (
+                    <p className="text-sm text-muted-foreground">{account.name}</p>
+                  )}
                 </div>
                 {usingSnapshot && snapshot && (
                   <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
@@ -421,39 +350,11 @@ export function GoogleAdsCard({
             </div>
           </CollapsibleTrigger>
           
-          <div className="flex items-center gap-2">
-            {useLocalFilter && (
-              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
-                חזור לסינון גלובלי
-              </Button>
-            )}
-            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue placeholder="שנה תאריכים" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">היום</SelectItem>
-                <SelectItem value="yesterday">אתמול</SelectItem>
-                <SelectItem value="mtd">מתחילת החודש</SelectItem>
-                <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                <SelectItem value="90">90 ימים אחרונים</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" disabled={isLoading || isRefreshing} onClick={handleRefresh}>
-              {isLoading || isRefreshing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon">
+              {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </Button>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon">
-                {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          </CollapsibleTrigger>
         </div>
 
         {/* Summary Metrics - Always Visible */}
