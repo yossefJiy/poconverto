@@ -20,14 +20,22 @@ interface FacebookAdsCardProps {
 export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmin, onAddIntegration, onRefresh }: FacebookAdsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
 
+  const normalizeDate = (input: Date | string): string => {
+    if (typeof input === "string") return input.split("T")[0];
+    const year = input.getFullYear();
+    const month = String(input.getMonth() + 1).padStart(2, "0");
+    const day = String(input.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const startDate = normalizeDate(globalDateFrom);
+  const endDate = normalizeDate(globalDateTo);
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['facebook-ads', clientId, globalDateFrom, globalDateTo],
+    queryKey: ['facebook-ads', clientId, startDate, endDate],
     queryFn: async () => {
       if (!clientId) return null;
-      
-      const startDate = typeof globalDateFrom === 'string' ? globalDateFrom : globalDateFrom.toISOString().split('T')[0];
-      const endDate = typeof globalDateTo === 'string' ? globalDateTo : globalDateTo.toISOString().split('T')[0];
-      
+
       const { data, error } = await supabase.functions.invoke('facebook-ads', {
         body: {
           clientId,
@@ -35,7 +43,7 @@ export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmi
           endDate,
         }
       });
-      
+
       if (error) throw error;
       return data;
     },

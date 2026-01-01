@@ -317,8 +317,8 @@ export default function Analytics() {
             {/* Facebook Ads - Only show if connected */}
             {hasFacebookAds && (
               <FacebookAdsCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
+                globalDateFrom={dateRange.startDate}
+                globalDateTo={dateRange.endDate}
                 clientId={selectedClient?.id}
                 isAdmin={isAdmin}
                 onAddIntegration={() => setShowIntegrationsDialog(true)}
