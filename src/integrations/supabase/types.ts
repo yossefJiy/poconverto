@@ -407,7 +407,9 @@ export type Database = {
           avg_profit_margin: number | null
           created_at: string
           description: string | null
+          facebook_ads_manager_url: string | null
           facebook_url: string | null
+          google_ads_manager_url: string | null
           id: string
           industry: string | null
           instagram_url: string | null
@@ -427,7 +429,9 @@ export type Database = {
           avg_profit_margin?: number | null
           created_at?: string
           description?: string | null
+          facebook_ads_manager_url?: string | null
           facebook_url?: string | null
+          google_ads_manager_url?: string | null
           id?: string
           industry?: string | null
           instagram_url?: string | null
@@ -447,7 +451,9 @@ export type Database = {
           avg_profit_margin?: number | null
           created_at?: string
           description?: string | null
+          facebook_ads_manager_url?: string | null
           facebook_url?: string | null
+          google_ads_manager_url?: string | null
           id?: string
           industry?: string | null
           instagram_url?: string | null

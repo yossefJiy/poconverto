@@ -1,38 +1,35 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ArrowRight,
   BarChart3, 
   Users, 
   Eye, 
-  TrendingUp,
   TrendingDown,
   RefreshCw,
   Loader2,
   Download,
   Clock,
-  MousePointerClick,
   ShoppingCart,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
+import { AnalyticsPlatformNav } from "@/components/analytics/AnalyticsPlatformNav";
 import {
   AreaChart,
   Area,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -108,33 +105,43 @@ export default function GoogleAnalyticsDetail() {
   return (
     <MainLayout>
       <div className="p-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/analytics')}>
-            <ArrowRight className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <PageHeader 
-              title="Google Analytics - נתונים מפורטים"
-              description={selectedClient.name}
-            />
-          </div>
+        {/* Header Controls */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Right side: Back, Platform Nav */}
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/analytics')}>
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <AnalyticsPlatformNav />
+          </div>
+          
+          {/* Left side: Date, Refresh, Export */}
+          <div className="flex items-center gap-2">
             <GlobalDateFilter
               value={dateFilter}
               onChange={setDateFilter}
               customDateRange={customDateRange}
               onCustomDateChange={setCustomDateRange}
             />
-            <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => refetch()} disabled={isLoading}>
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 ml-2" />
-              ייצוא
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>ייצוא PDF</TooltipContent>
+            </Tooltip>
           </div>
         </div>
+
+        {/* Page Header */}
+        <PageHeader 
+          title="Google Analytics"
+          description="נתונים מפורטים"
+        />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -163,7 +170,7 @@ export default function GoogleAnalyticsDetail() {
               ))}
             </div>
 
-            {/* E-commerce Funnel (if available) */}
+            {/* E-commerce Funnel */}
             {ecommerce && (
               <div className="glass rounded-xl p-6 card-shadow">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -196,7 +203,6 @@ export default function GoogleAnalyticsDetail() {
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Daily Traffic Chart */}
               <div className="glass rounded-xl p-6 card-shadow">
                 <h3 className="font-bold text-lg mb-4">תנועה יומית</h3>
                 <div className="h-[300px]">
@@ -215,7 +221,7 @@ export default function GoogleAnalyticsDetail() {
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
+                      <RechartsTooltip />
                       <Area type="monotone" dataKey="sessions" stroke="#3b82f6" fill="url(#colorSessions)" name="סשנים" />
                       <Area type="monotone" dataKey="users" stroke="#a855f7" fill="url(#colorUsers)" name="משתמשים" />
                     </AreaChart>
@@ -223,7 +229,6 @@ export default function GoogleAnalyticsDetail() {
                 </div>
               </div>
 
-              {/* Traffic Sources Pie */}
               <div className="glass rounded-xl p-6 card-shadow">
                 <h3 className="font-bold text-lg mb-4">מקורות תנועה</h3>
                 <div className="h-[300px]">
@@ -244,7 +249,7 @@ export default function GoogleAnalyticsDetail() {
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <RechartsTooltip />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -258,7 +263,6 @@ export default function GoogleAnalyticsDetail() {
 
             {/* Devices & Countries */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Devices */}
               {devices.length > 0 && (
                 <div className="glass rounded-xl p-6 card-shadow">
                   <h3 className="font-bold text-lg mb-4">מכשירים</h3>
@@ -277,7 +281,6 @@ export default function GoogleAnalyticsDetail() {
                 </div>
               )}
 
-              {/* Countries */}
               {countries.length > 0 && (
                 <div className="glass rounded-xl p-6 card-shadow">
                   <h3 className="font-bold text-lg mb-4">מדינות</h3>
