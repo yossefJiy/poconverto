@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -25,6 +25,7 @@ import {
   Loader2,
   Settings,
   Activity,
+  Clock,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ export default function Analytics() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [showConnectionStatusDialog, setShowConnectionStatusDialog] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const toastIdRef = useRef<string | number | null>(null);
   
   // Open integrations dialog if URL param is set
@@ -125,6 +127,7 @@ export default function Analytics() {
       if (toastIdRef.current) {
         toast.dismiss(toastIdRef.current);
       }
+      setLastRefreshedAt(new Date());
       toast.success("כל הנתונים עודכנו ונשמרו בהצלחה", {
         position: "bottom-left",
         duration: 3000,
@@ -169,13 +172,27 @@ export default function Analytics() {
   }
 
   const noIntegrations = integrations.length === 0;
-  const dataSources = [];
+  const dataSources: string[] = [];
   
   if (hasShopify) dataSources.push("Shopify");
   if (hasWooCommerce) dataSources.push("WooCommerce");
   if (hasAnalytics) dataSources.push("Google Analytics");
   if (hasGoogleAds) dataSources.push("Google Ads");
   if (hasFacebookAds) dataSources.push("Facebook Ads");
+
+  // Format relative time for last refresh
+  const formatLastRefreshed = (date: Date | null): string => {
+    if (!date) return "";
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "עכשיו";
+    if (diffMins < 60) return `לפני ${diffMins} דקות`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `לפני ${diffHours} שעות`;
+    return `לפני ${Math.floor(diffHours / 24)} ימים`;
+  };
 
   return (
     <MainLayout>
@@ -223,11 +240,19 @@ export default function Analytics() {
               onCustomDateChange={setCustomDateRange}
             />
 
+            {lastRefreshedAt && (
+              <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="text-xs">עודכן {formatLastRefreshed(lastRefreshedAt)}</span>
+              </Badge>
+            )}
+
             <Button 
               variant="outline" 
               size="icon" 
               disabled={isLoading || isRefreshing} 
               onClick={() => handleRefreshAll(false)}
+              title="רענן את כל הנתונים"
             >
               {isLoading || isRefreshing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -270,10 +295,8 @@ export default function Analytics() {
             {/* Shopify Analytics - Only show if Shopify integration is connected */}
             {hasShopify && (
               <ShopifyAnalytics
-                // Use date-only strings to avoid timezone shifts when talking to Shopify
                 globalDateFrom={dateRange.startDate}
                 globalDateTo={dateRange.endDate}
-                onRefresh={handleRefreshAll}
                 clientProfitMargin={(selectedClient as any).avg_profit_margin || 0}
                 clientJiyCommission={(selectedClient as any).jiy_commission_percent || 0}
               />
@@ -286,7 +309,6 @@ export default function Analytics() {
                 isLoading={isLoading}
                 globalDateFrom={dateRange.dateFrom}
                 globalDateTo={dateRange.dateTo}
-                onRefresh={handleRefreshAll}
               />
             )}
 
@@ -298,7 +320,6 @@ export default function Analytics() {
                 clientId={selectedClient?.id}
                 isAdmin={isAdmin}
                 onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
               />
             )}
 
@@ -310,7 +331,6 @@ export default function Analytics() {
                 clientId={selectedClient?.id}
                 isAdmin={isAdmin}
                 onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
               />
             )}
 
@@ -322,7 +342,6 @@ export default function Analytics() {
                 clientId={selectedClient?.id}
                 isAdmin={isAdmin}
                 onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
               />
             )}
           </div>

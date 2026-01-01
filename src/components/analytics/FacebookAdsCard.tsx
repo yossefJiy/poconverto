@@ -15,10 +15,9 @@ interface FacebookAdsCardProps {
   clientId?: string;
   isAdmin: boolean;
   onAddIntegration: () => void;
-  onRefresh: () => void;
 }
 
-export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmin, onAddIntegration, onRefresh }: FacebookAdsCardProps) {
+export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmin, onAddIntegration }: FacebookAdsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   const normalizeDate = (input: Date | string): string => {

@@ -48,7 +48,6 @@ import { useAnalyticsSnapshot, formatSnapshotDate } from "@/hooks/useAnalyticsSn
 interface ShopifyAnalyticsProps {
   globalDateFrom: string;
   globalDateTo: string;
-  onRefresh?: () => void;
   clientProfitMargin?: number;
   clientJiyCommission?: number;
 }
@@ -66,7 +65,6 @@ function formatCurrency(num: number): string {
 export function ShopifyAnalytics({ 
   globalDateFrom,
   globalDateTo,
-  onRefresh,
   clientProfitMargin = 0,
   clientJiyCommission = 0,
 }: ShopifyAnalyticsProps) {
