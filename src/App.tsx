@@ -24,6 +24,9 @@ import ClientDashboard from "./pages/ClientDashboard";
 import ClientProfile from "./pages/ClientProfile";
 import ApiDocs from "./pages/ApiDocs";
 import Analytics from "./pages/Analytics";
+import GoogleAdsDetail from "./pages/analytics/GoogleAdsDetail";
+import ShopifyDetail from "./pages/analytics/ShopifyDetail";
+import FacebookAdsDetail from "./pages/analytics/FacebookAdsDetail";
 import Ecommerce from "./pages/Ecommerce";
 import SystemDiagram from "./pages/SystemDiagram";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -57,6 +60,9 @@ const App = () => (
               <Route path="/credits" element={<ProtectedRoute><CreditManagement /></ProtectedRoute>} />
               <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+              <Route path="/analytics/google-ads" element={<ProtectedRoute><GoogleAdsDetail /></ProtectedRoute>} />
+              <Route path="/analytics/shopify" element={<ProtectedRoute><ShopifyDetail /></ProtectedRoute>} />
+              <Route path="/analytics/facebook-ads" element={<ProtectedRoute><FacebookAdsDetail /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
               <Route path="/system-diagram" element={<SystemDiagram />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -11,9 +11,13 @@ import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
 import { FacebookAdsCard } from "@/components/analytics/FacebookAdsCard";
 import { WooCommerceCard } from "@/components/analytics/WooCommerceCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
+import { GlobalKPIBar } from "@/components/analytics/GlobalKPIBar";
+import { PlatformSummaryCard } from "@/components/analytics/PlatformSummaryCard";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
 import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
+import { useShopifyAnalytics } from "@/hooks/useShopifyData";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -26,6 +30,10 @@ import {
   Settings,
   Activity,
   Clock,
+  ShoppingCart,
+  Target,
+  BarChart3,
+  Store,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
@@ -92,6 +100,51 @@ export default function Analytics() {
   const hasFacebookAds = integrations.some(i => i.platform === 'facebook_ads' && i.is_connected);
   const hasWooCommerce = integrations.some(i => i.platform === 'woocommerce' && i.is_connected);
   const queryClient = useQueryClient();
+
+  // Fetch Shopify data for KPI bar
+  const { data: shopifyData } = useShopifyAnalytics(dateRange.startDate, dateRange.endDate);
+  
+  // Fetch Google Ads data for KPI bar
+  const { data: googleAdsData } = useQuery({
+    queryKey: ["google-ads-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke('google-ads', {
+        body: { startDate: dateRange.startDate, endDate: dateRange.endDate, clientId: selectedClient?.id }
+      });
+      return data;
+    },
+    enabled: !!selectedClient?.id && hasGoogleAds,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch Facebook Ads data for KPI bar  
+  const { data: facebookAdsData } = useQuery({
+    queryKey: ["facebook-ads-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke('facebook-ads', {
+        body: { clientId: selectedClient?.id, startDate: dateRange.startDate, endDate: dateRange.endDate }
+      });
+      return data;
+    },
+    enabled: !!selectedClient?.id && hasFacebookAds,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Aggregate data for Global KPI Bar
+  const platformData = useMemo(() => ({
+    shopify: {
+      totalRevenue: shopifyData?.summary?.totalRevenue || 0,
+      totalOrders: shopifyData?.summary?.totalOrders || 0,
+    },
+    googleAds: {
+      totalCost: googleAdsData?.account?.totalCost || 0,
+      totalConversions: googleAdsData?.account?.totalConversions || 0,
+    },
+    facebookAds: {
+      cost: facebookAdsData?.totals?.cost || 0,
+      conversions: facebookAdsData?.totals?.conversions || 0,
+    },
+  }), [shopifyData, googleAdsData, facebookAdsData]);
 
   const handleRefreshAll = useCallback(async (isScheduled = false) => {
     setIsRefreshing(true);
@@ -292,6 +345,11 @@ export default function Analytics() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Global KPI Summary Bar */}
+            {(hasShopify || hasGoogleAds || hasFacebookAds) && (
+              <GlobalKPIBar platformData={platformData} isLoading={isLoading} />
+            )}
+
             {/* Shopify Analytics - Only show if Shopify integration is connected */}
             {hasShopify && (
               <ShopifyAnalytics
