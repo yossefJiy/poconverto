@@ -9,8 +9,8 @@ import { ChevronDown, ChevronUp, RefreshCw, Loader2, TrendingUp, TrendingDown, D
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface FacebookAdsCardProps {
-  globalDateFrom: Date;
-  globalDateTo: Date;
+  globalDateFrom: Date | string;
+  globalDateTo: Date | string;
   clientId?: string;
   isAdmin: boolean;
   onAddIntegration: () => void;
@@ -25,11 +25,14 @@ export function FacebookAdsCard({ globalDateFrom, globalDateTo, clientId, isAdmi
     queryFn: async () => {
       if (!clientId) return null;
       
+      const startDate = typeof globalDateFrom === 'string' ? globalDateFrom : globalDateFrom.toISOString().split('T')[0];
+      const endDate = typeof globalDateTo === 'string' ? globalDateTo : globalDateTo.toISOString().split('T')[0];
+      
       const { data, error } = await supabase.functions.invoke('facebook-ads', {
         body: {
           clientId,
-          startDate: globalDateFrom.toISOString().split('T')[0],
-          endDate: globalDateTo.toISOString().split('T')[0],
+          startDate,
+          endDate,
         }
       });
       
