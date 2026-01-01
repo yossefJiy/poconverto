@@ -14,6 +14,7 @@ import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
 import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
+import { AnalyticsErrorBoundary } from "@/components/analytics/AnalyticsErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -275,62 +276,72 @@ export default function Analytics() {
           <div className="space-y-6">
             {/* Shopify Analytics - Only show if Shopify integration is connected */}
             {hasShopify && (
-              <ShopifyAnalytics
-                // Use date-only strings to avoid timezone shifts when talking to Shopify
-                globalDateFrom={dateRange.startDate}
-                globalDateTo={dateRange.endDate}
-                onRefresh={handleRefreshAll}
-                clientProfitMargin={(selectedClient as any).avg_profit_margin || 0}
-                clientJiyCommission={(selectedClient as any).jiy_commission_percent || 0}
-              />
+              <AnalyticsErrorBoundary cardName="Shopify" onRetry={handleRefreshAll}>
+                <ShopifyAnalytics
+                  // Use date-only strings to avoid timezone shifts when talking to Shopify
+                  globalDateFrom={dateRange.startDate}
+                  globalDateTo={dateRange.endDate}
+                  onRefresh={handleRefreshAll}
+                  clientProfitMargin={(selectedClient as any).avg_profit_margin || 0}
+                  clientJiyCommission={(selectedClient as any).jiy_commission_percent || 0}
+                />
+              </AnalyticsErrorBoundary>
             )}
 
             {/* Google Analytics - Second, Collapsible */}
             {hasAnalytics && (
-              <GoogleAnalyticsCard
-                analyticsData={analyticsData}
-                isLoading={isLoading}
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                onRefresh={handleRefreshAll}
-              />
+              <AnalyticsErrorBoundary cardName="Google Analytics" onRetry={handleRefreshAll}>
+                <GoogleAnalyticsCard
+                  analyticsData={analyticsData}
+                  isLoading={isLoading}
+                  globalDateFrom={dateRange.dateFrom}
+                  globalDateTo={dateRange.dateTo}
+                  onRefresh={handleRefreshAll}
+                />
+              </AnalyticsErrorBoundary>
             )}
 
             {/* WooCommerce Analytics - Only show if connected */}
             {hasWooCommerce && (
-              <WooCommerceCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                clientId={selectedClient?.id}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
-              />
+              <AnalyticsErrorBoundary cardName="WooCommerce" onRetry={handleRefreshAll}>
+                <WooCommerceCard
+                  globalDateFrom={dateRange.dateFrom}
+                  globalDateTo={dateRange.dateTo}
+                  clientId={selectedClient?.id}
+                  isAdmin={isAdmin}
+                  onAddIntegration={() => setShowIntegrationsDialog(true)}
+                  onRefresh={handleRefreshAll}
+                />
+              </AnalyticsErrorBoundary>
             )}
 
             {/* Google Ads - Only show if connected */}
             {hasGoogleAds && (
-              <GoogleAdsCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                clientId={selectedClient?.id}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
-              />
+              <AnalyticsErrorBoundary cardName="Google Ads" onRetry={handleRefreshAll}>
+                <GoogleAdsCard
+                  globalDateFrom={dateRange.dateFrom}
+                  globalDateTo={dateRange.dateTo}
+                  clientId={selectedClient?.id}
+                  isAdmin={isAdmin}
+                  onAddIntegration={() => setShowIntegrationsDialog(true)}
+                  onRefresh={handleRefreshAll}
+                />
+              </AnalyticsErrorBoundary>
             )}
 
             {/* Facebook Ads - Only show if connected */}
             {hasFacebookAds && (
-              <FacebookAdsCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                clientId={selectedClient?.id}
-                adAccountId={facebookAdAccountId}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-                onRefresh={handleRefreshAll}
-              />
+              <AnalyticsErrorBoundary cardName="Facebook Ads" onRetry={handleRefreshAll}>
+                <FacebookAdsCard
+                  globalDateFrom={dateRange.dateFrom}
+                  globalDateTo={dateRange.dateTo}
+                  clientId={selectedClient?.id}
+                  adAccountId={facebookAdAccountId}
+                  isAdmin={isAdmin}
+                  onAddIntegration={() => setShowIntegrationsDialog(true)}
+                  onRefresh={handleRefreshAll}
+                />
+              </AnalyticsErrorBoundary>
             )}
           </div>
         )}
