@@ -1,5 +1,8 @@
 project_id = "ovkuabbfubtiwnlksmxd"
 
+[functions.analytics-api]
+verify_jwt = false
+
 [functions.google-analytics]
 verify_jwt = false
 
