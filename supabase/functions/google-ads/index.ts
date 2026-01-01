@@ -354,15 +354,68 @@ serve(async (req) => {
       WHERE segments.date BETWEEN '${requestStartDate}' AND '${requestEndDate}'
     `;
 
+    // 6. Ad Group Ads Query (individual ads)
+    const adsQuery = `
+      SELECT
+        ad_group_ad.ad.id,
+        ad_group_ad.ad.name,
+        ad_group_ad.ad.type,
+        ad_group_ad.status,
+        ad_group.id,
+        ad_group.name,
+        campaign.id,
+        campaign.name,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions
+      FROM ad_group_ad
+      WHERE segments.date BETWEEN '${requestStartDate}' AND '${requestEndDate}'
+        AND ad_group_ad.status != 'REMOVED'
+      ORDER BY metrics.impressions DESC
+      LIMIT 100
+    `;
+
+    // 7. Asset Query
+    const assetQuery = `
+      SELECT
+        asset.id,
+        asset.name,
+        asset.type,
+        asset.resource_name,
+        asset.image_asset.full_size.url,
+        asset.text_asset.text
+      FROM asset
+      WHERE asset.type IN ('IMAGE', 'TEXT', 'YOUTUBE_VIDEO')
+      LIMIT 50
+    `;
+
+    // 8. Audience Query (User Lists)
+    const audienceQuery = `
+      SELECT
+        user_list.id,
+        user_list.name,
+        user_list.type,
+        user_list.size_for_display,
+        user_list.size_for_search,
+        user_list.description
+      FROM user_list
+      WHERE user_list.membership_status = 'OPEN'
+      LIMIT 50
+    `;
+
     // Execute all queries in parallel
     console.log('[Google Ads] Executing queries...');
     
-    const [campaigns, daily, adGroups, keywords, account] = await Promise.all([
+    const [campaigns, daily, adGroups, keywords, account, ads, assets, audiences] = await Promise.all([
       executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, campaignQuery).catch(e => ({ error: e.message })),
       executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, dailyQuery).catch(e => ({ error: e.message })),
       executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, adGroupQuery).catch(e => ({ error: e.message })),
       executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, keywordsQuery).catch(e => ({ error: e.message })),
-      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, accountQuery).catch(e => ({ error: e.message }))
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, accountQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, adsQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, assetQuery).catch(e => ({ error: e.message })),
+      executeGoogleAdsQuery(accessToken, GLOBAL_DEVELOPER_TOKEN, cleanCustomerId, audienceQuery).catch(e => ({ error: e.message }))
     ]);
 
     // Process and format the response
@@ -372,6 +425,9 @@ serve(async (req) => {
       adGroups: formatAdGroupData(adGroups),
       keywords: formatKeywordsData(keywords),
       account: formatAccountData(account),
+      ads: formatAdsData(ads),
+      assets: formatAssetsData(assets),
+      audiences: formatAudiencesData(audiences),
       dateRange: {
         startDate: requestStartDate,
         endDate: requestEndDate
@@ -382,7 +438,10 @@ serve(async (req) => {
       campaignsCount: response.campaigns?.length || 0,
       dailyCount: response.daily?.length || 0,
       adGroupsCount: response.adGroups?.length || 0,
-      keywordsCount: response.keywords?.length || 0
+      keywordsCount: response.keywords?.length || 0,
+      adsCount: response.ads?.length || 0,
+      assetsCount: response.assets?.length || 0,
+      audiencesCount: response.audiences?.length || 0
     });
 
     return new Response(JSON.stringify(response), {
@@ -556,5 +615,104 @@ function formatAccountData(data: any): any {
   } catch (e) {
     console.error('[Google Ads] Error formatting account data:', e);
     return null;
+  }
+}
+
+function formatAdsData(data: any): any[] {
+  if (data.error) {
+    console.error('[Google Ads] Ads data error:', data.error);
+    return [];
+  }
+  
+  try {
+    const results: any[] = [];
+    if (Array.isArray(data)) {
+      for (const chunk of data) {
+        if (chunk.results) {
+          for (const result of chunk.results) {
+            results.push({
+              id: result.adGroupAd?.ad?.id,
+              name: result.adGroupAd?.ad?.name || `Ad ${result.adGroupAd?.ad?.id}`,
+              type: result.adGroupAd?.ad?.type,
+              status: result.adGroupAd?.status,
+              adGroupId: result.adGroup?.id,
+              adGroupName: result.adGroup?.name,
+              campaignId: result.campaign?.id,
+              campaignName: result.campaign?.name,
+              impressions: parseInt(result.metrics?.impressions || '0'),
+              clicks: parseInt(result.metrics?.clicks || '0'),
+              cost: (result.metrics?.costMicros || 0) / 1000000,
+              conversions: parseFloat(result.metrics?.conversions || '0')
+            });
+          }
+        }
+      }
+    }
+    return results;
+  } catch (e) {
+    console.error('[Google Ads] Error formatting ads data:', e);
+    return [];
+  }
+}
+
+function formatAssetsData(data: any): any[] {
+  if (data.error) {
+    console.error('[Google Ads] Assets data error:', data.error);
+    return [];
+  }
+  
+  try {
+    const results: any[] = [];
+    if (Array.isArray(data)) {
+      for (const chunk of data) {
+        if (chunk.results) {
+          for (const result of chunk.results) {
+            results.push({
+              id: result.asset?.id,
+              name: result.asset?.name || result.asset?.textAsset?.text || `Asset ${result.asset?.id}`,
+              type: result.asset?.type,
+              resourceName: result.asset?.resourceName,
+              imageUrl: result.asset?.imageAsset?.fullSize?.url,
+              text: result.asset?.textAsset?.text,
+            });
+          }
+        }
+      }
+    }
+    return results;
+  } catch (e) {
+    console.error('[Google Ads] Error formatting assets data:', e);
+    return [];
+  }
+}
+
+function formatAudiencesData(data: any): any[] {
+  if (data.error) {
+    console.error('[Google Ads] Audiences data error:', data.error);
+    return [];
+  }
+  
+  try {
+    const results: any[] = [];
+    if (Array.isArray(data)) {
+      for (const chunk of data) {
+        if (chunk.results) {
+          for (const result of chunk.results) {
+            results.push({
+              id: result.userList?.id,
+              name: result.userList?.name,
+              type: result.userList?.type,
+              sizeForDisplay: result.userList?.sizeForDisplay,
+              sizeForSearch: result.userList?.sizeForSearch,
+              description: result.userList?.description,
+            });
+          }
+        }
+      }
+    }
+    return results;
+  } catch (e) {
+    console.error('[Google Ads] Error formatting audiences data:', e);
+    return [];
   }
 }
