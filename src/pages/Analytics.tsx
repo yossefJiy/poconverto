@@ -34,6 +34,8 @@ import {
   MousePointer,
   TrendingUp,
   Megaphone,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
@@ -95,6 +97,7 @@ export default function Analytics() {
   const hasGoogleAds = integrations.some(i => i.platform === 'google_ads' && i.is_connected);
   const hasFacebookAds = integrations.some(i => i.platform === 'facebook_ads' && i.is_connected);
   const hasWooCommerce = integrations.some(i => i.platform === 'woocommerce' && i.is_connected);
+  const hasGoogleAnalytics = integrations.some(i => i.platform === 'google_analytics' && i.is_connected);
   const queryClient = useQueryClient();
 
   // Get connected platforms for campaign creation
@@ -129,6 +132,32 @@ export default function Analytics() {
       return data;
     },
     enabled: !!selectedClient?.id && hasFacebookAds,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // WooCommerce data
+  const { data: wooCommerceData } = useQuery({
+    queryKey: ["woocommerce-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke('woocommerce-api', {
+        body: { action: 'getAnalytics', clientId: selectedClient?.id, startDate: dateRange.startDate, endDate: dateRange.endDate }
+      });
+      return data;
+    },
+    enabled: !!selectedClient?.id && hasWooCommerce,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Google Analytics data
+  const { data: googleAnalyticsData } = useQuery({
+    queryKey: ["google-analytics-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke('google-analytics', {
+        body: { clientId: selectedClient?.id, startDate: dateRange.startDate, endDate: dateRange.endDate }
+      });
+      return data;
+    },
+    enabled: !!selectedClient?.id && hasGoogleAnalytics,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -234,7 +263,7 @@ export default function Analytics() {
   const dataSources: string[] = [];
   if (hasShopify) dataSources.push("Shopify");
   if (hasWooCommerce) dataSources.push("WooCommerce");
-  if (hasAnalytics) dataSources.push("Google Analytics");
+  if (hasGoogleAnalytics) dataSources.push("Google Analytics");
   if (hasGoogleAds) dataSources.push("Google Ads");
   if (hasFacebookAds) dataSources.push("Facebook Ads");
 
@@ -352,6 +381,40 @@ export default function Analytics() {
 
             {/* Platform Cards - Compact Row Style */}
             <div className="space-y-3">
+              {/* Google Analytics */}
+              {hasGoogleAnalytics && (
+                <PlatformCompactCard
+                  platform="Google Analytics"
+                  platformKey="google_analytics"
+                  icon={<BarChart3 className="w-5 h-5 text-white" />}
+                  iconBgColor="bg-[#E37400]"
+                  detailPath="/analytics/google-analytics"
+                  isLoading={!googleAnalyticsData}
+                  isConnected={true}
+                  metrics={[
+                    { 
+                      label: "סשנים", 
+                      value: formatNumber(googleAnalyticsData?.sessions || 0),
+                      icon: <BarChart3 className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "משתמשים", 
+                      value: formatNumber(googleAnalyticsData?.users || 0),
+                      icon: <Users className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "צפיות", 
+                      value: formatNumber(googleAnalyticsData?.pageviews || 0),
+                      icon: <Eye className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "נטישה", 
+                      value: `${(googleAnalyticsData?.bounceRate || 0).toFixed(1)}%`,
+                    },
+                  ]}
+                />
+              )}
+
               {/* Shopify */}
               {hasShopify && (
                 <PlatformCompactCard
@@ -476,10 +539,29 @@ export default function Analytics() {
                   icon={<ShoppingCart className="w-5 h-5 text-white" />}
                   iconBgColor="bg-[#96588A]"
                   detailPath="/analytics/woocommerce"
+                  isLoading={!wooCommerceData}
                   isConnected={true}
                   metrics={[
-                    { label: "הכנסות", value: "₪0", icon: <DollarSign className="w-4 h-4" /> },
-                    { label: "הזמנות", value: "0", icon: <ShoppingCart className="w-4 h-4" /> },
+                    { 
+                      label: "הכנסות", 
+                      value: formatCurrency(wooCommerceData?.summary?.totalRevenue || 0),
+                      icon: <DollarSign className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "הזמנות", 
+                      value: formatNumber(wooCommerceData?.summary?.totalOrders || 0),
+                      icon: <ShoppingCart className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "AOV", 
+                      value: formatCurrency(wooCommerceData?.summary?.avgOrderValue || 0),
+                      icon: <TrendingUp className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "לקוחות", 
+                      value: formatNumber(wooCommerceData?.summary?.uniqueCustomers || 0),
+                      icon: <Users className="w-4 h-4" />,
+                    },
                   ]}
                 />
               )}
