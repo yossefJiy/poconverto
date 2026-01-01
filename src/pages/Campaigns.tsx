@@ -65,6 +65,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
+import { CampaignAssets } from "@/components/campaigns/CampaignAssets";
 import { Badge } from "@/components/ui/badge";
 
 const platformConfig: Record<string, { color: string; name: string; logo: string; canCreate: boolean }> = {
@@ -99,6 +100,32 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string; label
   draft: { icon: null, color: "text-muted-foreground", bg: "bg-muted", label: "טיוטה", isActive: false },
 };
 
+interface CampaignAdSet {
+  id: string;
+  name: string;
+  status?: string;
+  targeting?: string;
+  budget?: number;
+  impressions?: number;
+  clicks?: number;
+}
+
+interface CampaignAd {
+  id: string;
+  name: string;
+  status?: string;
+  creative_type?: string;
+  impressions?: number;
+  clicks?: number;
+}
+
+interface CampaignAsset {
+  id: string;
+  name: string;
+  type: string;
+  url?: string;
+}
+
 interface UnifiedCampaign {
   id: string;
   name: string;
@@ -115,6 +142,10 @@ interface UnifiedCampaign {
   end_date?: string;
   source: 'internal' | 'google_ads' | 'facebook_ads';
   description?: string;
+  adSets?: CampaignAdSet[];
+  ads?: CampaignAd[];
+  assets?: CampaignAsset[];
+  audiences?: string[];
 }
 
 interface ClientAdsUrls {
@@ -226,9 +257,14 @@ export default function Campaigns() {
       });
     });
 
-    // Add Google Ads campaigns
+    // Add Google Ads campaigns with ad groups
     if (googleAdsData?.campaigns) {
+      const adGroups = googleAdsData.adGroups || [];
+      
       googleAdsData.campaigns.forEach((c: any) => {
+        // Find ad groups for this campaign
+        const campaignAdGroups = adGroups.filter((ag: any) => ag.campaignId === c.id);
+        
         campaigns.push({
           id: `ga_${c.id}`,
           name: c.name,
@@ -242,13 +278,34 @@ export default function Campaigns() {
           ctr: c.ctr,
           cpc: c.avgCpc,
           source: 'google_ads',
+          adSets: campaignAdGroups.map((ag: any) => ({
+            id: ag.id,
+            name: ag.name,
+            status: ag.status,
+            impressions: ag.impressions,
+            clicks: ag.clicks,
+          })),
+          assets: googleAdsData.assets?.map((a: any) => ({
+            id: a.id || a.resourceName,
+            name: a.name || a.type,
+            type: a.type,
+          })) || [],
         });
       });
     }
 
-    // Add Facebook Ads campaigns
+    // Add Facebook Ads campaigns with ad sets and ads
     if (facebookAdsData?.campaigns) {
+      const adSets = facebookAdsData.adSets || [];
+      const ads = facebookAdsData.ads || [];
+      
       facebookAdsData.campaigns.forEach((c: any) => {
+        // Find ad sets and ads for this campaign
+        const campaignAdSets = adSets.filter((as: any) => as.campaign_id === c.id);
+        const campaignAds = ads.filter((ad: any) => 
+          campaignAdSets.some((as: any) => as.id === ad.adset_id)
+        );
+        
         campaigns.push({
           id: `fb_${c.id}`,
           name: c.name,
@@ -262,6 +319,21 @@ export default function Campaigns() {
           ctr: c.ctr,
           cpc: c.cpc,
           source: 'facebook_ads',
+          adSets: campaignAdSets.map((as: any) => ({
+            id: as.id,
+            name: as.name,
+            status: as.status,
+            targeting: as.targeting_summary,
+            impressions: as.impressions,
+            clicks: as.clicks,
+          })),
+          ads: campaignAds.map((ad: any) => ({
+            id: ad.id,
+            name: ad.name,
+            status: ad.status,
+            creative_type: ad.creative_type,
+          })),
+          audiences: c.audiences || [],
         });
       });
     }
@@ -576,12 +648,20 @@ export default function Campaigns() {
                                   <Badge variant="outline" className="text-xs py-0 h-5">API</Badge>
                                 </>
                               )}
-                              {campaign.start_date && (
+                              {(campaign.start_date || campaign.end_date) && (
                                 <>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
-                                    {new Date(campaign.start_date).toLocaleDateString("he-IL")}
+                                    {campaign.start_date && campaign.end_date ? (
+                                      <>
+                                        {new Date(campaign.start_date).toLocaleDateString("he-IL")} - {new Date(campaign.end_date).toLocaleDateString("he-IL")}
+                                      </>
+                                    ) : campaign.start_date ? (
+                                      <>מ-{new Date(campaign.start_date).toLocaleDateString("he-IL")}</>
+                                    ) : (
+                                      <>עד {new Date(campaign.end_date!).toLocaleDateString("he-IL")}</>
+                                    )}
                                   </span>
                                 </>
                               )}
@@ -675,6 +755,17 @@ export default function Campaigns() {
                               />
                             </div>
                           </div>
+                        )}
+                        
+                        {/* Campaign Assets for external campaigns */}
+                        {campaign.source !== 'internal' && (
+                          <CampaignAssets
+                            adSets={campaign.adSets}
+                            ads={campaign.ads}
+                            assets={campaign.assets}
+                            audiences={campaign.audiences}
+                            platform={campaign.source}
+                          />
                         )}
                       </div>
                     </div>
