@@ -8,7 +8,7 @@ import { usePermissions, useAuth } from "@/hooks/useAuth";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { GlobalKPIBar } from "@/components/analytics/GlobalKPIBar";
 import { PlatformCompactCard } from "@/components/analytics/PlatformCompactCard";
-import { CreateCampaignDialog } from "@/components/analytics/CreateCampaignDialog";
+
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
 import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
@@ -33,7 +33,7 @@ import {
   Eye,
   MousePointer,
   TrendingUp,
-  Megaphone,
+  
   BarChart3,
   Users,
 } from "lucide-react";
@@ -53,9 +53,7 @@ export default function Analytics() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [showConnectionStatusDialog, setShowConnectionStatusDialog] = useState(false);
-  const [showCreateCampaignDialog, setShowCreateCampaignDialog] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
-  const [selectedCampaignPlatform, setSelectedCampaignPlatform] = useState<string>("");
   const toastIdRef = useRef<string | number | null>(null);
   
   // Open integrations dialog if URL param is set
@@ -100,13 +98,6 @@ export default function Analytics() {
   const hasGoogleAnalytics = integrations.some(i => i.platform === 'google_analytics' && i.is_connected);
   const queryClient = useQueryClient();
 
-  // Get connected platforms for campaign creation
-  const connectedPlatforms = useMemo(() => {
-    const platforms: string[] = [];
-    if (hasGoogleAds) platforms.push("google_ads");
-    if (hasFacebookAds) platforms.push("facebook_ads");
-    return platforms;
-  }, [hasGoogleAds, hasFacebookAds]);
 
   // Fetch platform data
   const { data: shopifyData } = useShopifyAnalytics(dateRange.startDate, dateRange.endDate);
@@ -212,10 +203,6 @@ export default function Analytics() {
     }
   }, [queryClient, refetchAll, selectedClient?.id]);
 
-  const handleCreateCampaign = (platform?: string) => {
-    setSelectedCampaignPlatform(platform || "");
-    setShowCreateCampaignDialog(true);
-  };
 
   const formatLastRefreshed = (date: Date | null): string => {
     if (!date) return "";
@@ -270,63 +257,31 @@ export default function Analytics() {
   return (
     <MainLayout>
       <div className="p-8 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <PageHeader 
-              title={`אנליטיקס - ${selectedClient.name}`}
-              description="סקירה כללית של כל הפלטפורמות"
-            />
-            {dataSources.length > 0 && (
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">מקורות:</span>
-                {dataSources.map((source) => (
-                  <Badge 
-                    key={source} 
-                    variant="outline" 
-                    className="bg-primary/10 text-primary border-primary/30 text-xs"
-                  >
-                    {source}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-          
+          {/* Right side: Integrations, Status */}
           <div className="flex items-center gap-2">
-            {connectedPlatforms.length > 0 && (
-              <Button variant="default" size="sm" onClick={() => handleCreateCampaign()}>
-                <Megaphone className="w-4 h-4 ml-2" />
-                קמפיין חדש
-              </Button>
-            )}
-
             {isAdmin && (
               <>
-                <Button variant="outline" size="sm" onClick={() => setShowConnectionStatusDialog(true)}>
-                  <Activity className="w-4 h-4 ml-1" />
-                  סטטוס
-                </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowIntegrationsDialog(true)}>
                   <Settings className="w-4 h-4 ml-1" />
                   אינטגרציות
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowConnectionStatusDialog(true)}>
+                  <Activity className="w-4 h-4 ml-1" />
+                  סטטוס
+                </Button>
               </>
             )}
-
+          </div>
+          
+          {/* Left side: Date, Refresh, Export */}
+          <div className="flex items-center gap-2">
             <GlobalDateFilter
               value={globalDateFilter}
               onChange={setGlobalDateFilter}
               customDateRange={customDateRange}
               onCustomDateChange={setCustomDateRange}
             />
-
-            {lastRefreshedAt && (
-              <Badge variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
-                <Clock className="w-3 h-3" />
-                {formatLastRefreshed(lastRefreshedAt)}
-              </Badge>
-            )}
 
             <Button 
               variant="outline" 
@@ -343,12 +298,17 @@ export default function Analytics() {
               )}
             </Button>
 
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 ml-1" />
-              ייצוא
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="ייצוא">
+              <Download className="w-4 h-4" />
             </Button>
           </div>
         </div>
+
+        {/* Page Header */}
+        <PageHeader 
+          title="אנליטיקס"
+          description="סקירה כללית של כל הפלטפורמות"
+        />
 
         {/* No Integrations Warning */}
         {noIntegrations && isAdmin && (
@@ -470,8 +430,6 @@ export default function Analytics() {
                   detailPath="/analytics/google-ads"
                   isLoading={!googleAdsData}
                   isConnected={true}
-                  canCreateCampaign={true}
-                  onCreateCampaign={() => handleCreateCampaign("google_ads")}
                   metrics={[
                     { 
                       label: "הוצאות", 
@@ -510,8 +468,6 @@ export default function Analytics() {
                   detailPath="/analytics/facebook-ads"
                   isLoading={!facebookAdsData}
                   isConnected={true}
-                  canCreateCampaign={true}
-                  onCreateCampaign={() => handleCreateCampaign("facebook_ads")}
                   metrics={[
                     { 
                       label: "הוצאות", 
@@ -588,13 +544,6 @@ export default function Analytics() {
           open={showConnectionStatusDialog}
           onOpenChange={setShowConnectionStatusDialog}
           clientId={selectedClient?.id}
-        />
-
-        <CreateCampaignDialog
-          open={showCreateCampaignDialog}
-          onOpenChange={setShowCreateCampaignDialog}
-          defaultPlatform={selectedCampaignPlatform}
-          connectedPlatforms={connectedPlatforms}
         />
       </div>
     </MainLayout>

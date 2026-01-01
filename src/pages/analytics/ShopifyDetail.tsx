@@ -4,7 +4,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ArrowRight,
   ShoppingCart, 
@@ -21,21 +21,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
+import { AnalyticsPlatformNav } from "@/components/analytics/AnalyticsPlatformNav";
 import { useShopifyAnalytics } from "@/hooks/useShopifyData";
 import { useShopifyComparison } from "@/hooks/useShopifyComparison";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
+  Tooltip as RechartsTooltip,
 } from "recharts";
 import {
   Table,
@@ -96,7 +90,6 @@ export default function ShopifyDetail() {
 
   const hasRealSessionData = summary.isRealSessionData && summary.sessions !== null;
 
-  // Order status for pie chart
   const orderStatusData = useMemo(() => [
     { name: 'שולם', value: orderStatus.paid, color: '#22c55e' },
     { name: 'נשלח', value: orderStatus.fulfilled, color: '#3b82f6' },
@@ -117,33 +110,43 @@ export default function ShopifyDetail() {
   return (
     <MainLayout>
       <div className="p-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/analytics')}>
-            <ArrowRight className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <PageHeader 
-              title="Shopify - נתונים מפורטים"
-              description={selectedClient.name}
-            />
-          </div>
+        {/* Header Controls */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Right side: Back, Platform Nav */}
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/analytics')}>
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <AnalyticsPlatformNav />
+          </div>
+          
+          {/* Left side: Date, Refresh, Export */}
+          <div className="flex items-center gap-2">
             <GlobalDateFilter
               value={dateFilter}
               onChange={setDateFilter}
               customDateRange={customDateRange}
               onCustomDateChange={setCustomDateRange}
             />
-            <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => refetch()} disabled={isLoading}>
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 ml-2" />
-              ייצוא
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>ייצוא PDF</TooltipContent>
+            </Tooltip>
           </div>
         </div>
+
+        {/* Page Header */}
+        <PageHeader 
+          title="Shopify"
+          description="נתונים מפורטים"
+        />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -187,7 +190,6 @@ export default function ShopifyDetail() {
 
             {/* Sales Breakdown & Order Status */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Sales Breakdown */}
               <div className="glass rounded-xl p-6 card-shadow">
                 <h3 className="font-bold text-lg mb-4">פירוט מכירות</h3>
                 <div className="space-y-4">
@@ -222,7 +224,6 @@ export default function ShopifyDetail() {
                 </div>
               </div>
 
-              {/* Order Status Pie */}
               <div className="glass rounded-xl p-6 card-shadow">
                 <h3 className="font-bold text-lg mb-4">סטטוס הזמנות</h3>
                 <div className="h-[250px]">
@@ -241,7 +242,7 @@ export default function ShopifyDetail() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <RechartsTooltip />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

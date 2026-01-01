@@ -67,19 +67,17 @@ import {
 import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
 import { Badge } from "@/components/ui/badge";
 
-const platformConfig: Record<string, { color: string; name: string; logo: string; externalUrl?: string; canCreate: boolean }> = {
+const platformConfig: Record<string, { color: string; name: string; logo: string; canCreate: boolean }> = {
   google_ads: { 
     color: "bg-[#4285F4]", 
     name: "Google Ads", 
     logo: "https://www.gstatic.com/images/branding/product/2x/ads_48dp.png",
-    externalUrl: "https://ads.google.com/aw/campaigns/new",
     canCreate: false,
   },
   facebook_ads: { 
     color: "bg-[#1877F2]", 
     name: "Facebook Ads", 
     logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Facebook_Logo_%282019%29.png/1200px-Facebook_Logo_%282019%29.png",
-    externalUrl: "https://business.facebook.com/adsmanager/manage/campaigns",
     canCreate: false,
   },
   internal: { 
@@ -334,7 +332,7 @@ export default function Campaigns() {
     <MainLayout>
       <div className="p-8">
         <PageHeader 
-          title={selectedClient ? `קמפיינים - ${selectedClient.name}` : "ניהול קמפיינים"}
+          title="קמפיינים"
           description="צפייה בכל הקמפיינים מכל הפלטפורמות"
           actions={
             <div className="flex items-center gap-2">
