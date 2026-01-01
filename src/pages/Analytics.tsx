@@ -383,7 +383,7 @@ export default function Analytics() {
             <div className="space-y-3">
               {/* Google Analytics */}
               {hasGoogleAnalytics && (
-                <PlatformCompactCard
+              <PlatformCompactCard
                   platform="Google Analytics"
                   platformKey="google_analytics"
                   icon={<BarChart3 className="w-5 h-5 text-white" />}
@@ -391,27 +391,36 @@ export default function Analytics() {
                   detailPath="/analytics/google-analytics"
                   isLoading={!googleAnalyticsData}
                   isConnected={true}
-                  metrics={[
-                    { 
-                      label: "סשנים", 
-                      value: formatNumber(googleAnalyticsData?.sessions || 0),
-                      icon: <BarChart3 className="w-4 h-4" />,
-                    },
-                    { 
-                      label: "משתמשים", 
-                      value: formatNumber(googleAnalyticsData?.users || 0),
-                      icon: <Users className="w-4 h-4" />,
-                    },
-                    { 
-                      label: "צפיות", 
-                      value: formatNumber(googleAnalyticsData?.pageviews || 0),
-                      icon: <Eye className="w-4 h-4" />,
-                    },
-                    { 
-                      label: "נטישה", 
-                      value: `${(googleAnalyticsData?.bounceRate || 0).toFixed(1)}%`,
-                    },
-                  ]}
+                  metrics={(() => {
+                    // Parse GA data from API response
+                    const dailyRow = googleAnalyticsData?.dailyMetrics?.rows?.[0]?.metricValues;
+                    const sessions = parseInt(dailyRow?.[1]?.value || "0");
+                    const users = parseInt(dailyRow?.[0]?.value || "0");
+                    const pageviews = parseInt(dailyRow?.[2]?.value || "0");
+                    const bounceRate = parseFloat(dailyRow?.[4]?.value || "0") * 100;
+                    
+                    return [
+                      { 
+                        label: "סשנים", 
+                        value: formatNumber(sessions),
+                        icon: <BarChart3 className="w-4 h-4" />,
+                      },
+                      { 
+                        label: "משתמשים", 
+                        value: formatNumber(users),
+                        icon: <Users className="w-4 h-4" />,
+                      },
+                      { 
+                        label: "צפיות", 
+                        value: formatNumber(pageviews),
+                        icon: <Eye className="w-4 h-4" />,
+                      },
+                      { 
+                        label: "נטישה", 
+                        value: `${bounceRate.toFixed(1)}%`,
+                      },
+                    ];
+                  })()}
                 />
               )}
 
