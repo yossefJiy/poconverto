@@ -1,18 +1,14 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 import { usePermissions, useAuth } from "@/hooks/useAuth";
-import { ShopifyAnalytics } from "@/components/analytics/ShopifyAnalytics";
-import { GoogleAnalyticsCard } from "@/components/analytics/GoogleAnalyticsCard";
-import { GoogleAdsCard } from "@/components/analytics/GoogleAdsCard";
-import { FacebookAdsCard } from "@/components/analytics/FacebookAdsCard";
-import { WooCommerceCard } from "@/components/analytics/WooCommerceCard";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { GlobalKPIBar } from "@/components/analytics/GlobalKPIBar";
-import { PlatformSummaryCard } from "@/components/analytics/PlatformSummaryCard";
+import { PlatformCompactCard } from "@/components/analytics/PlatformCompactCard";
+import { CreateCampaignDialog } from "@/components/analytics/CreateCampaignDialog";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
 import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
@@ -31,19 +27,21 @@ import {
   Activity,
   Clock,
   ShoppingCart,
-  Target,
-  BarChart3,
   Store,
+  Target,
+  DollarSign,
+  Eye,
+  MousePointer,
+  TrendingUp,
+  Megaphone,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Note: Scheduled refresh is now handled by backend cron jobs
-// Client-side refresh was removed to prevent auth errors from stale sessions
-
 export default function Analytics() {
+  const navigate = useNavigate();
   const { selectedClient } = useClient();
   const { isAdmin } = usePermissions();
   const { loading: authLoading, session } = useAuth();
@@ -53,23 +51,22 @@ export default function Analytics() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [showConnectionStatusDialog, setShowConnectionStatusDialog] = useState(false);
+  const [showCreateCampaignDialog, setShowCreateCampaignDialog] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [selectedCampaignPlatform, setSelectedCampaignPlatform] = useState<string>("");
   const toastIdRef = useRef<string | number | null>(null);
   
   // Open integrations dialog if URL param is set
   useEffect(() => {
     if (searchParams.get('integrations') === 'open') {
       setShowIntegrationsDialog(true);
-      // Remove the param from URL
       searchParams.delete('integrations');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
   
-  // Get date range based on filter
   const dateRange = getDateRangeFromFilter(globalDateFilter, customDateRange);
   
-  // Calculate days for the hook (for backward compatibility)
   const getDaysFromFilter = () => {
     switch (globalDateFilter) {
       case "today": return "1";
@@ -94,17 +91,23 @@ export default function Analytics() {
     refetchAll
   } = useAnalyticsData(selectedClient?.id, getDaysFromFilter());
 
-  // Check which integrations the client has
   const hasShopify = integrations.some(i => i.platform === 'shopify' && i.is_connected);
   const hasGoogleAds = integrations.some(i => i.platform === 'google_ads' && i.is_connected);
   const hasFacebookAds = integrations.some(i => i.platform === 'facebook_ads' && i.is_connected);
   const hasWooCommerce = integrations.some(i => i.platform === 'woocommerce' && i.is_connected);
   const queryClient = useQueryClient();
 
-  // Fetch Shopify data for KPI bar
+  // Get connected platforms for campaign creation
+  const connectedPlatforms = useMemo(() => {
+    const platforms: string[] = [];
+    if (hasGoogleAds) platforms.push("google_ads");
+    if (hasFacebookAds) platforms.push("facebook_ads");
+    return platforms;
+  }, [hasGoogleAds, hasFacebookAds]);
+
+  // Fetch platform data
   const { data: shopifyData } = useShopifyAnalytics(dateRange.startDate, dateRange.endDate);
   
-  // Fetch Google Ads data for KPI bar
   const { data: googleAdsData } = useQuery({
     queryKey: ["google-ads-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
     queryFn: async () => {
@@ -117,7 +120,6 @@ export default function Analytics() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch Facebook Ads data for KPI bar  
   const { data: facebookAdsData } = useQuery({
     queryKey: ["facebook-ads-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
     queryFn: async () => {
@@ -139,69 +141,73 @@ export default function Analytics() {
     googleAds: {
       totalCost: googleAdsData?.account?.totalCost || 0,
       totalConversions: googleAdsData?.account?.totalConversions || 0,
+      totalClicks: googleAdsData?.account?.totalClicks || 0,
+      totalImpressions: googleAdsData?.account?.totalImpressions || 0,
     },
     facebookAds: {
       cost: facebookAdsData?.totals?.cost || 0,
       conversions: facebookAdsData?.totals?.conversions || 0,
+      clicks: facebookAdsData?.totals?.clicks || 0,
+      impressions: facebookAdsData?.totals?.impressions || 0,
     },
   }), [shopifyData, googleAdsData, facebookAdsData]);
 
-  const handleRefreshAll = useCallback(async (isScheduled = false) => {
+  const handleRefreshAll = useCallback(async () => {
     setIsRefreshing(true);
-    
-    // Show persistent toast
-    const toastMessage = isScheduled 
-      ? "מרענן נתונים מכל הפלטפורמות (ריענון מתוזמן)..." 
-      : "מרענן נתונים מכל הפלטפורמות...";
-    
-    toastIdRef.current = toast.loading(toastMessage, {
+    toastIdRef.current = toast.loading("מרענן נתונים מכל הפלטפורמות...", {
       position: "bottom-left",
       duration: Infinity,
     });
 
     try {
-      // Trigger backend sync for all integrations of this client
       if (selectedClient?.id) {
-        const { error: syncError } = await supabase.functions.invoke('sync-integrations', {
+        await supabase.functions.invoke('sync-integrations', {
           body: { client_id: selectedClient.id }
         });
-        
-        if (syncError) {
-          console.error('Sync error:', syncError);
-        }
       }
       
-      // Refresh Shopify analytics
       await queryClient.invalidateQueries({ queryKey: ['shopify-analytics'] });
-      // Refresh GA and integrations
+      await queryClient.invalidateQueries({ queryKey: ['google-ads-kpi'] });
+      await queryClient.invalidateQueries({ queryKey: ['facebook-ads-kpi'] });
       await refetchAll?.();
       
-      // Dismiss loading toast and show success
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
+      if (toastIdRef.current) toast.dismiss(toastIdRef.current);
       setLastRefreshedAt(new Date());
-      toast.success("כל הנתונים עודכנו ונשמרו בהצלחה", {
-        position: "bottom-left",
-        duration: 3000,
-      });
+      toast.success("כל הנתונים עודכנו בהצלחה", { position: "bottom-left", duration: 3000 });
     } catch (error) {
-      // Dismiss loading toast and show error
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
-      toast.error("שגיאה בריענון הנתונים", {
-        position: "bottom-left",
-        duration: 3000,
-      });
+      if (toastIdRef.current) toast.dismiss(toastIdRef.current);
+      toast.error("שגיאה בריענון הנתונים", { position: "bottom-left", duration: 3000 });
     } finally {
       setIsRefreshing(false);
       toastIdRef.current = null;
     }
   }, [queryClient, refetchAll, selectedClient?.id]);
 
-  // Note: Client-side scheduled refresh has been removed.
-  // Backend cron jobs handle automatic data sync to prevent auth errors from stale sessions.
+  const handleCreateCampaign = (platform?: string) => {
+    setSelectedCampaignPlatform(platform || "");
+    setShowCreateCampaignDialog(true);
+  };
+
+  const formatLastRefreshed = (date: Date | null): string => {
+    if (!date) return "";
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "עכשיו";
+    if (diffMins < 60) return `לפני ${diffMins} דקות`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `לפני ${diffHours} שעות`;
+    return `לפני ${Math.floor(diffHours / 24)} ימים`;
+  };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+    return num.toLocaleString("he-IL");
+  };
+
+  const formatCurrency = (num: number): string => "₪" + formatNumber(num);
 
   if (!selectedClient) {
     return (
@@ -226,44 +232,30 @@ export default function Analytics() {
 
   const noIntegrations = integrations.length === 0;
   const dataSources: string[] = [];
-  
   if (hasShopify) dataSources.push("Shopify");
   if (hasWooCommerce) dataSources.push("WooCommerce");
   if (hasAnalytics) dataSources.push("Google Analytics");
   if (hasGoogleAds) dataSources.push("Google Ads");
   if (hasFacebookAds) dataSources.push("Facebook Ads");
 
-  // Format relative time for last refresh
-  const formatLastRefreshed = (date: Date | null): string => {
-    if (!date) return "";
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return "עכשיו";
-    if (diffMins < 60) return `לפני ${diffMins} דקות`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `לפני ${diffHours} שעות`;
-    return `לפני ${Math.floor(diffHours / 24)} ימים`;
-  };
-
   return (
     <MainLayout>
       <div className="p-8 space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <PageHeader 
               title={`אנליטיקס - ${selectedClient.name}`}
-              description="נתוני אתר ואיקומרס"
+              description="סקירה כללית של כל הפלטפורמות"
             />
             {dataSources.length > 0 && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">מקורות מידע:</span>
+                <span className="text-sm text-muted-foreground">מקורות:</span>
                 {dataSources.map((source) => (
                   <Badge 
                     key={source} 
                     variant="outline" 
-                    className="bg-primary/10 text-primary border-primary/30"
+                    className="bg-primary/10 text-primary border-primary/30 text-xs"
                   >
                     {source}
                   </Badge>
@@ -272,16 +264,23 @@ export default function Analytics() {
             )}
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {connectedPlatforms.length > 0 && (
+              <Button variant="default" size="sm" onClick={() => handleCreateCampaign()}>
+                <Megaphone className="w-4 h-4 ml-2" />
+                קמפיין חדש
+              </Button>
+            )}
+
             {isAdmin && (
               <>
-                <Button variant="outline" onClick={() => setShowConnectionStatusDialog(true)}>
-                  <Activity className="w-4 h-4 ml-2" />
-                  סטטוס חיבורים
+                <Button variant="outline" size="sm" onClick={() => setShowConnectionStatusDialog(true)}>
+                  <Activity className="w-4 h-4 ml-1" />
+                  סטטוס
                 </Button>
-                <Button variant="outline" onClick={() => setShowIntegrationsDialog(true)}>
-                  <Settings className="w-4 h-4 ml-2" />
-                  ניהול אינטגרציות
+                <Button variant="outline" size="sm" onClick={() => setShowIntegrationsDialog(true)}>
+                  <Settings className="w-4 h-4 ml-1" />
+                  אינטגרציות
                 </Button>
               </>
             )}
@@ -294,17 +293,18 @@ export default function Analytics() {
             />
 
             {lastRefreshedAt && (
-              <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                <span className="text-xs">עודכן {formatLastRefreshed(lastRefreshedAt)}</span>
+              <Badge variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
+                <Clock className="w-3 h-3" />
+                {formatLastRefreshed(lastRefreshedAt)}
               </Badge>
             )}
 
             <Button 
               variant="outline" 
               size="icon" 
+              className="h-8 w-8"
               disabled={isLoading || isRefreshing} 
-              onClick={() => handleRefreshAll(false)}
+              onClick={handleRefreshAll}
               title="רענן את כל הנתונים"
             >
               {isLoading || isRefreshing ? (
@@ -314,8 +314,8 @@ export default function Analytics() {
               )}
             </Button>
 
-            <Button variant="outline">
-              <Download className="w-4 h-4 ml-2" />
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 ml-1" />
               ייצוא
             </Button>
           </div>
@@ -327,7 +327,7 @@ export default function Analytics() {
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertTitle>אין חיבורים פעילים</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
-              <span>חבר את Google Analytics ו-Shopify כדי לראות נתונים אמיתיים</span>
+              <span>חבר פלטפורמות כדי לראות נתונים אמיתיים</span>
               <Button size="sm" className="mr-4" onClick={() => setShowIntegrationsDialog(true)}>
                 <Plug className="w-4 h-4 ml-2" />
                 חבר כעת
@@ -336,7 +336,7 @@ export default function Analytics() {
           </Alert>
         )}
 
-        {/* Auth Loading State */}
+        {/* Content */}
         {isAuthLoading ? (
           <AuthLoadingState />
         ) : isLoading ? (
@@ -344,78 +344,166 @@ export default function Analytics() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Global KPI Summary Bar */}
             {(hasShopify || hasGoogleAds || hasFacebookAds) && (
               <GlobalKPIBar platformData={platformData} isLoading={isLoading} />
             )}
 
-            {/* Shopify Analytics - Only show if Shopify integration is connected */}
-            {hasShopify && (
-              <ShopifyAnalytics
-                globalDateFrom={dateRange.startDate}
-                globalDateTo={dateRange.endDate}
-                clientProfitMargin={(selectedClient as any).avg_profit_margin || 0}
-                clientJiyCommission={(selectedClient as any).jiy_commission_percent || 0}
-              />
-            )}
+            {/* Platform Cards - Compact Row Style */}
+            <div className="space-y-3">
+              {/* Shopify */}
+              {hasShopify && (
+                <PlatformCompactCard
+                  platform="Shopify"
+                  platformKey="shopify"
+                  icon={<Store className="w-5 h-5 text-white" />}
+                  iconBgColor="bg-[#96BF48]"
+                  detailPath="/analytics/shopify"
+                  isLoading={!shopifyData}
+                  isConnected={true}
+                  metrics={[
+                    { 
+                      label: "הכנסות", 
+                      value: formatCurrency(shopifyData?.summary?.totalRevenue || 0),
+                      icon: <DollarSign className="w-4 h-4" />,
+                      change: 12.5
+                    },
+                    { 
+                      label: "הזמנות", 
+                      value: formatNumber(shopifyData?.summary?.totalOrders || 0),
+                      icon: <ShoppingCart className="w-4 h-4" />,
+                      change: 8.2
+                    },
+                    { 
+                      label: "AOV", 
+                      value: formatCurrency(shopifyData?.summary?.avgOrderValue || 0),
+                      icon: <TrendingUp className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "מוצרים", 
+                      value: formatNumber(shopifyData?.products?.length || 0),
+                    },
+                  ]}
+                />
+              )}
 
-            {/* Google Analytics - Second, Collapsible */}
-            {hasAnalytics && (
-              <GoogleAnalyticsCard
-                analyticsData={analyticsData}
-                isLoading={isLoading}
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-              />
-            )}
+              {/* Google Ads */}
+              {hasGoogleAds && (
+                <PlatformCompactCard
+                  platform="Google Ads"
+                  platformKey="google_ads"
+                  icon={<Target className="w-5 h-5 text-white" />}
+                  iconBgColor="bg-[#4285F4]"
+                  detailPath="/analytics/google-ads"
+                  isLoading={!googleAdsData}
+                  isConnected={true}
+                  canCreateCampaign={true}
+                  onCreateCampaign={() => handleCreateCampaign("google_ads")}
+                  metrics={[
+                    { 
+                      label: "הוצאות", 
+                      value: formatCurrency(googleAdsData?.account?.totalCost || 0),
+                      icon: <DollarSign className="w-4 h-4" />,
+                      change: -5.2
+                    },
+                    { 
+                      label: "קליקים", 
+                      value: formatNumber(googleAdsData?.account?.totalClicks || 0),
+                      icon: <MousePointer className="w-4 h-4" />,
+                      change: 15.3
+                    },
+                    { 
+                      label: "חשיפות", 
+                      value: formatNumber(googleAdsData?.account?.totalImpressions || 0),
+                      icon: <Eye className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "המרות", 
+                      value: formatNumber(googleAdsData?.account?.totalConversions || 0),
+                      icon: <TrendingUp className="w-4 h-4" />,
+                      change: 22.1
+                    },
+                  ]}
+                />
+              )}
 
-            {/* WooCommerce Analytics - Only show if connected */}
-            {hasWooCommerce && (
-              <WooCommerceCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                clientId={selectedClient?.id}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-              />
-            )}
+              {/* Facebook Ads */}
+              {hasFacebookAds && (
+                <PlatformCompactCard
+                  platform="Facebook Ads"
+                  platformKey="facebook_ads"
+                  icon={<span className="text-white text-lg font-bold">f</span>}
+                  iconBgColor="bg-[#1877F2]"
+                  detailPath="/analytics/facebook-ads"
+                  isLoading={!facebookAdsData}
+                  isConnected={true}
+                  canCreateCampaign={true}
+                  onCreateCampaign={() => handleCreateCampaign("facebook_ads")}
+                  metrics={[
+                    { 
+                      label: "הוצאות", 
+                      value: formatCurrency(facebookAdsData?.totals?.cost || 0),
+                      icon: <DollarSign className="w-4 h-4" />,
+                      change: -3.1
+                    },
+                    { 
+                      label: "קליקים", 
+                      value: formatNumber(facebookAdsData?.totals?.clicks || 0),
+                      icon: <MousePointer className="w-4 h-4" />,
+                      change: 18.7
+                    },
+                    { 
+                      label: "חשיפות", 
+                      value: formatNumber(facebookAdsData?.totals?.impressions || 0),
+                      icon: <Eye className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "המרות", 
+                      value: formatNumber(facebookAdsData?.totals?.conversions || 0),
+                      icon: <TrendingUp className="w-4 h-4" />,
+                      change: 11.4
+                    },
+                  ]}
+                />
+              )}
 
-            {/* Google Ads - Only show if connected */}
-            {hasGoogleAds && (
-              <GoogleAdsCard
-                globalDateFrom={dateRange.dateFrom}
-                globalDateTo={dateRange.dateTo}
-                clientId={selectedClient?.id}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-              />
-            )}
-
-            {/* Facebook Ads - Only show if connected */}
-            {hasFacebookAds && (
-              <FacebookAdsCard
-                globalDateFrom={dateRange.startDate}
-                globalDateTo={dateRange.endDate}
-                clientId={selectedClient?.id}
-                isAdmin={isAdmin}
-                onAddIntegration={() => setShowIntegrationsDialog(true)}
-              />
-            )}
+              {/* WooCommerce */}
+              {hasWooCommerce && (
+                <PlatformCompactCard
+                  platform="WooCommerce"
+                  platformKey="woocommerce"
+                  icon={<ShoppingCart className="w-5 h-5 text-white" />}
+                  iconBgColor="bg-[#96588A]"
+                  detailPath="/analytics/woocommerce"
+                  isConnected={true}
+                  metrics={[
+                    { label: "הכנסות", value: "₪0", icon: <DollarSign className="w-4 h-4" /> },
+                    { label: "הזמנות", value: "0", icon: <ShoppingCart className="w-4 h-4" /> },
+                  ]}
+                />
+              )}
+            </div>
           </div>
         )}
 
-        {/* Integrations Dialog */}
+        {/* Dialogs */}
         <IntegrationsDialog
           open={showIntegrationsDialog}
           onOpenChange={setShowIntegrationsDialog}
         />
         
-        {/* Connection Status Dialog */}
         <ConnectionStatusDialog
           open={showConnectionStatusDialog}
           onOpenChange={setShowConnectionStatusDialog}
           clientId={selectedClient?.id}
+        />
+
+        <CreateCampaignDialog
+          open={showCreateCampaignDialog}
+          onOpenChange={setShowCreateCampaignDialog}
+          defaultPlatform={selectedCampaignPlatform}
+          connectedPlatforms={connectedPlatforms}
         />
       </div>
     </MainLayout>
