@@ -162,6 +162,7 @@ export default function Campaigns() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<{ startDate: string; endDate: string } | null>(null);
   const [newCampaign, setNewCampaign] = useState({
     name: "",
     platform: "internal",
@@ -356,8 +357,27 @@ export default function Campaigns() {
       filtered = filtered.filter(c => c.platform === platformFilter);
     }
     
+    // Date filter
+    if (dateFilter) {
+      const filterStart = new Date(dateFilter.startDate);
+      const filterEnd = new Date(dateFilter.endDate);
+      
+      filtered = filtered.filter(c => {
+        // If campaign has start_date, check if it falls within range
+        if (c.start_date) {
+          const campaignStart = new Date(c.start_date);
+          const campaignEnd = c.end_date ? new Date(c.end_date) : new Date();
+          
+          // Check for date range overlap
+          return campaignStart <= filterEnd && campaignEnd >= filterStart;
+        }
+        // If no dates, include campaign (from external platforms)
+        return true;
+      });
+    }
+    
     return filtered;
-  }, [allCampaigns, showActiveOnly, platformFilter]);
+  }, [allCampaigns, showActiveOnly, platformFilter, dateFilter]);
 
   const isLoading = isLoadingInternal || isLoadingGoogleAds || isLoadingFacebookAds;
 
@@ -563,6 +583,41 @@ export default function Campaigns() {
                     <SelectItem value="internal">פנימי ({platformCounts.internal})</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Date Range Filter */}
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="date"
+                    placeholder="מתאריך"
+                    className="w-36 glass text-sm"
+                    value={dateFilter?.startDate || ""}
+                    onChange={(e) => setDateFilter(prev => ({
+                      startDate: e.target.value,
+                      endDate: prev?.endDate || e.target.value
+                    }))}
+                  />
+                  <span className="text-muted-foreground text-sm">-</span>
+                  <Input
+                    type="date"
+                    placeholder="עד תאריך"
+                    className="w-36 glass text-sm"
+                    value={dateFilter?.endDate || ""}
+                    onChange={(e) => setDateFilter(prev => ({
+                      startDate: prev?.startDate || e.target.value,
+                      endDate: e.target.value
+                    }))}
+                  />
+                  {dateFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => setDateFilter(null)}
+                    >
+                      ✕
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">

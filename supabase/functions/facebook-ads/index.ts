@@ -83,7 +83,7 @@ async function fetchCampaigns(accessToken: string, adAccountId: string): Promise
   const url = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${cleanAccountId}/campaigns`;
   const params = new URLSearchParams({
     access_token: accessToken,
-    fields: 'id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time',
+    fields: 'id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time',
     limit: '100',
   });
 
@@ -95,6 +95,78 @@ async function fetchCampaigns(accessToken: string, adAccountId: string): Promise
   if (data.error) {
     log.error('Facebook API error:', data.error);
     throw new Error(data.error.message || 'Facebook API error');
+  }
+
+  return data.data || [];
+}
+
+// Fetch Ad Sets from Facebook Ads API
+async function fetchAdSets(accessToken: string, adAccountId: string): Promise<any> {
+  const cleanAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+  
+  const url = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${cleanAccountId}/adsets`;
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    fields: 'id,name,status,campaign_id,daily_budget,lifetime_budget,targeting,optimization_goal,billing_event',
+    limit: '100',
+  });
+
+  log.info(`Fetching ad sets for account: ${cleanAccountId}`);
+
+  const response = await fetch(`${url}?${params}`);
+  const data = await response.json();
+
+  if (data.error) {
+    log.error('Facebook API error fetching ad sets:', data.error);
+    return [];
+  }
+
+  return data.data || [];
+}
+
+// Fetch Ads from Facebook Ads API
+async function fetchAds(accessToken: string, adAccountId: string): Promise<any> {
+  const cleanAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+  
+  const url = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${cleanAccountId}/ads`;
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    fields: 'id,name,status,adset_id,campaign_id,creative{id,name,object_type,thumbnail_url}',
+    limit: '100',
+  });
+
+  log.info(`Fetching ads for account: ${cleanAccountId}`);
+
+  const response = await fetch(`${url}?${params}`);
+  const data = await response.json();
+
+  if (data.error) {
+    log.error('Facebook API error fetching ads:', data.error);
+    return [];
+  }
+
+  return data.data || [];
+}
+
+// Fetch Custom Audiences from Facebook Ads API
+async function fetchCustomAudiences(accessToken: string, adAccountId: string): Promise<any> {
+  const cleanAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+  
+  const url = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${cleanAccountId}/customaudiences`;
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    fields: 'id,name,subtype,approximate_count,description,data_source',
+    limit: '100',
+  });
+
+  log.info(`Fetching custom audiences for account: ${cleanAccountId}`);
+
+  const response = await fetch(`${url}?${params}`);
+  const data = await response.json();
+
+  if (data.error) {
+    log.error('Facebook API error fetching audiences:', data.error);
+    return [];
   }
 
   return data.data || [];
@@ -235,10 +307,13 @@ serve(async (req) => {
     // Default: fetch all data
     log.info(`Fetching all Facebook Ads data for ${adAccountId}`);
 
-    const [campaigns, insights, dailyInsights] = await Promise.all([
+    const [campaigns, insights, dailyInsights, adSets, ads, audiences] = await Promise.all([
       fetchCampaigns(accessToken, adAccountId),
       fetchInsights(accessToken, adAccountId, requestStartDate, requestEndDate),
       fetchDailyInsights(accessToken, adAccountId, requestStartDate, requestEndDate),
+      fetchAdSets(accessToken, adAccountId),
+      fetchAds(accessToken, adAccountId),
+      fetchCustomAudiences(accessToken, adAccountId),
     ]);
 
     // Process campaign data with insights
@@ -287,9 +362,53 @@ serve(async (req) => {
       conversionValue: processedCampaigns.reduce((sum: number, c: any) => sum + c.conversionValue, 0),
     };
 
+    // Process ad sets
+    const processedAdSets = adSets.map((adSet: any) => {
+      const targeting = adSet.targeting || {};
+      let targetingSummary = '';
+      if (targeting.geo_locations?.countries) {
+        targetingSummary = targeting.geo_locations.countries.join(', ');
+      }
+      
+      return {
+        id: adSet.id,
+        name: adSet.name,
+        status: adSet.status,
+        campaign_id: adSet.campaign_id,
+        daily_budget: parseFloat(adSet.daily_budget || '0') / 100,
+        lifetime_budget: parseFloat(adSet.lifetime_budget || '0') / 100,
+        targeting_summary: targetingSummary,
+        optimization_goal: adSet.optimization_goal,
+      };
+    });
+
+    // Process ads
+    const processedAds = ads.map((ad: any) => ({
+      id: ad.id,
+      name: ad.name,
+      status: ad.status,
+      adset_id: ad.adset_id,
+      campaign_id: ad.campaign_id,
+      creative_type: ad.creative?.object_type,
+      creative_name: ad.creative?.name,
+      thumbnail_url: ad.creative?.thumbnail_url,
+    }));
+
+    // Process audiences
+    const processedAudiences = audiences.map((audience: any) => ({
+      id: audience.id,
+      name: audience.name,
+      subtype: audience.subtype,
+      approximate_count: audience.approximate_count,
+      description: audience.description,
+    }));
+
     const response = {
       campaigns: processedCampaigns,
       daily: processedDaily,
+      adSets: processedAdSets,
+      ads: processedAds,
+      audiences: processedAudiences,
       totals,
       dateRange: {
         startDate: requestStartDate,
@@ -297,7 +416,7 @@ serve(async (req) => {
       },
     };
 
-    log.info(`Facebook Ads data fetched successfully: ${processedCampaigns.length} campaigns`);
+    log.info(`Facebook Ads data fetched successfully: ${processedCampaigns.length} campaigns, ${processedAdSets.length} ad sets, ${processedAds.length} ads`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
