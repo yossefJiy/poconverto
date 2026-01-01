@@ -973,8 +973,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Manual Input for other platforms (not MCC, API credentials, GA, or OAuth) */}
-            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useOAuth && (
+            {/* Manual Input for other platforms (not MCC, API credentials, GA, Facebook, or OAuth) */}
+            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useFacebookCredentials && !selectedPlatform.useOAuth && (
               <div className="space-y-2">
                 <Label>הזן את המזהה:</Label>
                 <Input
