@@ -97,7 +97,6 @@ interface PlatformOption {
   useApiCredentials?: boolean; // For platforms needing consumer key/secret
   useGACredentials?: boolean; // For Google Analytics with property ID + measurement ID
   useOAuth?: boolean; // For Google Workspace integrations requiring OAuth
-  useFacebookAds?: boolean; // For Facebook Ads - just ad account ID (digits only)
   category: "ecommerce" | "analytics" | "google_workspace" | "ai";
   comingSoon?: boolean;
   steps: { title: string; description: string }[];
@@ -203,12 +202,11 @@ const platformOptions: PlatformOption[] = [
     category: "analytics",
     description: "קבלת נתוני קמפיינים מ-Facebook Business",
     credentialKey: "ad_account_id",
-    placeholder: "478334941537916",
-    useFacebookAds: true,
+    placeholder: "act_123456789",
     steps: [
       { title: "היכנס ל-Business Manager", description: "עבור ל-business.facebook.com" },
       { title: "לחץ על Business Settings", description: "בחר Accounts > Ad Accounts" },
-      { title: "העתק את מספר החשבון (ספרות בלבד)", description: "הקידומת act_ תתווסף אוטומטית" },
+      { title: "העתק את Ad Account ID", description: "המזהה מתחיל ב-act_" },
     ],
     helpUrl: "https://www.facebook.com/business/help/1492627900875762",
     features: ["קמפיינים", "קבוצות מודעות", "Insights", "המרות"],
@@ -343,23 +341,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [connectionMessage, setConnectionMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
-  
-  // Facebook Ads permission checking
-  const [fbAccessToken, setFbAccessToken] = useState("");
-  const [fbPermissionStatus, setFbPermissionStatus] = useState<{
-    checking: boolean;
-    checked: boolean;
-    valid: boolean;
-    permissions: Record<string, 'granted' | 'declined' | 'expired'>;
-    adAccounts: Array<{ id: string; name: string; currency: string }>;
-    error?: string;
-  }>({
-    checking: false,
-    checked: false,
-    valid: false,
-    permissions: {},
-    adAccounts: [],
-  });
 
   // Auto-select platform if defaultPlatform is provided
   useEffect(() => {
@@ -430,10 +411,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           property_id: credential,
           measurement_id: measurementId || "",
         };
-      } else if (selectedPlatform.useFacebookAds) {
-        // Facebook Ads - add act_ prefix if not present
-        const cleanId = credential.replace(/\D/g, '');
-        credentials[selectedPlatform.credentialKey] = `act_${cleanId}`;
       } else {
         credentials[selectedPlatform.credentialKey] = credential;
       }
@@ -513,14 +490,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConnectionMessage("");
     setSearchQuery("");
     setValidationError("");
-    setFbAccessToken("");
-    setFbPermissionStatus({
-      checking: false,
-      checked: false,
-      valid: false,
-      permissions: {},
-      adAccounts: [],
-    });
   };
 
   const handleMccAccountSelect = (account: MccAccount) => {
@@ -592,64 +561,6 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConnectionMessage("");
     setSearchQuery("");
     setValidationError("");
-    setFbAccessToken("");
-    setFbPermissionStatus({
-      checking: false,
-      checked: false,
-      valid: false,
-      permissions: {},
-      adAccounts: [],
-    });
-  };
-
-  // Check Facebook permissions
-  const checkFacebookPermissions = async () => {
-    if (!fbAccessToken.trim()) {
-      setValidationError("יש להזין טוקן גישה");
-      return;
-    }
-    
-    setFbPermissionStatus(prev => ({ ...prev, checking: true, checked: false }));
-    setValidationError("");
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('facebook-ads', {
-        body: {
-          action: 'check_permissions',
-          accessToken: fbAccessToken.trim(),
-        }
-      });
-      
-      if (error) throw error;
-      
-      setFbPermissionStatus({
-        checking: false,
-        checked: true,
-        valid: data.valid,
-        permissions: data.permissions || {},
-        adAccounts: data.adAccounts || [],
-        error: data.error,
-      });
-      
-      if (data.valid && data.adAccounts?.length > 0) {
-        toast.success(`נמצאו ${data.adAccounts.length} חשבונות פרסום`);
-      } else if (!data.valid) {
-        toast.error(data.error || "הטוקן לא תקין");
-      } else if (data.adAccounts?.length === 0) {
-        toast.warning("לא נמצאו חשבונות פרסום נגישים");
-      }
-    } catch (error) {
-      console.error('Error checking FB permissions:', error);
-      setFbPermissionStatus({
-        checking: false,
-        checked: true,
-        valid: false,
-        permissions: {},
-        adAccounts: [],
-        error: error instanceof Error ? error.message : 'שגיאה בבדיקת הרשאות',
-      });
-      toast.error("שגיאה בבדיקת הרשאות");
-    }
   };
 
   if (!selectedClient) {
@@ -662,9 +573,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
       ? !!credential && !!consumerKey && !!consumerSecret
       : selectedPlatform?.useGACredentials
         ? !!credential
-        : selectedPlatform?.useFacebookAds
-          ? credential.replace(/\D/g, '').length > 0 && fbPermissionStatus.valid
-          : !!credential;
+        : !!credential;
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
@@ -986,194 +895,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Facebook Ads - token check + ad account ID */}
-            {selectedPlatform.useFacebookAds && (
-              <div className="space-y-4">
-                {/* Step 1: Token Input */}
-                <div className="space-y-2">
-                  <Label>שלב 1: טוקן גישה (System User Token):</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      value={fbAccessToken}
-                      onChange={(e) => {
-                        setFbAccessToken(e.target.value);
-                        setFbPermissionStatus(prev => ({ ...prev, checked: false, valid: false }));
-                        setConnectionStatus("idle");
-                        setValidationError("");
-                      }}
-                      placeholder="EAA..."
-                      dir="ltr"
-                      className="text-left font-mono text-sm flex-1"
-                    />
-                    <Button 
-                      type="button"
-                      onClick={checkFacebookPermissions}
-                      disabled={!fbAccessToken.trim() || fbPermissionStatus.checking}
-                      variant="outline"
-                    >
-                      {fbPermissionStatus.checking ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        "בדוק הרשאות"
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    ליצירת טוקן: Business Settings → System Users → Generate Token
-                  </p>
-                </div>
-                
-                {/* Permission Status */}
-                {fbPermissionStatus.checked && (
-                  <div className="space-y-3">
-                    {fbPermissionStatus.valid ? (
-                      <>
-                        {/* Token Valid - Show Permissions */}
-                        <Alert className="py-2 border-green-500/50 bg-green-500/10">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <AlertTitle className="text-sm text-green-600">הטוקן תקין</AlertTitle>
-                          <AlertDescription className="text-xs">
-                            נמצאו {fbPermissionStatus.adAccounts.length} חשבונות פרסום
-                          </AlertDescription>
-                        </Alert>
-                        
-                        {/* Permissions List */}
-                        <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">הרשאות:</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {['ads_read', 'ads_management', 'business_management'].map((perm) => {
-                              const status = fbPermissionStatus.permissions[perm];
-                              const isGranted = status === 'granted';
-                              return (
-                                <div key={perm} className="flex items-center gap-2 text-xs">
-                                  {isGranted ? (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                                  ) : (
-                                    <X className="w-3.5 h-3.5 text-red-500" />
-                                  )}
-                                  <span className={isGranted ? "text-green-600" : "text-red-500"}>
-                                    {perm}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        
-                        {/* Step 2: Select Ad Account */}
-                        {fbPermissionStatus.adAccounts.length > 0 && (
-                          <div className="space-y-2">
-                            <Label>שלב 2: בחר חשבון מודעות:</Label>
-                            <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
-                              {fbPermissionStatus.adAccounts.map((account) => (
-                                <button
-                                  key={account.id}
-                                  type="button"
-                                  onClick={() => {
-                                    const cleanId = account.id.replace('act_', '');
-                                    setCredential(cleanId);
-                                    setCurrentStep(1);
-                                  }}
-                                  className={cn(
-                                    "w-full text-right p-2 rounded-md text-sm transition-colors",
-                                    credential === account.id.replace('act_', '')
-                                      ? "bg-primary text-primary-foreground"
-                                      : "hover:bg-muted"
-                                  )}
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs opacity-70" dir="ltr">{account.id}</span>
-                                    <span>{account.name}</span>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Or manual input */}
-                        <div className="space-y-2">
-                          <Label className="text-muted-foreground">או הזן מספר חשבון ידנית:</Label>
-                          <Input
-                            value={credential}
-                            onChange={(e) => {
-                              const digitsOnly = e.target.value.replace(/\D/g, '');
-                              setCredential(digitsOnly);
-                              setCurrentStep(digitsOnly ? 1 : 0);
-                            }}
-                            placeholder="478334941537916"
-                            dir="ltr"
-                            className="text-left"
-                          />
-                        </div>
-                        
-                        {credential && (
-                          <Alert className="py-2 border-primary/50">
-                            <CheckCircle2 className="h-4 w-4 text-primary" />
-                            <AlertDescription className="text-sm" dir="ltr">
-                              יתחבר ל: act_{credential}
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {/* Token Invalid - Show Error */}
-                        <Alert variant="destructive" className="py-3">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle className="text-sm">הטוקן לא תקין</AlertTitle>
-                          <AlertDescription className="text-xs space-y-2">
-                            <p>{fbPermissionStatus.error}</p>
-                            <p className="font-medium">סיבות אפשריות:</p>
-                            <ul className="list-disc list-inside space-y-1">
-                              <li>הטוקן פג תוקף או בוטל</li>
-                              <li>ה-System User הוא Employee ולא Admin</li>
-                              <li>האפליקציה לא קיבלה App Review עם הרשאות ads_read</li>
-                              <li>חסרה הרשאה על חשבון הפרסום ב-Business Manager</li>
-                            </ul>
-                          </AlertDescription>
-                        </Alert>
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open('https://business.facebook.com/settings/system-users', '_blank')}
-                            className="flex-1"
-                          >
-                            <ExternalLink className="w-3 h-3 ml-1" />
-                            System Users
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open('https://developers.facebook.com/apps', '_blank')}
-                            className="flex-1"
-                          >
-                            <ExternalLink className="w-3 h-3 ml-1" />
-                            App Review
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                
-                {/* Show hint if token not checked yet */}
-                {!fbPermissionStatus.checked && !fbPermissionStatus.checking && (
-                  <Alert className="py-2 border-primary/50 bg-primary/5">
-                    <Info className="h-4 w-4 text-primary" />
-                    <AlertDescription className="text-xs">
-                      הזן את הטוקן ולחץ "בדוק הרשאות" כדי לאמת שיש גישה לנתוני פרסום
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            )}
-
-            {/* Manual Input for other platforms (not MCC, API credentials, GA, OAuth, or Facebook Ads) */}
-            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useOAuth && !selectedPlatform.useFacebookAds && (
+            {/* Manual Input for other platforms (not MCC, API credentials, GA, or OAuth) */}
+            {!selectedPlatform.useMccSelection && !selectedPlatform.useApiCredentials && !selectedPlatform.useGACredentials && !selectedPlatform.useOAuth && (
               <div className="space-y-2">
                 <Label>הזן את המזהה:</Label>
                 <Input

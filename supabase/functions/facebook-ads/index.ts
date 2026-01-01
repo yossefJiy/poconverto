@@ -13,21 +13,12 @@ const corsHeaders = {
 const FACEBOOK_API_VERSION = 'v18.0';
 
 interface FacebookAdsRequest {
-  action?: 'health' | 'campaigns' | 'insights' | 'check_permissions';
-  adAccountId?: string;
-  accessToken?: string; // For permission checking before saving
+  action?: 'health' | 'campaigns' | 'insights';
+  adAccountId: string;
   startDate?: string;
   endDate?: string;
   clientId?: string;
 }
-
-// Known Facebook API error codes
-const FB_ERROR_CODES = {
-  OAUTH_ERROR: 190, // Invalid or expired token
-  PERMISSIONS_ERROR: 200, // Missing permissions
-  API_TOO_MANY_CALLS: 4, // Rate limit
-  API_USER_TOO_MANY_CALLS: 17, // User rate limit
-} as const;
 
 // Helper function to get access token
 async function getAccessToken(): Promise<string> {
@@ -36,24 +27,6 @@ async function getAccessToken(): Promise<string> {
     throw new Error('FACEBOOK_ACCESS_TOKEN is not configured');
   }
   return accessToken;
-}
-
-// Parse Facebook API error for user-friendly message
-function parseFacebookError(error: any): { message: string; code: number; type: string } {
-  const code = error?.code || 0;
-  const type = error?.type || 'UnknownError';
-  let message = error?.message || 'Unknown Facebook API error';
-
-  // Provide clearer Hebrew messages for known errors
-  if (code === FB_ERROR_CODES.OAUTH_ERROR) {
-    message = 'טוקן הגישה לא תקין או שפג תוקפו. יש ליצור טוקן חדש.';
-  } else if (code === FB_ERROR_CODES.PERMISSIONS_ERROR) {
-    message = 'חסרות הרשאות נדרשות (ads_read / ads_management). יש לוודא שהאפליקציה מורשית לגשת לנתוני פרסום.';
-  } else if (code === FB_ERROR_CODES.API_TOO_MANY_CALLS || code === FB_ERROR_CODES.API_USER_TOO_MANY_CALLS) {
-    message = 'חריגה ממכסת הבקשות ל-API. יש לנסות שוב מאוחר יותר.';
-  }
-
-  return { message, code, type };
 }
 
 // Fetch campaigns from Facebook Ads API
@@ -73,9 +46,8 @@ async function fetchCampaigns(accessToken: string, adAccountId: string): Promise
   const data = await response.json();
 
   if (data.error) {
-    const parsedError = parseFacebookError(data.error);
-    log.error('Facebook API error:', JSON.stringify({ ...parsedError, raw: data.error }));
-    throw new Error(parsedError.message);
+    log.error('Facebook API error:', data.error);
+    throw new Error(data.error.message || 'Facebook API error');
   }
 
   return data.data || [];
@@ -105,9 +77,8 @@ async function fetchInsights(
   const data = await response.json();
 
   if (data.error) {
-    const parsedError = parseFacebookError(data.error);
-    log.error('Facebook API error (insights):', JSON.stringify({ ...parsedError, raw: data.error }));
-    throw new Error(parsedError.message);
+    log.error('Facebook API error:', data.error);
+    throw new Error(data.error.message || 'Facebook API error');
   }
 
   return data.data || [];
@@ -138,9 +109,8 @@ async function fetchDailyInsights(
   const data = await response.json();
 
   if (data.error) {
-    const parsedError = parseFacebookError(data.error);
-    log.error('Facebook API error (daily):', JSON.stringify({ ...parsedError, raw: data.error }));
-    throw new Error(parsedError.message);
+    log.error('Facebook API error:', data.error);
+    throw new Error(data.error.message || 'Facebook API error');
   }
 
   return data.data || [];
@@ -165,123 +135,6 @@ function parseConversions(actions: any[]): { conversions: number; conversionValu
   return { conversions, conversionValue };
 }
 
-// Check token permissions and validity
-async function checkTokenPermissions(accessToken: string): Promise<{
-  valid: boolean;
-  permissions: Record<string, 'granted' | 'declined' | 'expired'>;
-  adAccounts: Array<{ id: string; name: string; currency: string }>;
-  tokenInfo: { appId: string; userId: string; expiresAt: string | null; isExpired: boolean };
-  error?: string;
-}> {
-  const requiredPermissions = ['ads_read', 'ads_management', 'business_management'];
-  
-  try {
-    // Check token debug info
-    const debugUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/debug_token`;
-    const debugParams = new URLSearchParams({
-      input_token: accessToken,
-      access_token: accessToken,
-    });
-    
-    log.info('Checking token validity...');
-    const debugResponse = await fetch(`${debugUrl}?${debugParams}`);
-    const debugData = await debugResponse.json();
-    
-    if (debugData.error) {
-      const parsedError = parseFacebookError(debugData.error);
-      log.error('Token debug error:', JSON.stringify(parsedError));
-      return {
-        valid: false,
-        permissions: {},
-        adAccounts: [],
-        tokenInfo: { appId: '', userId: '', expiresAt: null, isExpired: true },
-        error: parsedError.message,
-      };
-    }
-    
-    const tokenData = debugData.data || {};
-    const isExpired = tokenData.expires_at ? tokenData.expires_at * 1000 < Date.now() : false;
-    const isValid = tokenData.is_valid && !isExpired;
-    
-    if (!isValid) {
-      return {
-        valid: false,
-        permissions: {},
-        adAccounts: [],
-        tokenInfo: {
-          appId: tokenData.app_id || '',
-          userId: tokenData.user_id || '',
-          expiresAt: tokenData.expires_at ? new Date(tokenData.expires_at * 1000).toISOString() : null,
-          isExpired,
-        },
-        error: isExpired ? 'הטוקן פג תוקף. יש ליצור טוקן חדש.' : 'הטוקן לא תקין.',
-      };
-    }
-    
-    // Fetch permissions
-    log.info('Fetching token permissions...');
-    const permissionsUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/me/permissions`;
-    const permissionsParams = new URLSearchParams({ access_token: accessToken });
-    const permissionsResponse = await fetch(`${permissionsUrl}?${permissionsParams}`);
-    const permissionsData = await permissionsResponse.json();
-    
-    const permissions: Record<string, 'granted' | 'declined' | 'expired'> = {};
-    
-    if (permissionsData.data) {
-      for (const perm of permissionsData.data) {
-        permissions[perm.permission] = perm.status as 'granted' | 'declined' | 'expired';
-      }
-    }
-    
-    // Check which required permissions are missing
-    for (const required of requiredPermissions) {
-      if (!permissions[required]) {
-        permissions[required] = 'declined'; // Not requested = effectively declined
-      }
-    }
-    
-    // Fetch accessible ad accounts
-    log.info('Fetching accessible ad accounts...');
-    const adAccountsUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/me/adaccounts`;
-    const adAccountsParams = new URLSearchParams({
-      access_token: accessToken,
-      fields: 'id,name,currency,account_status',
-      limit: '50',
-    });
-    const adAccountsResponse = await fetch(`${adAccountsUrl}?${adAccountsParams}`);
-    const adAccountsData = await adAccountsResponse.json();
-    
-    const adAccounts = (adAccountsData.data || []).map((acc: any) => ({
-      id: acc.id,
-      name: acc.name || acc.id,
-      currency: acc.currency || 'USD',
-    }));
-    
-    log.info(`Found ${adAccounts.length} ad accounts, permissions: ${JSON.stringify(permissions)}`);
-    
-    return {
-      valid: true,
-      permissions,
-      adAccounts,
-      tokenInfo: {
-        appId: tokenData.app_id || '',
-        userId: tokenData.user_id || '',
-        expiresAt: tokenData.expires_at ? new Date(tokenData.expires_at * 1000).toISOString() : null,
-        isExpired: false,
-      },
-    };
-  } catch (error) {
-    log.error('Error checking permissions:', error);
-    return {
-      valid: false,
-      permissions: {},
-      adAccounts: [],
-      tokenInfo: { appId: '', userId: '', expiresAt: null, isExpired: true },
-      error: error instanceof Error ? error.message : 'שגיאה בבדיקת הרשאות',
-    };
-  }
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -296,24 +149,6 @@ serve(async (req) => {
     if (action === 'health') {
       const envCheck = checkEnvVars(REQUIRED_ENV_VARS.FACEBOOK_ADS || ['FACEBOOK_ACCESS_TOKEN']);
       return healthCheckResponse('facebook-ads', SERVICE_VERSIONS.FACEBOOK_ADS || '1.0.0', [envCheck]);
-    }
-    
-    // Check permissions action - can use provided token for validation
-    if (action === 'check_permissions') {
-      const tokenToCheck = body.accessToken;
-      if (!tokenToCheck) {
-        return new Response(JSON.stringify({ error: 'Access token is required for permission check' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      log.info('Checking permissions for provided token...');
-      const result = await checkTokenPermissions(tokenToCheck);
-      
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
     
     // Validate user authentication for all other actions
