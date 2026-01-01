@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
@@ -21,6 +22,8 @@ import {
   Target,
   Filter,
   CheckCircle,
+  ExternalLink,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +51,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -61,23 +65,35 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
-import { GoogleAdsCampaigns } from "@/components/campaigns/GoogleAdsCampaigns";
 import { Badge } from "@/components/ui/badge";
 
-const platformConfig: Record<string, { color: string; name: string; icon?: string }> = {
-  google: { color: "bg-[#4285F4]", name: "Google Ads" },
-  google_ads: { color: "bg-[#4285F4]", name: "Google Ads" },
-  facebook: { color: "bg-[#1877F2]", name: "Facebook Ads" },
-  facebook_ads: { color: "bg-[#1877F2]", name: "Facebook Ads" },
-  instagram: { color: "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]", name: "Instagram" },
-  linkedin: { color: "bg-[#0A66C2]", name: "LinkedIn" },
-  tiktok: { color: "bg-[#000000]", name: "TikTok" },
-  internal: { color: "bg-primary", name: "פנימי" },
+const platformConfig: Record<string, { color: string; name: string; logo: string; externalUrl?: string; canCreate: boolean }> = {
+  google_ads: { 
+    color: "bg-[#4285F4]", 
+    name: "Google Ads", 
+    logo: "https://www.gstatic.com/images/branding/product/2x/ads_48dp.png",
+    externalUrl: "https://ads.google.com/aw/campaigns/new",
+    canCreate: false,
+  },
+  facebook_ads: { 
+    color: "bg-[#1877F2]", 
+    name: "Facebook Ads", 
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Facebook_Logo_%282019%29.png/1200px-Facebook_Logo_%282019%29.png",
+    externalUrl: "https://business.facebook.com/adsmanager/manage/campaigns",
+    canCreate: false,
+  },
+  internal: { 
+    color: "bg-primary", 
+    name: "פנימי", 
+    logo: "",
+    canCreate: true,
+  },
 };
 
 const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string; isActive: boolean }> = {
   active: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
   ENABLED: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
+  ACTIVE: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
   paused: { icon: Pause, color: "text-warning", bg: "bg-warning/10", label: "מושהה", isActive: false },
   PAUSED: { icon: Pause, color: "text-warning", bg: "bg-warning/10", label: "מושהה", isActive: false },
   ended: { icon: null, color: "text-muted-foreground", bg: "bg-muted", label: "הסתיים", isActive: false },
@@ -100,18 +116,21 @@ interface UnifiedCampaign {
   start_date?: string;
   end_date?: string;
   source: 'internal' | 'google_ads' | 'facebook_ads';
+  description?: string;
 }
 
 export default function Campaigns() {
+  const navigate = useNavigate();
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [newCampaign, setNewCampaign] = useState({
     name: "",
-    platform: "facebook",
+    platform: "internal",
     budget: "",
     start_date: "",
     end_date: "",
@@ -172,7 +191,7 @@ export default function Campaigns() {
       campaigns.push({
         id: c.id,
         name: c.name,
-        platform: c.platform || 'internal',
+        platform: 'internal',
         status: c.status,
         budget: c.budget,
         spent: c.spent,
@@ -183,6 +202,7 @@ export default function Campaigns() {
         cpc: c.clicks ? (c.spent || 0) / c.clicks : 0,
         start_date: c.start_date,
         end_date: c.end_date,
+        description: c.description,
         source: 'internal',
       });
     });
@@ -232,12 +252,21 @@ export default function Campaigns() {
 
   // Filter campaigns
   const filteredCampaigns = useMemo(() => {
-    if (!showActiveOnly) return allCampaigns;
-    return allCampaigns.filter(c => {
-      const statusInfo = statusConfig[c.status];
-      return statusInfo?.isActive ?? false;
-    });
-  }, [allCampaigns, showActiveOnly]);
+    let filtered = allCampaigns;
+    
+    if (showActiveOnly) {
+      filtered = filtered.filter(c => {
+        const statusInfo = statusConfig[c.status];
+        return statusInfo?.isActive ?? false;
+      });
+    }
+    
+    if (platformFilter !== "all") {
+      filtered = filtered.filter(c => c.platform === platformFilter);
+    }
+    
+    return filtered;
+  }, [allCampaigns, showActiveOnly, platformFilter]);
 
   const isLoading = isLoadingInternal || isLoadingGoogleAds || isLoadingFacebookAds;
 
@@ -260,7 +289,7 @@ export default function Campaigns() {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast.success("הקמפיין נוצר בהצלחה");
       setShowDialog(false);
-      setNewCampaign({ name: "", platform: "facebook", budget: "", start_date: "", end_date: "", description: "" });
+      setNewCampaign({ name: "", platform: "internal", budget: "", start_date: "", end_date: "", description: "" });
     },
     onError: () => toast.error("שגיאה ביצירת קמפיין"),
   });
@@ -288,82 +317,127 @@ export default function Campaigns() {
     },
   });
 
+  const handleCampaignClick = (campaign: UnifiedCampaign) => {
+    navigate(`/campaigns/${campaign.id}?source=${campaign.source}`);
+  };
+
+  const platformCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0, google_ads: 0, facebook_ads: 0, internal: 0 };
+    allCampaigns.forEach(c => {
+      counts.all++;
+      counts[c.platform]++;
+    });
+    return counts;
+  }, [allCampaigns]);
+
   return (
     <MainLayout>
       <div className="p-8">
         <PageHeader 
           title={selectedClient ? `קמפיינים - ${selectedClient.name}` : "ניהול קמפיינים"}
-          description="נתונים בזמן אמת ומעקב ביצועים"
+          description="צפייה בכל הקמפיינים מכל הפלטפורמות"
           actions={
-            <Dialog open={showDialog} onOpenChange={setShowDialog}>
-              <DialogTrigger asChild>
-                <Button className="glow" disabled={!selectedClient}>
-                  <Plus className="w-4 h-4 ml-2" />
-                  קמפיין חדש
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>קמפיין חדש</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <Input
-                    placeholder="שם הקמפיין"
-                    value={newCampaign.name}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
-                  />
-                  <Select
-                    value={newCampaign.platform}
-                    onValueChange={(v) => setNewCampaign({ ...newCampaign, platform: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="פלטפורמה" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(platformConfig).map(([key, { name }]) => (
-                        <SelectItem key={key} value={key}>{name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    placeholder="תקציב (₪)"
-                    value={newCampaign.budget}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, budget: e.target.value })}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground">תאריך התחלה</label>
-                      <Input
-                        type="date"
-                        value={newCampaign.start_date}
-                        onChange={(e) => setNewCampaign({ ...newCampaign, start_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">תאריך סיום</label>
-                      <Input
-                        type="date"
-                        value={newCampaign.end_date}
-                        onChange={(e) => setNewCampaign({ ...newCampaign, end_date: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <Textarea
-                    placeholder="תיאור"
-                    value={newCampaign.description}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
-                  />
-                  <Button 
-                    className="w-full" 
-                    onClick={() => createMutation.mutate(newCampaign)}
-                    disabled={!newCampaign.name || createMutation.isPending}
-                  >
-                    {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "צור קמפיין"}
+            <div className="flex items-center gap-2">
+              {/* External Platform Links */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                    צור בפלטפורמה
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <a 
+                      href="https://ads.google.com/aw/campaigns/new" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <img 
+                        src="https://www.gstatic.com/images/branding/product/2x/ads_48dp.png" 
+                        alt="Google Ads" 
+                        className="w-4 h-4"
+                      />
+                      Google Ads
+                      <ExternalLink className="w-3 h-3 mr-auto" />
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a 
+                      href="https://business.facebook.com/adsmanager/manage/campaigns" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">f</span>
+                      </div>
+                      Facebook Ads
+                      <ExternalLink className="w-3 h-3 mr-auto" />
+                    </a>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Internal Campaign Dialog */}
+              <Dialog open={showDialog} onOpenChange={setShowDialog}>
+                <DialogTrigger asChild>
+                  <Button className="glow" disabled={!selectedClient}>
+                    <Plus className="w-4 h-4 ml-2" />
+                    קמפיין פנימי
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>קמפיין פנימי חדש</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input
+                      placeholder="שם הקמפיין"
+                      value={newCampaign.name}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="תקציב (₪)"
+                      value={newCampaign.budget}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, budget: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">תאריך התחלה</label>
+                        <Input
+                          type="date"
+                          value={newCampaign.start_date}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, start_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">תאריך סיום</label>
+                        <Input
+                          type="date"
+                          value={newCampaign.end_date}
+                          onChange={(e) => setNewCampaign({ ...newCampaign, end_date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <Textarea
+                      placeholder="תיאור"
+                      value={newCampaign.description}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
+                    />
+                    <Button 
+                      className="w-full" 
+                      onClick={() => createMutation.mutate(newCampaign)}
+                      disabled={!newCampaign.name || createMutation.isPending}
+                    >
+                      {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "צור קמפיין"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           }
         />
 
@@ -376,22 +450,23 @@ export default function Campaigns() {
         )}
 
         {selectedClient && (
-          <Tabs defaultValue="all" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <TabsList className="glass">
-                <TabsTrigger value="all" className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  כל הקמפיינים
-                </TabsTrigger>
-                <TabsTrigger value="google-ads" className="flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  Google Ads
-                </TabsTrigger>
-                <TabsTrigger value="internal" className="flex items-center gap-2">
-                  <Megaphone className="w-4 h-4" />
-                  קמפיינים פנימיים
-                </TabsTrigger>
-              </TabsList>
+          <div className="space-y-6">
+            {/* Filters Bar */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                  <SelectTrigger className="w-48 glass">
+                    <Filter className="w-4 h-4 ml-2" />
+                    <SelectValue placeholder="כל הפלטפורמות" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">כל הפלטפורמות ({platformCounts.all})</SelectItem>
+                    <SelectItem value="google_ads">Google Ads ({platformCounts.google_ads})</SelectItem>
+                    <SelectItem value="facebook_ads">Facebook Ads ({platformCounts.facebook_ads})</SelectItem>
+                    <SelectItem value="internal">פנימי ({platformCounts.internal})</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="flex items-center gap-2">
                 <Switch
@@ -400,283 +475,189 @@ export default function Campaigns() {
                   onCheckedChange={setShowActiveOnly}
                 />
                 <Label htmlFor="active-filter" className="text-sm text-muted-foreground cursor-pointer">
-                  הצג פעילים בלבד
+                  פעילים בלבד
                 </Label>
               </div>
             </div>
 
-            <TabsContent value="all">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : filteredCampaigns.length === 0 ? (
-                <div className="glass rounded-xl p-12 text-center">
-                  <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    {showActiveOnly ? "אין קמפיינים פעילים" : "אין קמפיינים"}
-                  </h3>
-                  <p className="text-muted-foreground">
-                    {showActiveOnly ? "כל הקמפיינים מושהים או הסתיימו" : "צור קמפיין חדש כדי להתחיל"}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className="bg-primary/10">
-                      {filteredCampaigns.length} קמפיינים
-                    </Badge>
-                    {showActiveOnly && (
-                      <Badge variant="secondary" className="bg-success/10 text-success">
-                        <Play className="w-3 h-3 ml-1" />
-                        פעילים בלבד
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {filteredCampaigns.map((campaign, index) => {
-                    const status = statusConfig[campaign.status] || statusConfig.draft;
-                    const platform = platformConfig[campaign.platform] || { color: "bg-muted", name: campaign.platform };
-                    const budgetUsed = campaign.budget && campaign.budget > 0 ? ((campaign.spent || 0) / campaign.budget) * 100 : 0;
-                    const StatusIcon = status.icon;
-
-                    return (
-                      <div 
-                        key={campaign.id}
-                        className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden"
-                        style={{ animationDelay: `${0.05 * index}s`, animationFillMode: "forwards" }}
-                      >
-                        <div className="p-4">
-                          <div className="flex items-center gap-4">
-                            {/* Platform Badge */}
-                            <div className={cn("w-10 h-10 rounded-lg flex-shrink-0", platform.color)} />
-                            
-                            {/* Campaign Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-1">
-                                <h3 className="font-bold truncate">{campaign.name}</h3>
-                                <Badge variant="outline" className={cn(status.bg, status.color, "text-xs")}>
-                                  {StatusIcon && <StatusIcon className="w-3 h-3 ml-1" />}
-                                  {status.label}
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {platform.name}
-                                </Badge>
-                                {campaign.source !== 'internal' && (
-                                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                                    API
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Metrics */}
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <DollarSign className="w-3 h-3" />
-                                  <span className="text-xs">הוצאה</span>
-                                </div>
-                                <p className="font-bold">₪{(campaign.spent || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                              </div>
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Eye className="w-3 h-3" />
-                                  <span className="text-xs">חשיפות</span>
-                                </div>
-                                <p className="font-bold">{((campaign.impressions || 0) / 1000).toFixed(0)}K</p>
-                              </div>
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <MousePointer className="w-3 h-3" />
-                                  <span className="text-xs">קליקים</span>
-                                </div>
-                                <p className="font-bold">{(campaign.clicks || 0).toLocaleString()}</p>
-                              </div>
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <TrendingUp className="w-3 h-3" />
-                                  <span className="text-xs">המרות</span>
-                                </div>
-                                <p className="font-bold">{(campaign.conversions || 0).toFixed(1)}</p>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-xs text-muted-foreground">CTR</span>
-                                <p className="font-bold">{(campaign.ctr || 0).toFixed(2)}%</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* Campaign Stats */}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-primary/10">
+                {filteredCampaigns.length} קמפיינים
+              </Badge>
+              {showActiveOnly && (
+                <Badge variant="secondary" className="bg-success/10 text-success">
+                  <Play className="w-3 h-3 ml-1" />
+                  פעילים בלבד
+                </Badge>
               )}
-            </TabsContent>
+            </div>
 
-            <TabsContent value="google-ads">
-              <GoogleAdsCampaigns />
-            </TabsContent>
+            {/* Campaigns Grid */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : filteredCampaigns.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center">
+                <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {showActiveOnly ? "אין קמפיינים פעילים" : "אין קמפיינים"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {showActiveOnly ? "כל הקמפיינים מושהים או הסתיימו" : "צור קמפיין חדש כדי להתחיל"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredCampaigns.map((campaign, index) => {
+                  const status = statusConfig[campaign.status] || statusConfig.draft;
+                  const platform = platformConfig[campaign.platform] || platformConfig.internal;
+                  const budgetUsed = campaign.budget && campaign.budget > 0 ? ((campaign.spent || 0) / campaign.budget) * 100 : 0;
+                  const StatusIcon = status.icon;
 
-            <TabsContent value="internal">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : internalCampaigns.length === 0 ? (
-                <div className="glass rounded-xl p-12 text-center">
-                  <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">אין קמפיינים עדיין</h3>
-                  <p className="text-muted-foreground">צור קמפיין חדש כדי להתחיל</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-            {internalCampaigns.map((campaign, index) => {
-              const status = statusConfig[campaign.status] || statusConfig.draft;
-              const platform = platformConfig[campaign.platform] || { color: "bg-muted", name: campaign.platform };
-              const budgetUsed = campaign.budget > 0 ? ((campaign.spent || 0) / campaign.budget) * 100 : 0;
-              const StatusIcon = status.icon;
-
-              return (
-                <div 
-                  key={campaign.id}
-                  className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden"
-                  style={{ animationDelay: `${0.1 + index * 0.1}s`, animationFillMode: "forwards" }}
-                >
-                  <div className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className={cn("w-12 h-12 rounded-xl flex-shrink-0", platform.color)} />
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold truncate">{campaign.name}</h3>
-                          <span className={cn(
-                            "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium",
-                            status.bg, status.color
-                          )}>
-                            {StatusIcon && <StatusIcon className="w-3 h-3" />}
-                            {status.label}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                          <span>{platform.name}</span>
-                          {campaign.start_date && (
-                            <>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(campaign.start_date).toLocaleDateString("he-IL")}
-                                {campaign.end_date && ` - ${new Date(campaign.end_date).toLocaleDateString("he-IL")}`}
-                              </span>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <DollarSign className="w-4 h-4" />
-                              <span className="text-xs">הוצאה</span>
+                  return (
+                    <div 
+                      key={campaign.id}
+                      className="glass rounded-xl card-shadow opacity-0 animate-slide-up overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                      style={{ animationDelay: `${0.03 * index}s`, animationFillMode: "forwards" }}
+                      onClick={() => handleCampaignClick(campaign)}
+                    >
+                      <div className="p-5">
+                        <div className="flex items-center gap-4">
+                          {/* Platform Logo */}
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0", platform.color)}>
+                            {platform.logo ? (
+                              <img src={platform.logo} alt={platform.name} className="w-7 h-7 object-contain" />
+                            ) : (
+                              <Target className="w-6 h-6 text-white" />
+                            )}
+                          </div>
+                          
+                          {/* Campaign Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="font-bold text-lg truncate">{campaign.name}</h3>
+                              <Badge variant="outline" className={cn(status.bg, status.color, "text-xs")}>
+                                {StatusIcon && <StatusIcon className="w-3 h-3 ml-1" />}
+                                {status.label}
+                              </Badge>
                             </div>
-                            <p className="font-bold">₪{(campaign.spent || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">מתוך ₪{(campaign.budget || 0).toLocaleString()}</p>
-                          </div>
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <Eye className="w-4 h-4" />
-                              <span className="text-xs">חשיפות</span>
-                            </div>
-                            <p className="font-bold">{((campaign.impressions || 0) / 1000).toFixed(0)}K</p>
-                          </div>
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <MousePointer className="w-4 h-4" />
-                              <span className="text-xs">קליקים</span>
-                            </div>
-                            <p className="font-bold">{(campaign.clicks || 0).toLocaleString()}</p>
-                          </div>
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span className="text-xs">המרות</span>
-                            </div>
-                            <p className="font-bold">{campaign.conversions || 0}</p>
-                          </div>
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <span className="text-xs text-muted-foreground">CTR</span>
-                            <p className="font-bold">
-                              {campaign.impressions ? ((campaign.clicks || 0) / campaign.impressions * 100).toFixed(2) : 0}%
-                            </p>
-                          </div>
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <span className="text-xs text-muted-foreground">CPC</span>
-                            <p className="font-bold">
-                              ₪{campaign.clicks ? ((campaign.spent || 0) / campaign.clicks).toFixed(2) : 0}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-muted-foreground">ניצול תקציב</span>
-                            <span className="font-medium">{budgetUsed.toFixed(0)}%</span>
-                          </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full rounded-full transition-all duration-500",
-                                budgetUsed > 90 ? "bg-destructive" : budgetUsed > 70 ? "bg-warning" : "bg-primary"
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <span>{platform.name}</span>
+                              {campaign.source !== 'internal' && (
+                                <>
+                                  <span>•</span>
+                                  <Badge variant="outline" className="text-xs py-0 h-5">API</Badge>
+                                </>
                               )}
-                              style={{ width: `${Math.min(budgetUsed, 100)}%` }}
-                            />
+                              {campaign.start_date && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(campaign.start_date).toLocaleDateString("he-IL")}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Metrics */}
+                          <div className="hidden md:flex items-center gap-6 text-sm">
+                            <div className="text-center min-w-[70px]">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                <DollarSign className="w-3 h-3" />
+                                <span className="text-xs">הוצאה</span>
+                              </div>
+                              <p className="font-bold">₪{((campaign.spent || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            </div>
+                            <div className="text-center min-w-[60px]">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                <Eye className="w-3 h-3" />
+                                <span className="text-xs">חשיפות</span>
+                              </div>
+                              <p className="font-bold">{((campaign.impressions || 0) / 1000).toFixed(0)}K</p>
+                            </div>
+                            <div className="text-center min-w-[60px]">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                <MousePointer className="w-3 h-3" />
+                                <span className="text-xs">קליקים</span>
+                              </div>
+                              <p className="font-bold">{(campaign.clicks || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="text-center min-w-[50px]">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                <TrendingUp className="w-3 h-3" />
+                                <span className="text-xs">CTR</span>
+                              </div>
+                              <p className="font-bold">{(campaign.ctr || 0).toFixed(2)}%</p>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            {campaign.source === 'internal' && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setEditingCampaign(campaign)}>
+                                    <Edit2 className="w-4 h-4 ml-2" />
+                                    עריכה
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "active" })}>
+                                    <Play className="w-4 h-4 ml-2" />
+                                    הפעל
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "paused" })}>
+                                    <Pause className="w-4 h-4 ml-2" />
+                                    השהה
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => setDeleteId(campaign.id)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 ml-2" />
+                                    מחק
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                            <ChevronLeft className="w-5 h-5 text-muted-foreground" />
                           </div>
                         </div>
 
-                        {campaign.description && (
-                          <div className="bg-muted/20 rounded-lg p-4 border-r-4 border-primary">
-                            <p className="text-sm text-muted-foreground">{campaign.description}</p>
+                        {/* Budget Progress for internal */}
+                        {campaign.source === 'internal' && campaign.budget && campaign.budget > 0 && (
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-muted-foreground">ניצול תקציב</span>
+                              <span className="font-medium">{budgetUsed.toFixed(0)}% (₪{(campaign.spent || 0).toLocaleString()} / ₪{campaign.budget.toLocaleString()})</span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-500",
+                                  budgetUsed > 90 ? "bg-destructive" : budgetUsed > 70 ? "bg-warning" : "bg-primary"
+                                )}
+                                style={{ width: `${Math.min(budgetUsed, 100)}%` }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingCampaign(campaign)}>
-                            <Edit2 className="w-4 h-4 ml-2" />
-                            ערוך
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "active" })}>
-                            <Play className="w-4 h-4 ml-2" />
-                            הפעל
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: campaign.id, status: "paused" })}>
-                            <Pause className="w-4 h-4 ml-2" />
-                            השהה
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => setDeleteId(campaign.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            מחק
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-              )}
-            </TabsContent>
-          </Tabs>
         )}
 
         {/* Edit Dialog */}
