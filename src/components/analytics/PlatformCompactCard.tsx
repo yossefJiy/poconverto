@@ -126,15 +126,16 @@ export function PlatformCompactCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8"
+                  variant="outline" 
+                  size="sm"
+                  className="h-8 px-3 border-primary/30 hover:bg-primary/10 hover:border-primary"
                   onClick={onCreateCampaign}
                 >
-                  <Megaphone className="w-4 h-4 text-primary" />
+                  <Megaphone className="w-4 h-4 text-primary ml-1.5" />
+                  <span className="text-xs font-medium">קמפיין</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>צור קמפיין</TooltipContent>
+              <TooltipContent>צור קמפיין חדש ב-{platform}</TooltipContent>
             </Tooltip>
           )}
           
