@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { 
   BarChart3, 
   Users, 
@@ -6,13 +6,8 @@ import {
   TrendingUp, 
   TrendingDown,
   ShoppingCart,
-  CreditCard,
-  DollarSign,
   ChevronDown,
   ChevronUp,
-  Calendar,
-  RefreshCw,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,13 +16,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   AreaChart, 
   Area, 
@@ -75,7 +63,6 @@ interface GoogleAnalyticsCardProps {
   isLoading?: boolean;
   globalDateFrom: string;
   globalDateTo: string;
-  onRefresh?: () => void;
 }
 
 function formatNumber(num: number): string {
@@ -84,13 +71,9 @@ function formatNumber(num: number): string {
   return num.toLocaleString("he-IL");
 }
 
-function formatCurrency(num: number): string {
-  return "₪" + formatNumber(num);
-}
-
 // Generate mock previous month data for comparison
 function getPreviousMonthComparison(currentValue: number): { prevValue: number; change: number } {
-  const changePercent = (Math.random() * 30) - 10; // -10% to +20%
+  const changePercent = (Math.random() * 30) - 10;
   const prevValue = currentValue / (1 + changePercent / 100);
   return {
     prevValue: Math.floor(prevValue),
@@ -110,15 +93,15 @@ function MetricWithComparison({ label, value, change, icon, color }: MetricWithC
   const isPositive = change >= 0;
   
   return (
-    <div className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
+    <div className="bg-muted/50 rounded-lg p-3 transition-all hover:bg-muted/70">
+      <div className="flex items-center gap-2 mb-1">
+        <div className={cn("w-6 h-6 rounded-md flex items-center justify-center", color)}>
           {icon}
         </div>
-      </div>
-      <p className="text-xl font-bold">{value}</p>
-      <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-lg font-bold">{value}</p>
         <span className={cn(
           "text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-0.5",
           isPositive ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
@@ -138,198 +121,99 @@ export function GoogleAnalyticsCard({
   isLoading,
   globalDateFrom,
   globalDateTo,
-  onRefresh,
 }: GoogleAnalyticsCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [useLocalFilter, setUseLocalFilter] = useState(false);
-  const [localDateFilter, setLocalDateFilter] = useState("mtd");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Calculate local date range if using local filter
-  const { dateFrom, dateTo } = useMemo(() => {
-    if (!useLocalFilter) {
-      return { dateFrom: globalDateFrom, dateTo: globalDateTo };
-    }
-    
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let start: Date;
-    const end = today;
-    
-    switch (localDateFilter) {
-      case "today":
-        start = today;
-        break;
-      case "yesterday":
-        start = new Date(today);
-        start.setDate(start.getDate() - 1);
-        break;
-      case "mtd":
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "7":
-        start = new Date(today);
-        start.setDate(start.getDate() - 7);
-        break;
-      case "30":
-        start = new Date(today);
-        start.setDate(start.getDate() - 30);
-        break;
-      case "90":
-        start = new Date(today);
-        start.setDate(start.getDate() - 90);
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    
-    return {
-      dateFrom: start.toISOString(),
-      dateTo: end.toISOString(),
-    };
-  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
-
-  const handleLocalFilterChange = (value: string) => {
-    setLocalDateFilter(value);
-    setUseLocalFilter(true);
-  };
-
-  const handleResetToGlobal = () => {
-    setUseLocalFilter(false);
-  };
-
-  const handleRefresh = async () => {
-    // Only show refreshing state for this component
-    // The actual data refresh happens via React Query when parent refetches
-    setIsRefreshing(true);
-    // Simulate a small delay for UX feedback
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setIsRefreshing(false);
-  };
 
   if (isLoading) {
     return (
-      <div className="glass rounded-xl p-6 card-shadow animate-pulse">
-        <div className="h-8 bg-muted rounded w-48 mb-6"></div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="glass rounded-xl p-4 card-shadow animate-pulse">
+        <div className="h-6 bg-muted rounded w-36 mb-4"></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg"></div>
+            <div key={i} className="h-16 bg-muted rounded-lg"></div>
           ))}
         </div>
       </div>
     );
   }
 
-  // Generate comparisons - only for traffic metrics (real GA data)
+  // Generate comparisons
   const sessionsComparison = getPreviousMonthComparison(analyticsData.sessions);
   const usersComparison = getPreviousMonthComparison(analyticsData.users);
   const pageviewsComparison = getPreviousMonthComparison(analyticsData.pageviews);
   const bounceRateComparison = { prevValue: analyticsData.bounceRate + 2, change: -2.3 };
 
-  // Only show traffic metrics from GA (ecommerce data comes from Shopify)
   const summaryMetrics = [
     {
       label: "סשנים",
       value: formatNumber(analyticsData.sessions),
       change: sessionsComparison.change,
-      icon: <Users className="w-5 h-5" />,
+      icon: <Users className="w-4 h-4" />,
       color: "bg-blue-500/20 text-blue-500",
     },
     {
-      label: "משתמשים ייחודיים",
+      label: "משתמשים",
       value: formatNumber(analyticsData.users),
       change: usersComparison.change,
-      icon: <Users className="w-5 h-5" />,
+      icon: <Users className="w-4 h-4" />,
       color: "bg-indigo-500/20 text-indigo-500",
     },
     {
-      label: "צפיות עמוד",
+      label: "צפיות",
       value: formatNumber(analyticsData.pageviews),
       change: pageviewsComparison.change,
-      icon: <Eye className="w-5 h-5" />,
+      icon: <Eye className="w-4 h-4" />,
       color: "bg-purple-500/20 text-purple-500",
     },
     {
-      label: "אחוזי נטישה",
+      label: "נטישה",
       value: analyticsData.bounceRate.toFixed(1) + "%",
       change: bounceRateComparison.change,
-      icon: <TrendingDown className="w-5 h-5" />,
+      icon: <TrendingDown className="w-4 h-4" />,
       color: "bg-orange-500/20 text-orange-500",
     },
   ];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="glass rounded-xl p-6 card-shadow">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+      <div className="glass rounded-xl p-4 card-shadow">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
           <CollapsibleTrigger asChild>
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
                 <BarChart3 className="w-4 h-4 text-blue-500" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Google Analytics</h3>
-                <p className="text-sm text-muted-foreground">
-                  {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-                </p>
-              </div>
+              <h3 className="font-bold">Google Analytics</h3>
             </div>
           </CollapsibleTrigger>
           
-          <div className="flex items-center gap-2">
-            {useLocalFilter && (
-              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
-                חזור לסינון גלובלי
-              </Button>
-            )}
-            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue placeholder="שנה תאריכים" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">היום</SelectItem>
-                <SelectItem value="yesterday">אתמול</SelectItem>
-                <SelectItem value="mtd">מתחילת החודש</SelectItem>
-                <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                <SelectItem value="90">90 ימים אחרונים</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" disabled={isLoading || isRefreshing} onClick={handleRefresh}>
-              {isLoading || isRefreshing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon">
-                {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          </CollapsibleTrigger>
         </div>
 
         {/* Summary Metrics - Always Visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {summaryMetrics.map((metric) => (
             <MetricWithComparison key={metric.label} {...metric} />
           ))}
         </div>
 
         {/* Collapsible Detailed Content */}
-        <CollapsibleContent className="mt-6 space-y-6">
-          {/* E-commerce Funnel - First (most important) */}
+        <CollapsibleContent className="mt-4 space-y-4">
+          {/* E-commerce Funnel */}
           {analyticsData.ecommerce && (
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4 flex items-center gap-2">
+              <h4 className="font-bold mb-3 text-sm flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4" />
-                משפך E-commerce (Google Analytics)
+                משפך E-commerce
               </h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-500">
+                  <p className="text-xl font-bold text-blue-500">
                     {formatNumber(analyticsData.ecommerce.addToCarts)}
                   </p>
                   <p className="text-xs text-muted-foreground">הוספות לסל</p>
@@ -338,7 +222,7 @@ export function GoogleAnalyticsCard({
                   </p>
                 </div>
                 <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-yellow-500">
+                  <p className="text-xl font-bold text-yellow-500">
                     {formatNumber(analyticsData.ecommerce.checkouts)}
                   </p>
                   <p className="text-xs text-muted-foreground">התחלת תשלום</p>
@@ -347,7 +231,7 @@ export function GoogleAnalyticsCard({
                   </p>
                 </div>
                 <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-500">
+                  <p className="text-xl font-bold text-green-500">
                     {formatNumber(analyticsData.ecommerce.purchases)}
                   </p>
                   <p className="text-xs text-muted-foreground">רכישות</p>
@@ -356,53 +240,21 @@ export function GoogleAnalyticsCard({
                   </p>
                 </div>
                 <div className="bg-background/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-primary">
+                  <p className="text-xl font-bold text-primary">
                     {analyticsData.ecommerce.conversionRates.overallConversionRate}%
                   </p>
-                  <p className="text-xs text-muted-foreground">יחס המרה כולל</p>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    (סשנים → רכישות)
-                  </p>
-                </div>
-              </div>
-              
-              {/* Funnel visualization */}
-              <div className="relative mt-4">
-                <div className="flex items-center justify-between">
-                  {[
-                    { label: "סשנים", value: analyticsData.ecommerce.sessions, color: "bg-blue-500" },
-                    { label: "הוספה לסל", value: analyticsData.ecommerce.addToCarts, color: "bg-indigo-500" },
-                    { label: "צ'קאאוט", value: analyticsData.ecommerce.checkouts, color: "bg-yellow-500" },
-                    { label: "רכישות", value: analyticsData.ecommerce.purchases, color: "bg-green-500" },
-                  ].map((step, index, arr) => {
-                    const maxVal = arr[0].value || 1;
-                    const widthPercent = (step.value / maxVal) * 100;
-                    return (
-                      <div key={step.label} className="flex-1 px-1">
-                        <div className="text-center mb-2">
-                          <p className="text-xs text-muted-foreground">{step.label}</p>
-                          <p className="font-bold">{formatNumber(step.value)}</p>
-                        </div>
-                        <div className="h-3 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={cn("h-full rounded-full transition-all", step.color)}
-                            style={{ width: `${widthPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <p className="text-xs text-muted-foreground">המרה כללית</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Daily Sessions Chart */}
             <div className="lg:col-span-2 bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4">תנועה יומית</h4>
-              <div className="h-[250px]">
+              <h4 className="font-bold mb-3 text-sm">תנועה יומית</h4>
+              <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={analyticsData.dailyData}>
                     <defs>
@@ -412,13 +264,14 @@ export function GoogleAnalyticsCard({
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
                     <Tooltip 
                       contentStyle={{
                         backgroundColor: "hsl(var(--background))",
                         border: "1px solid hsl(var(--border))",
-                        borderRadius: "0.5rem"
+                        borderRadius: "0.5rem",
+                        fontSize: "12px"
                       }}
                     />
                     <Area 
@@ -445,100 +298,68 @@ export function GoogleAnalyticsCard({
 
             {/* Traffic Sources */}
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4">מקורות תנועה</h4>
+              <h4 className="font-bold mb-3 text-sm">מקורות תנועה</h4>
               {analyticsData.trafficSources.length > 0 ? (
                 <>
-                  <div className="h-[140px]">
+                  <div className="h-[100px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={analyticsData.trafficSources}
                           cx="50%"
                           cy="50%"
-                          innerRadius={35}
-                          outerRadius={60}
+                          innerRadius={30}
+                          outerRadius={45}
+                          paddingAngle={2}
                           dataKey="sessions"
                           nameKey="source"
                         >
                           {analyticsData.trafficSources.map((entry, index) => (
-                            <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="space-y-2 mt-2">
-                    {analyticsData.trafficSources.slice(0, 5).map((source, index) => (
-                      <div key={source.source} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  <div className="mt-2 space-y-1">
+                    {analyticsData.trafficSources.slice(0, 3).map((source, index) => (
+                      <div key={source.source} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span 
+                            className="w-2 h-2 rounded-full" 
+                            style={{ backgroundColor: COLORS[index % COLORS.length] }} 
                           />
-                          <span className="truncate max-w-[100px]">{source.source}</span>
+                          <span className="truncate max-w-[80px]">{source.source}</span>
                         </div>
-                        <span className="font-medium">{source.percentage}%</span>
+                        <span className="text-muted-foreground">{source.percentage}%</span>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                  אין נתונים
-                </div>
+                <p className="text-sm text-muted-foreground text-center py-4">אין נתונים</p>
               )}
             </div>
           </div>
 
-          {/* Top Pages & Devices Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Pages */}
+          {/* Top Pages */}
+          {analyticsData.topPages.length > 0 && (
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4">דפים פופולריים</h4>
-              {analyticsData.topPages.length > 0 ? (
-                <div className="space-y-2">
-                  {analyticsData.topPages.slice(0, 5).map((page, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm p-2 rounded bg-background/50">
-                      <span className="truncate max-w-[200px]">{page.path}</span>
-                      <span className="font-medium">{formatNumber(page.pageviews)} צפיות</span>
+              <h4 className="font-bold mb-3 text-sm">עמודים מובילים</h4>
+              <div className="space-y-2">
+                {analyticsData.topPages.slice(0, 5).map((page, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <span className="truncate max-w-[200px] text-muted-foreground">{page.path}</span>
+                    <div className="flex items-center gap-4">
+                      <span>{formatNumber(page.pageviews)} צפיות</span>
+                      <span className="text-muted-foreground">{page.avgDuration}</span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-[150px] text-muted-foreground">
-                  אין נתונים
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
-
-            {/* Devices */}
-            <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4">התפלגות מכשירים</h4>
-              {analyticsData.devices.length > 0 ? (
-                <div className="space-y-4">
-                  {analyticsData.devices.map((device) => (
-                    <div key={device.device} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="capitalize">{device.device}</span>
-                        <span className="font-medium">{device.percentage}%</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${device.percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-[150px] text-muted-foreground">
-                  אין נתונים
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </CollapsibleContent>
       </div>
     </Collapsible>

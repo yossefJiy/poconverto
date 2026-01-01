@@ -1,15 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { 
   Store, 
   ShoppingCart, 
   DollarSign, 
-  Package, 
-  RefreshCw,
+  Package,
   TrendingUp,
   TrendingDown,
   ChevronDown,
   ChevronUp,
-  Calendar,
   Loader2,
   AlertCircle,
   Plus,
@@ -24,13 +22,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   AreaChart, 
   Area, 
@@ -60,7 +51,6 @@ interface WooCommerceCardProps {
   clientId?: string;
   isAdmin?: boolean;
   onAddIntegration?: () => void;
-  onRefresh?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -106,15 +96,15 @@ function MetricWithComparison({ label, value, change, icon, color }: MetricWithC
   const isPositive = change !== undefined && change >= 0;
   
   return (
-    <div className="bg-muted/50 rounded-lg p-4 transition-all hover:scale-[1.02]">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
+    <div className="bg-muted/50 rounded-lg p-3 transition-all hover:bg-muted/70">
+      <div className="flex items-center gap-2 mb-1">
+        <div className={cn("w-6 h-6 rounded-md flex items-center justify-center", color)}>
           {icon}
         </div>
-      </div>
-      <p className="text-xl font-bold">{value}</p>
-      <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-lg font-bold">{value}</p>
         {change !== undefined && (
           <span className={cn(
             "text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-0.5",
@@ -135,71 +125,22 @@ export function WooCommerceCard({
   clientId,
   isAdmin = false,
   onAddIntegration,
-  onRefresh,
 }: WooCommerceCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [useLocalFilter, setUseLocalFilter] = useState(false);
-  const [localDateFilter, setLocalDateFilter] = useState("mtd");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  const getLocalStartDate = (filter: string): string => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let start: Date;
-    
-    switch (filter) {
-      case "today":
-        start = today;
-        break;
-      case "yesterday":
-        start = new Date(today);
-        start.setDate(start.getDate() - 1);
-        break;
-      case "mtd":
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case "7":
-        start = new Date(today);
-        start.setDate(start.getDate() - 7);
-        break;
-      case "30":
-        start = new Date(today);
-        start.setDate(start.getDate() - 30);
-        break;
-      case "90":
-        start = new Date(today);
-        start.setDate(start.getDate() - 90);
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    
-    return start.toISOString().split('T')[0];
-  };
+  const startDate = globalDateFrom.split('T')[0];
+  const endDate = globalDateTo.split('T')[0];
 
-  const effectiveDates = useMemo(() => {
-    if (useLocalFilter) {
-      return {
-        startDate: getLocalStartDate(localDateFilter),
-        endDate: new Date().toISOString().split('T')[0],
-      };
-    }
-    return {
-      startDate: globalDateFrom.split('T')[0],
-      endDate: globalDateTo.split('T')[0],
-    };
-  }, [useLocalFilter, localDateFilter, globalDateFrom, globalDateTo]);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["woocommerce-analytics", clientId, effectiveDates.startDate, effectiveDates.endDate],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["woocommerce-analytics", clientId, startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('woocommerce-api', {
         body: {
           action: 'get_analytics',
           client_id: clientId,
-          start_date: effectiveDates.startDate,
-          end_date: effectiveDates.endDate,
+          start_date: startDate,
+          end_date: endDate,
         }
       });
       
@@ -209,76 +150,52 @@ export function WooCommerceCard({
       return data.data;
     },
     enabled: !!clientId,
-    staleTime: 8 * 60 * 60 * 1000, // 8 hours - don't refetch on every page visit
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    staleTime: 8 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
   });
 
   // Fetch snapshot fallback
   const { data: snapshot } = useAnalyticsSnapshot(clientId, 'woocommerce');
 
-  const handleLocalFilterChange = (value: string) => {
-    setLocalDateFilter(value);
-    setUseLocalFilter(true);
-  };
-
-  const handleResetToGlobal = () => {
-    setUseLocalFilter(false);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await supabase.functions.invoke('woocommerce-api', {
-        body: {
-          action: 'sync_all',
-          client_id: clientId,
-        }
-      });
-      await refetch();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
+  // Loading state
   if (isLoading && !data) {
     return (
-      <div className="glass rounded-xl p-6 card-shadow animate-pulse">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="glass rounded-xl p-4 card-shadow animate-pulse">
+        <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
             <Store className="w-4 h-4 text-[#96588A]" />
           </div>
-          <div className="h-6 bg-muted rounded w-32"></div>
+          <div className="h-5 bg-muted rounded w-28"></div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg"></div>
+            <div key={i} className="h-16 bg-muted rounded-lg"></div>
           ))}
         </div>
       </div>
     );
   }
 
+  // Error handling
   if (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
-    // Check if error is auth-related
     if (isAuthError(error)) {
       return (
-        <div className="glass rounded-xl p-6 card-shadow">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="glass rounded-xl p-4 card-shadow">
+          <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
               <Store className="w-4 h-4 text-[#96588A]" />
             </div>
-            <h3 className="font-bold text-lg">WooCommerce</h3>
+            <h3 className="font-bold">WooCommerce</h3>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-            <AlertCircle className="w-5 h-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="font-medium text-yellow-600">פג תוקף ההתחברות</p>
-              <p className="text-sm text-muted-foreground">יש להתחבר מחדש כדי לצפות בנתונים</p>
+          <div className="flex items-center gap-3 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+            <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-yellow-600">פג תוקף ההתחברות</p>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
-              התחבר מחדש
+              התחבר
             </Button>
           </div>
         </div>
@@ -289,56 +206,45 @@ export function WooCommerceCard({
     
     if (isIntegrationError && isAdmin && onAddIntegration) {
       return (
-        <div className="glass rounded-xl p-6 card-shadow">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="glass rounded-xl p-4 card-shadow">
+          <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
               <Store className="w-4 h-4 text-[#96588A]" />
             </div>
-            <h3 className="font-bold text-lg">WooCommerce</h3>
+            <h3 className="font-bold">WooCommerce</h3>
           </div>
-          <div className="flex flex-col items-center gap-4 py-8">
-            <Plug className="w-12 h-12 text-muted-foreground" />
-            <div className="text-center">
-              <p className="font-medium">WooCommerce לא מוגדר עבור לקוח זה</p>
-              <p className="text-sm text-muted-foreground">הוסף אינטגרציה כדי לראות נתוני חנות</p>
-            </div>
-            <Button onClick={onAddIntegration} className="glow">
+          <div className="flex flex-col items-center gap-3 py-6">
+            <Plug className="w-10 h-10 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">לא מוגדר עבור לקוח זה</p>
+            <Button onClick={onAddIntegration} size="sm">
               <Plus className="w-4 h-4 ml-2" />
-              הוסף אינטגרציה
+              הוסף
             </Button>
           </div>
         </div>
       );
     }
 
-    // If we have a snapshot, use it as fallback instead of showing error
+    // If we have a snapshot, use it as fallback
     if (!snapshot) {
       return (
-        <div className="glass rounded-xl p-6 card-shadow">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="glass rounded-xl p-4 card-shadow">
+          <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
               <Store className="w-4 h-4 text-[#96588A]" />
             </div>
-            <h3 className="font-bold text-lg">WooCommerce</h3>
+            <h3 className="font-bold">WooCommerce</h3>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-destructive" />
-            <div>
-              <p className="font-medium text-destructive">שגיאה בטעינת נתונים</p>
-              <p className="text-sm text-muted-foreground">{errorMessage}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleRefresh} className="mr-auto">
-              <RefreshCw className="w-4 h-4 ml-2" />
-              נסה שוב
-            </Button>
+          <div className="flex items-center gap-3 p-3 bg-destructive/10 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+            <p className="text-sm text-destructive truncate">{errorMessage}</p>
           </div>
         </div>
       );
     }
-    // Fall through to use snapshot data
   }
 
-  // Determine if we're using snapshot fallback
+  // Determine if using snapshot fallback
   const usingSnapshot = !data && !!snapshot;
   const effectiveData = data || (snapshot?.data as typeof data | undefined);
 
@@ -350,51 +256,47 @@ export function WooCommerceCard({
 
   const summaryMetrics = [
     {
-      label: "סה״כ הכנסות",
+      label: "הכנסות",
       value: formatCurrency(summary.totalRevenue || 0, summary.currency),
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <DollarSign className="w-4 h-4" />,
       color: "bg-[#96588A]/20 text-[#96588A]",
     },
     {
       label: "הזמנות",
       value: formatNumber(summary.totalOrders || 0),
-      icon: <ShoppingCart className="w-5 h-5" />,
+      icon: <ShoppingCart className="w-4 h-4" />,
       color: "bg-blue-500/20 text-blue-500",
     },
     {
-      label: "ממוצע להזמנה",
+      label: "ממוצע",
       value: formatCurrency(summary.averageOrderValue || 0, summary.currency),
-      icon: <TrendingUp className="w-5 h-5" />,
+      icon: <TrendingUp className="w-4 h-4" />,
       color: "bg-green-500/20 text-green-500",
     },
     {
       label: "פריטים",
       value: formatNumber(summary.totalItems || 0),
-      icon: <Package className="w-5 h-5" />,
+      icon: <Package className="w-4 h-4" />,
       color: "bg-orange-500/20 text-orange-500",
     },
   ];
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="glass rounded-xl p-6 card-shadow">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+      <div className="glass rounded-xl p-4 card-shadow">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
           <CollapsibleTrigger asChild>
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg bg-[#96588A]/20 flex items-center justify-center">
                 <Store className="w-4 h-4 text-[#96588A]" />
               </div>
-              <div className="flex items-center gap-2">
-                <div>
-                  <h3 className="font-bold text-lg">WooCommerce</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {useLocalFilter ? "סינון מותאם" : "לפי סינון גלובלי"}
-                  </p>
-                </div>
+              <div>
+                <h3 className="font-bold">WooCommerce</h3>
                 {usingSnapshot && snapshot && (
-                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    נתונים שמורים מ־{formatSnapshotDate(snapshot.updated_at)}
+                  <Badge variant="secondary" className="text-[10px] bg-yellow-500/20 text-yellow-600">
+                    <Clock className="w-2.5 h-2.5 ml-1" />
+                    {formatSnapshotDate(snapshot.updated_at)}
                   </Badge>
                 )}
               </div>
@@ -402,70 +304,50 @@ export function WooCommerceCard({
           </CollapsibleTrigger>
           
           <div className="flex items-center gap-2">
-            {useLocalFilter && (
-              <Button variant="ghost" size="sm" onClick={handleResetToGlobal}>
-                חזור לסינון גלובלי
-              </Button>
+            {Object.keys(statusBreakdown).length > 0 && (
+              <div className="hidden sm:flex gap-1">
+                {Object.entries(statusBreakdown).slice(0, 3).map(([status, count]) => (
+                  <Badge key={status} variant="outline" className="text-[10px]">
+                    <span className={cn("w-1.5 h-1.5 rounded-full ml-1", statusColors[status] || "bg-gray-500")} />
+                    {count as number}
+                  </Badge>
+                ))}
+              </div>
             )}
-            <Select value={useLocalFilter ? localDateFilter : ""} onValueChange={handleLocalFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="w-4 h-4 ml-2" />
-                <SelectValue placeholder="שנה תאריכים" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">היום</SelectItem>
-                <SelectItem value="yesterday">אתמול</SelectItem>
-                <SelectItem value="mtd">מתחילת החודש</SelectItem>
-                <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                <SelectItem value="90">90 ימים אחרונים</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" disabled={isLoading || isRefreshing} onClick={handleRefresh}>
-              {isLoading || isRefreshing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-            </Button>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon">
-                {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
             </CollapsibleTrigger>
           </div>
         </div>
 
         {/* Summary Metrics - Always Visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {summaryMetrics.map((metric) => (
             <MetricWithComparison key={metric.label} {...metric} />
           ))}
         </div>
 
-        {/* Status Breakdown */}
-        {Object.keys(statusBreakdown).length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {Object.entries(statusBreakdown).map(([status, count]) => (
-              <Badge 
-                key={status} 
-                variant="outline" 
-                className="flex items-center gap-1"
-              >
-                <span className={cn("w-2 h-2 rounded-full", statusColors[status] || "bg-gray-500")} />
-                {statusLabels[status] || status}: {count as number}
-              </Badge>
-            ))}
-          </div>
-        )}
-
         {/* Collapsible Detailed Content */}
-        <CollapsibleContent className="mt-6 space-y-6">
+        <CollapsibleContent className="mt-4 space-y-4">
+          {/* Status Breakdown */}
+          {Object.keys(statusBreakdown).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(statusBreakdown).map(([status, count]) => (
+                <Badge key={status} variant="outline" className="text-xs">
+                  <span className={cn("w-2 h-2 rounded-full ml-1", statusColors[status] || "bg-gray-500")} />
+                  {statusLabels[status] || status}: {count as number}
+                </Badge>
+              ))}
+            </div>
+          )}
+
           {/* Daily Sales Chart */}
           {dailySales.length > 0 && (
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4">מכירות יומיות</h4>
-              <div className="h-[250px]">
+              <h4 className="font-bold mb-3 text-sm">מכירות יומיות</h4>
+              <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dailySales}>
                     <defs>
@@ -478,21 +360,21 @@ export function WooCommerceCard({
                     <XAxis 
                       dataKey="date" 
                       stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
+                      fontSize={10}
                       tickFormatter={(value) => new Date(value).toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })}
                     />
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
+                      fontSize={10}
                       tickFormatter={(value) => `₪${value.toLocaleString()}`}
                     />
                     <Tooltip 
                       contentStyle={{
                         backgroundColor: "hsl(var(--background))",
                         border: "1px solid hsl(var(--border))",
-                        borderRadius: "0.5rem"
+                        borderRadius: "0.5rem",
+                        fontSize: "12px"
                       }}
-                      formatter={(value: number) => [formatCurrency(value), "הכנסות"]}
                     />
                     <Area 
                       type="monotone" 
@@ -511,29 +393,14 @@ export function WooCommerceCard({
           {/* Top Products */}
           {topProducts.length > 0 && (
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4 flex items-center gap-2">
-                <Package className="w-4 h-4" />
-                מוצרים מובילים
-              </h4>
+              <h4 className="font-bold mb-3 text-sm">מוצרים מובילים</h4>
               <div className="space-y-2">
                 {topProducts.slice(0, 5).map((product: any, index: number) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-background/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground w-6">
-                        #{index + 1}
-                      </span>
-                      <span className="text-sm font-medium truncate max-w-[200px]">
-                        {product.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground">{product.quantity} יח'</span>
-                      <span className="font-semibold">
-                        {formatCurrency(product.revenue, summary.currency)}
-                      </span>
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <span className="truncate max-w-[200px]">{product.name}</span>
+                    <div className="flex items-center gap-4">
+                      <span>{product.quantity} נמכרו</span>
+                      <span className="font-medium">{formatCurrency(product.revenue, summary.currency)}</span>
                     </div>
                   </div>
                 ))}
@@ -544,57 +411,39 @@ export function WooCommerceCard({
           {/* Recent Orders */}
           {recentOrders.length > 0 && (
             <div className="bg-muted/30 rounded-xl p-4">
-              <h4 className="font-bold mb-4 flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                הזמנות אחרונות
-              </h4>
-              <div className="rounded-lg border overflow-hidden">
+              <h4 className="font-bold mb-3 text-sm">הזמנות אחרונות</h4>
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-right">מס' הזמנה</TableHead>
-                      <TableHead className="text-right">לקוח</TableHead>
-                      <TableHead className="text-right">סטטוס</TableHead>
-                      <TableHead className="text-right">סכום</TableHead>
-                      <TableHead className="text-right">תאריך</TableHead>
+                      <TableHead className="text-right text-xs">מספר</TableHead>
+                      <TableHead className="text-right text-xs">סטטוס</TableHead>
+                      <TableHead className="text-right text-xs">סכום</TableHead>
+                      <TableHead className="text-right text-xs">תאריך</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recentOrders.slice(0, 5).map((order: any) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-medium">#{order.number}</TableCell>
-                        <TableCell>{order.customer}</TableCell>
+                        <TableCell className="font-medium text-xs">#{order.number}</TableCell>
                         <TableCell>
                           <Badge 
                             variant="outline" 
-                            className="flex items-center gap-1 w-fit"
+                            className="text-[10px]"
                           >
-                            <span className={cn("w-2 h-2 rounded-full", statusColors[order.status] || "bg-gray-500")} />
+                            <span className={cn("w-1.5 h-1.5 rounded-full ml-1", statusColors[order.status] || "bg-gray-500")} />
                             {statusLabels[order.status] || order.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(parseFloat(order.total), order.currency)}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(order.date).toLocaleDateString('he-IL')}
+                        <TableCell className="text-xs">{formatCurrency(order.total, summary.currency)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(order.date_created).toLocaleDateString('he-IL')}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!data || (!dailySales.length && !recentOrders.length) && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Store className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>אין נתונים זמינים לתקופה זו</p>
-              <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
-                סנכרן נתונים
-              </Button>
             </div>
           )}
         </CollapsibleContent>
