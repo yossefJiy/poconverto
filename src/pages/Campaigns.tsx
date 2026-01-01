@@ -117,6 +117,11 @@ interface UnifiedCampaign {
   description?: string;
 }
 
+interface ClientAdsUrls {
+  google_ads_manager_url?: string | null;
+  facebook_ads_manager_url?: string | null;
+}
+
 export default function Campaigns() {
   const navigate = useNavigate();
   const { selectedClient } = useClient();
@@ -133,6 +138,22 @@ export default function Campaigns() {
     start_date: "",
     end_date: "",
     description: "",
+  });
+
+  // Fetch client ads manager URLs
+  const { data: clientAdsUrls } = useQuery<ClientAdsUrls>({
+    queryKey: ["client-ads-urls", selectedClient?.id],
+    queryFn: async () => {
+      if (!selectedClient) return {};
+      const { data, error } = await supabase
+        .from("clients")
+        .select("google_ads_manager_url, facebook_ads_manager_url")
+        .eq("id", selectedClient.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedClient,
   });
 
   // Fetch internal campaigns
@@ -347,7 +368,7 @@ export default function Campaigns() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
                     <a 
-                      href="https://ads.google.com/aw/campaigns/new" 
+                      href={clientAdsUrls?.google_ads_manager_url || "https://ads.google.com/aw/campaigns/new"} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
@@ -358,12 +379,15 @@ export default function Campaigns() {
                         className="w-4 h-4"
                       />
                       Google Ads
+                      {clientAdsUrls?.google_ads_manager_url && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">ישיר</Badge>
+                      )}
                       <ExternalLink className="w-3 h-3 mr-auto" />
                     </a>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <a 
-                      href="https://business.facebook.com/adsmanager/manage/campaigns" 
+                      href={clientAdsUrls?.facebook_ads_manager_url || "https://business.facebook.com/adsmanager/manage/campaigns"} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
@@ -372,6 +396,9 @@ export default function Campaigns() {
                         <span className="text-white text-[10px] font-bold">f</span>
                       </div>
                       Facebook Ads
+                      {clientAdsUrls?.facebook_ads_manager_url && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">ישיר</Badge>
+                      )}
                       <ExternalLink className="w-3 h-3 mr-auto" />
                     </a>
                   </DropdownMenuItem>

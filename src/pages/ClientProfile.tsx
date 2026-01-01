@@ -67,6 +67,8 @@ interface ClientForm {
   twitter_url: string;
   avg_profit_margin: number;
   jiy_commission_percent: number;
+  google_ads_manager_url: string;
+  facebook_ads_manager_url: string;
 }
 
 const emptyForm: ClientForm = {
@@ -82,6 +84,8 @@ const emptyForm: ClientForm = {
   twitter_url: "",
   avg_profit_margin: 0,
   jiy_commission_percent: 0,
+  google_ads_manager_url: "",
+  facebook_ads_manager_url: "",
 };
 
 export default function ClientProfile() {
@@ -182,6 +186,8 @@ export default function ClientProfile() {
         twitter_url: data.twitter_url || null,
         avg_profit_margin: data.avg_profit_margin || 0,
         jiy_commission_percent: data.jiy_commission_percent || 0,
+        google_ads_manager_url: data.google_ads_manager_url || null,
+        facebook_ads_manager_url: data.facebook_ads_manager_url || null,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -209,6 +215,8 @@ export default function ClientProfile() {
         twitter_url: (clientData as any).twitter_url || "",
         avg_profit_margin: (clientData as any).avg_profit_margin || 0,
         jiy_commission_percent: (clientData as any).jiy_commission_percent || 0,
+        google_ads_manager_url: clientData.google_ads_manager_url || "",
+        facebook_ads_manager_url: clientData.facebook_ads_manager_url || "",
       });
       setShowEditDialog(true);
     }
@@ -629,6 +637,43 @@ export default function ClientProfile() {
                     placeholder="https://tiktok.com/@..."
                     value={form.tiktok_url}
                     onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Ads Manager URLs */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">קישורים למנהלי מודעות</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                    <img 
+                      src="https://www.gstatic.com/images/branding/product/2x/ads_48dp.png" 
+                      alt="Google Ads" 
+                      className="w-4 h-4"
+                    />
+                    Google Ads Manager
+                  </label>
+                  <Input
+                    placeholder="https://ads.google.com/aw/overview?ocid=..."
+                    value={form.google_ads_manager_url}
+                    onChange={(e) => setForm({ ...form, google_ads_manager_url: e.target.value })}
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center">
+                      <span className="text-white text-[8px] font-bold">f</span>
+                    </div>
+                    Facebook Ads Manager
+                  </label>
+                  <Input
+                    placeholder="https://business.facebook.com/adsmanager/manage/campaigns?act=..."
+                    value={form.facebook_ads_manager_url}
+                    onChange={(e) => setForm({ ...form, facebook_ads_manager_url: e.target.value })}
                     dir="ltr"
                   />
                 </div>
