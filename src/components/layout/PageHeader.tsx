@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { forwardRef, ReactNode } from "react";
 
 interface PageHeaderProps {
   title: string;
@@ -6,14 +6,16 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
-  return (
-    <header className="flex items-center justify-between mb-6 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
-      <div>
-        <h1 className="text-xl font-bold mb-0.5">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
-    </header>
-  );
-}
+export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
+  function PageHeader({ title, description, actions }, ref) {
+    return (
+      <header ref={ref} className="flex items-center justify-between mb-6 opacity-0 animate-fade-in" style={{ animationFillMode: "forwards" }}>
+        <div>
+          <h1 className="text-xl font-bold mb-0.5">{title}</h1>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {actions && <div className="flex items-center gap-3">{actions}</div>}
+      </header>
+    );
+  }
+);
