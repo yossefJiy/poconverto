@@ -245,6 +245,55 @@ export function FacebookAdsCard({
   if (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
+    // Check for Facebook token expiration/invalidation errors
+    const isTokenError = errorMessage.includes('טוקן הגישה לא תקין') || 
+                         errorMessage.includes('פג תוקפו') ||
+                         errorMessage.includes('access token') ||
+                         errorMessage.includes('OAuthException');
+    
+    if (isTokenError && isAdmin && onAddIntegration) {
+      return (
+        <div className="glass rounded-xl p-6 card-shadow">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-[#1877F2]/20 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="#1877F2">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            </div>
+            <h3 className="font-bold text-lg">Facebook Ads</h3>
+          </div>
+          <div className="flex flex-col gap-3 p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-orange-600">טוקן Facebook פג תוקף</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  הטוקן בוטל ע״י Facebook (ייתכן עקב שינוי סיסמה או סיבות אבטחה). יש ליצור טוקן חדש ב-Meta Business Suite.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.open('https://business.facebook.com/settings/system-users', '_blank')}
+              >
+                Meta Business Settings
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={onAddIntegration}
+                className="bg-[#1877F2] hover:bg-[#1877F2]/90"
+              >
+                <RefreshCw className="w-4 h-4 ml-2" />
+                עדכן טוקן
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     if (isAuthError(error)) {
       return (
         <div className="glass rounded-xl p-6 card-shadow">
