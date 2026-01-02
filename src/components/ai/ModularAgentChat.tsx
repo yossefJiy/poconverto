@@ -29,6 +29,8 @@ import {
   RefreshCw,
   Save,
   BookOpen,
+  AlertTriangle,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -615,7 +617,7 @@ ${allMessages.join("\n").slice(0, 10000)}
           body: JSON.stringify({
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             userMessage: messageText,
-            context: `${config.systemPrompt}\n\nלקוח נוכחי: ${selectedClient?.name || "לא נבחר"}\nמודול: ${config.label}\n\nהנחיות:\n- ענה בעברית\n- היה תמציתי וברור\n- השתמש באימוג'י כדי להמחיש נקודות\n- אם רלוונטי, הצג נתונים בטבלה או רשימה מסודרת`,
+            context: `${config.systemPrompt}\n\nלקוח נוכחי: ${selectedClient?.name || "לא נבחר"}\nמודול: ${config.label}\n\nהנחיות:\n- ענה בעברית\n- היה תמציתי וברור\n- השתמש באימוג'י כדי להמחיש נקודות\n- אם רלוונטי, הצג נתונים בטבלה או רשימה מסודרת\n- אם אתה מזהה תובנה חשובה או חריגה בנתונים, התחל את התשובה עם 🚨 התראה:`,
             clientId: selectedClient?.id,
             userId: user?.id,
           }),
@@ -691,6 +693,17 @@ ${allMessages.join("\n").slice(0, 10000)}
       // Save assistant message
       if (convId && assistantContent) {
         await saveMessage(convId, "assistant", assistantContent);
+        
+        // Check for alert trigger and show notification
+        if (assistantContent.includes("🚨") || assistantContent.includes("התראה:") || assistantContent.includes("חריגה")) {
+          toast.warning(
+            <div className="flex items-center gap-2" dir="rtl">
+              <AlertTriangle className="w-4 h-4" />
+              <span>סוכן {config.label} זיהה תובנה חשובה!</span>
+            </div>,
+            { duration: 8000 }
+          );
+        }
       }
 
     } catch (error) {
@@ -707,11 +720,12 @@ ${allMessages.join("\n").slice(0, 10000)}
   return (
     <>
       <div 
+        dir="rtl"
         className={cn(
           "fixed z-50 bg-card border border-border rounded-xl shadow-elevated flex flex-col overflow-hidden transition-all duration-300",
           isExpanded 
             ? "inset-4 md:inset-8" 
-            : "bottom-4 left-4 w-96 h-[500px] max-h-[80vh]"
+            : "bottom-4 right-4 w-96 h-[500px] max-h-[80vh]"
         )}
       >
         {/* Header */}
@@ -895,45 +909,61 @@ ${allMessages.join("\n").slice(0, 10000)}
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((message, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "flex gap-3",
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {message.role === "assistant" && (
-                    <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
-                      <ModuleIcon className="w-4 h-4" />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1 max-w-[80%]">
-                    <div
-                      className={cn(
-                        "rounded-2xl px-4 py-3",
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-tl-sm"
-                          : "bg-muted rounded-tr-sm"
-                      )}
-                    >
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                    </div>
-                    {/* Create task button for assistant messages */}
-                    {message.role === "assistant" && message.content && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs self-start gap-1 text-muted-foreground hover:text-foreground"
-                        onClick={() => openTaskDialog(message.content)}
-                      >
-                        <ListTodo className="w-3 h-3" />
-                        צור משימה
-                      </Button>
+              {messages.map((message, idx) => {
+                const isAlert = message.role === "assistant" && 
+                  (message.content.includes("🚨") || message.content.includes("התראה:") || message.content.includes("חריגה"));
+                
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex gap-3",
+                      message.role === "user" ? "justify-start flex-row-reverse" : "justify-start"
                     )}
+                  >
+                    {message.role === "assistant" && (
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center",
+                        isAlert ? "bg-warning/20 text-warning" : cn(config.bgColor, config.color)
+                      )}>
+                        {isAlert ? <AlertTriangle className="w-4 h-4" /> : <ModuleIcon className="w-4 h-4" />}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1 max-w-[80%]">
+                      {isAlert && (
+                        <Badge variant="outline" className="w-fit text-xs border-warning text-warning">
+                          <Bell className="w-3 h-3 ml-1" />
+                          התראה חשובה
+                        </Badge>
+                      )}
+                      <div
+                        className={cn(
+                          "rounded-2xl px-4 py-3",
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                            : isAlert 
+                              ? "bg-warning/10 border border-warning/30 rounded-tl-sm"
+                              : "bg-muted rounded-tl-sm"
+                        )}
+                      >
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-right">{message.content}</p>
+                      </div>
+                      {/* Create task button for assistant messages */}
+                      {message.role === "assistant" && message.content && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs self-end gap-1 text-muted-foreground hover:text-foreground"
+                          onClick={() => openTaskDialog(message.content)}
+                        >
+                          <ListTodo className="w-3 h-3" />
+                          צור משימה
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {isLoading && (
                 <div className="flex gap-3">
                   <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
@@ -957,17 +987,18 @@ ${allMessages.join("\n").slice(0, 10000)}
         <div className="p-4 border-t border-border bg-background/50">
           <form 
             onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-            className="flex gap-2"
+            className="flex gap-2 flex-row-reverse"
           >
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="כתוב הודעה..."
-              className="flex-1"
+              className="flex-1 text-right"
               disabled={isLoading}
+              dir="rtl"
             />
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 rotate-180" />
             </Button>
           </form>
         </div>
