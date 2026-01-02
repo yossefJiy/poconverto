@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientModules, ClientModules } from "@/hooks/useClientModules";
+import { useCodeHealth } from "@/hooks/useCodeHealth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { ClientSwitcher } from "./ClientSwitcher";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
@@ -74,6 +76,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
+  const { stats: codeHealthStats } = useCodeHealth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -224,7 +227,12 @@ export function Sidebar() {
                 <DropdownMenuItem key={item.label} asChild>
                   <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
                     <item.icon className="w-4 h-4" />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.path === "/code-health" && codeHealthStats && codeHealthStats.criticalCount > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                        {codeHealthStats.criticalCount}
+                      </Badge>
+                    )}
                   </Link>
                 </DropdownMenuItem>
               ))}

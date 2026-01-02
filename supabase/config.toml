@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.code-health-audit]
 verify_jwt = false
+
+[functions.ai-task-analyzer]
+verify_jwt = false
