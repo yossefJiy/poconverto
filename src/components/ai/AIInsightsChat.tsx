@@ -14,16 +14,31 @@ import {
   X,
   Maximize2,
   Minimize2,
-  RefreshCw,
   History,
   Plus,
   Globe,
   MessageSquare,
+  Search,
+  PenTool,
+  Code,
+  BarChart3,
+  ChevronDown,
+  Zap,
+  Users,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -32,6 +47,7 @@ interface Message {
   content: string;
   timestamp: Date;
   usedWebSearch?: boolean;
+  modelName?: string;
 }
 
 interface Conversation {
@@ -40,20 +56,88 @@ interface Conversation {
   created_at: string;
 }
 
+interface AIModel {
+  name: string;
+  description: string;
+  category: string;
+  available: boolean;
+}
+
 interface AIInsightsChatProps {
   performanceData?: any[];
   campaignsData?: any[];
   insightsData?: any[];
+  isGlobal?: boolean; // For floating global chat
 }
 
 const quickPrompts = [
-  { icon: TrendingUp, label: "איך לשפר ROI?", prompt: "איך אני יכול לשפר את ה-ROI של הקמפיינים שלי? תן לי המלצות מעשיות" },
+  { icon: TrendingUp, label: "שפר ROI", prompt: "איך אני יכול לשפר את ה-ROI של הקמפיינים שלי? תן לי המלצות מעשיות" },
   { icon: Target, label: "אסטרטגיית המרות", prompt: "מה האסטרטגיה הכי טובה להגדלת המרות באיקומרס?" },
   { icon: Lightbulb, label: "טכנולוגיות חדשות", prompt: "אילו טכנולוגיות וכלים חדשים כדאי לי להכיר בתחום השיווק הדיגיטלי?" },
   { icon: Sparkles, label: "הזדמנויות צמיחה", prompt: "בהתבסס על הנתונים שלי, מהן הזדמנויות הצמיחה העיקריות?" },
 ];
 
-export function AIInsightsChat({ performanceData = [], campaignsData = [], insightsData = [] }: AIInsightsChatProps) {
+// AI Quick Actions - will appear as buttons
+const aiQuickActions = [
+  { 
+    icon: Search, 
+    label: "חפש מתחרים", 
+    prompt: "חפש באינטרנט מידע על המתחרים העיקריים בתחום שלי וספק לי ניתוח השוואתי",
+    model: "sonar-pro",
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+  },
+  { 
+    icon: BarChart3, 
+    label: "נתח קמפיין", 
+    prompt: "נתח את הביצועים של הקמפיינים שלי והצע דרכים לשיפור",
+    model: "gemini-pro",
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+  },
+  { 
+    icon: PenTool, 
+    label: "כתוב תוכן שיווקי", 
+    prompt: "כתוב לי פוסט שיווקי מעניין לפייסבוק על המותג/המוצר שלי",
+    model: "claude-sonnet",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+  },
+  { 
+    icon: ShoppingCart, 
+    label: "אופטימיזציית חנות", 
+    prompt: "תן לי המלצות לאופטימיזציה של חנות האיקומרס שלי לשיפור המרות",
+    model: "gemini-flash",
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+  },
+  { 
+    icon: Users, 
+    label: "קהלי יעד", 
+    prompt: "חפש מידע עדכני על הגדרת קהלי יעד אפקטיביים לפרסום ממומן",
+    model: "sonar-pro",
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10",
+  },
+  { 
+    icon: Zap, 
+    label: "אוטומציות", 
+    prompt: "הצע לי אוטומציות שיכולות לחסוך לי זמן בעבודה השיווקית",
+    model: "gemini-flash",
+    color: "text-yellow-500",
+    bgColor: "bg-yellow-500/10",
+  },
+];
+
+const modelIcons: Record<string, any> = {
+  'search': Globe,
+  'creative': PenTool,
+  'coding': Code,
+  'general': Sparkles,
+  'reasoning': Lightbulb,
+};
+
+export function AIInsightsChat({ performanceData = [], campaignsData = [], insightsData = [], isGlobal = false }: AIInsightsChatProps) {
   const { selectedClient } = useClient();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -65,7 +149,35 @@ export function AIInsightsChat({ performanceData = [], campaignsData = [], insig
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("auto");
+  const [availableModels, setAvailableModels] = useState<Record<string, AIModel>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available models
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/insights-chat`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ action: 'list-models' }),
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models || {});
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+      }
+    };
+    fetchModels();
+  }, []);
 
   // Fetch conversations history
   const { data: conversations = [] } = useQuery({
@@ -175,7 +287,8 @@ export function AIInsightsChat({ performanceData = [], campaignsData = [], insig
         role: m.role as "user" | "assistant",
         content: m.content,
         timestamp: new Date(m.created_at),
-        usedWebSearch: (m.metadata as any)?.usedWebSearch,
+        usedWebSearch: (m.metadata as any)?.isSearchModel,
+        modelName: (m.metadata as any)?.modelName,
       })));
       setCurrentConversationId(conversationId);
       setShowHistory(false);
@@ -229,7 +342,7 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
 `;
   };
 
-  const sendMessage = async (messageText: string) => {
+  const sendMessage = async (messageText: string, modelOverride?: string) => {
     if (!messageText.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -265,11 +378,13 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
             conversationId: convId,
             clientId: selectedClient?.id,
             userId: user?.id,
+            modelKey: modelOverride || (selectedModel !== 'auto' ? selectedModel : undefined),
           }),
         }
       );
 
-      const usedWebSearch = response.headers.get("X-Used-Web-Search") === "true";
+      const usedWebSearch = response.headers.get("X-Is-Search") === "true";
+      const modelName = response.headers.get("X-Model-Name") || undefined;
 
       if (response.status === 429) {
         toast.error("יותר מדי בקשות, נסה שוב בעוד דקה");
@@ -297,7 +412,8 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
         role: "assistant", 
         content: "", 
         timestamp: new Date(),
-        usedWebSearch 
+        usedWebSearch,
+        modelName,
       }]);
 
       while (true) {
@@ -371,7 +487,7 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
       "fixed z-50 bg-background border border-border rounded-2xl shadow-2xl flex flex-col transition-all duration-300",
       isExpanded 
         ? "bottom-4 left-4 right-4 top-20" 
-        : "bottom-6 left-6 w-[400px] h-[600px]"
+        : "bottom-6 left-6 w-[420px] h-[650px]"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/5 to-transparent rounded-t-2xl">
@@ -385,6 +501,41 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Model Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                <Sparkles className="w-3 h-3" />
+                {selectedModel === 'auto' ? 'אוטומטי' : availableModels[selectedModel]?.name || selectedModel}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-background z-[60]">
+              <DropdownMenuLabel>בחר מודל AI</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setSelectedModel('auto')}>
+                <Zap className="w-4 h-4 ml-2 text-primary" />
+                <div>
+                  <p className="font-medium">אוטומטי</p>
+                  <p className="text-xs text-muted-foreground">בחירה חכמה לפי סוג השאלה</p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {Object.entries(availableModels).map(([key, model]) => {
+                const IconComponent = modelIcons[model.category] || Sparkles;
+                return (
+                  <DropdownMenuItem key={key} onClick={() => setSelectedModel(key)}>
+                    <IconComponent className="w-4 h-4 ml-2" />
+                    <div>
+                      <p className="font-medium">{model.name}</p>
+                      <p className="text-xs text-muted-foreground">{model.description}</p>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Button
             variant="ghost"
             size="icon"
@@ -459,27 +610,54 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
       <ScrollArea className="flex-1 p-4">
         {messages.length === 0 ? (
           <div className="space-y-4">
-            <div className="text-center py-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-primary" />
+            <div className="text-center py-4">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-primary" />
               </div>
-              <h4 className="font-bold mb-2">היי! אני כאן לעזור</h4>
-              <p className="text-sm text-muted-foreground">
-                אני מומחה בהפיכת מותגים לרווחיים. שאל אותי כל שאלה!
+              <h4 className="font-bold mb-1">היי! אני כאן לעזור</h4>
+              <p className="text-xs text-muted-foreground">
+                מומחה בהפיכת מותגים לרווחיים
               </p>
             </div>
+
+            {/* AI Quick Actions */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">פעולות מהירות:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {aiQuickActions.map((action, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => sendMessage(action.prompt, action.model)}
+                    disabled={isLoading}
+                    className={cn(
+                      "p-2 text-center rounded-xl transition-all hover:scale-105",
+                      action.bgColor,
+                      "hover:shadow-md"
+                    )}
+                  >
+                    <action.icon className={cn("w-5 h-5 mx-auto mb-1", action.color)} />
+                    <span className="block text-xs font-medium">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             
-            <div className="grid grid-cols-2 gap-2">
-              {quickPrompts.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => sendMessage(prompt.prompt)}
-                  className="p-3 text-right bg-muted/50 hover:bg-muted rounded-xl transition-colors text-sm"
-                >
-                  <prompt.icon className="w-4 h-4 text-primary mb-1" />
-                  <span className="block text-xs">{prompt.label}</span>
-                </button>
-              ))}
+            {/* Quick Prompts */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">שאלות נפוצות:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {quickPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => sendMessage(prompt.prompt)}
+                    disabled={isLoading}
+                    className="p-2 text-right bg-muted/50 hover:bg-muted rounded-xl transition-colors text-xs"
+                  >
+                    <prompt.icon className="w-4 h-4 text-primary mb-1" />
+                    <span className="block">{prompt.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {selectedClient && (
@@ -488,7 +666,6 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="secondary" className="text-xs">{campaigns.length} קמפיינים</Badge>
                   <Badge variant="secondary" className="text-xs">{integrations.length} אינטגרציות</Badge>
-                  <Badge variant="secondary" className="text-xs">{agentActions.length} פעולות</Badge>
                 </div>
               </div>
             )}
@@ -506,18 +683,27 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
                 {message.role === "assistant" && (
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                     {message.usedWebSearch ? (
-                      <Globe className="w-4 h-4 text-primary" />
+                      <Globe className="w-4 h-4 text-blue-500" />
                     ) : (
                       <Bot className="w-4 h-4 text-primary" />
                     )}
                   </div>
                 )}
                 <div className="max-w-[80%]">
-                  {message.usedWebSearch && message.role === "assistant" && (
-                    <Badge variant="outline" className="text-xs mb-1 gap-1">
-                      <Globe className="w-3 h-3" />
-                      חיפוש אינטרנט
-                    </Badge>
+                  {message.role === "assistant" && (message.usedWebSearch || message.modelName) && (
+                    <div className="flex items-center gap-1 mb-1">
+                      {message.usedWebSearch && (
+                        <Badge variant="outline" className="text-xs gap-1 bg-blue-500/10 text-blue-600 border-blue-200">
+                          <Globe className="w-3 h-3" />
+                          חיפוש אינטרנט
+                        </Badge>
+                      )}
+                      {message.modelName && (
+                        <Badge variant="secondary" className="text-xs">
+                          {message.modelName}
+                        </Badge>
+                      )}
+                    </div>
                   )}
                   <div
                     className={cn(
