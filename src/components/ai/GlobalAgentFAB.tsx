@@ -54,7 +54,8 @@ export function GlobalAgentFAB() {
   return (
     <>
       {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col-reverse items-center gap-3" dir="rtl">
+      {/* Floating Action Button - bottom LEFT */}
+      <div className="fixed bottom-6 left-6 z-40 flex flex-col-reverse items-center gap-3">
         {/* Module buttons - show when menu is open */}
         <div className={cn(
           "flex flex-col gap-2 transition-all duration-300",

@@ -33,6 +33,7 @@ import {
   FileText,
   Sparkles,
   ExternalLink,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -356,16 +357,26 @@ export default function AIAgents() {
               <Sparkles className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-bold">סוכנים לפי מודול</h2>
               <Badge variant="secondary">{selectedClient?.name || "כללי"}</Badge>
+          </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.href = "/agent-alerts"}
+              >
+                <Bell className="w-4 h-4 ml-2" />
+                מרכז התראות
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.href = "/insights"}
+              >
+                <Brain className="w-4 h-4 ml-2" />
+                צפה בכל התובנות
+                <ExternalLink className="w-3 h-3 mr-2" />
+              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => window.location.href = "/insights"}
-            >
-              <Brain className="w-4 h-4 ml-2" />
-              צפה בכל התובנות
-              <ExternalLink className="w-3 h-3 mr-2" />
-            </Button>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
             לחץ על סוכן כדי להתחיל שיחה - כל סוכן מותאם לתחום שלו עם הקשר הלקוח הנוכחי
