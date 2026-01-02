@@ -32,6 +32,7 @@ import {
   Lightbulb,
   FileText,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import { ModularAgentChat, moduleAgentConfig } from "@/components/ai/ModularAgentChat";
 
 interface AIAgent {
@@ -349,10 +351,21 @@ export default function AIAgents() {
 
         {/* Module Agents Quick Access */}
         <div className="glass rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">סוכנים לפי מודול</h2>
-            <Badge variant="secondary">{selectedClient?.name || "כללי"}</Badge>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold">סוכנים לפי מודול</h2>
+              <Badge variant="secondary">{selectedClient?.name || "כללי"}</Badge>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = "/insights"}
+            >
+              <Brain className="w-4 h-4 ml-2" />
+              צפה בכל התובנות
+              <ExternalLink className="w-3 h-3 mr-2" />
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
             לחץ על סוכן כדי להתחיל שיחה - כל סוכן מותאם לתחום שלו עם הקשר הלקוח הנוכחי
