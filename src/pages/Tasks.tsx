@@ -88,6 +88,7 @@ import { TaskAttachmentsBadge } from "@/components/tasks/TaskAttachmentsBadge";
 import { NewTaskAttachments, PendingAttachment } from "@/components/tasks/NewTaskAttachments";
 import { NotificationHistoryDialog } from "@/components/tasks/NotificationHistoryDialog";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
+import { AITaskFormButton } from "@/components/tasks/AITaskFormButton";
 
 interface Task {
   id: string;
@@ -1262,7 +1263,15 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
             <DialogTitle className="text-center flex-1 font-semibold">
               {selectedTask ? "עריכת משימה" : "משימה חדשה"}
             </DialogTitle>
-            <div className="w-16" /> {/* Spacer for centering */}
+            <AITaskFormButton
+              title={formTitle}
+              description={formDescription}
+              onApplyRecommendation={(rec) => {
+                if (rec.assignee) setFormAssignee(rec.assignee);
+                if (rec.priority) setFormPriority(rec.priority);
+                if (rec.category) setFormCategory(rec.category);
+              }}
+            />
           </div>
 
           <div className="p-4 space-y-2">
