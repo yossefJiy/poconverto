@@ -56,7 +56,14 @@ export function AIAnalyticsSummary({ platformData, clientName, dateRange }: AIAn
       setInsights(data.text || data.response);
     } catch (err) {
       console.error('Error generating insights:', err);
-      toast.error('שגיאה בניתוח הנתונים');
+      const status = (err as any)?.context?.status;
+      if (status === 429) {
+        toast.error('יותר מדי בקשות ל-AI — נסה שוב בעוד כמה שניות');
+      } else if (status === 402) {
+        toast.error('נגמרו הקרדיטים של ה-AI — צריך לטעון קרדיטים כדי להמשיך');
+      } else {
+        toast.error('שגיאה בניתוח הנתונים');
+      }
     } finally {
       setIsLoading(false);
     }

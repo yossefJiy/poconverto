@@ -106,7 +106,14 @@ export function AITaskFormButton({ title, description, onApplyRecommendation }: 
       }
     } catch (err) {
       console.error("Analysis error:", err);
-      toast.error("שגיאה בניתוח המשימה");
+      const status = (err as any)?.context?.status;
+      if (status === 429) {
+        toast.error('יותר מדי בקשות ל-AI — נסה שוב בעוד כמה שניות');
+      } else if (status === 402) {
+        toast.error('נגמרו הקרדיטים של ה-AI — צריך לטעון קרדיטים כדי להמשיך');
+      } else {
+        toast.error("שגיאה בניתוח המשימה");
+      }
     } finally {
       setIsAnalyzing(false);
     }
