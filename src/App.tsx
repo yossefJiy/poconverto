@@ -35,6 +35,7 @@ import SystemDiagram from "./pages/SystemDiagram";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import StatusPage from "./pages/StatusPage";
+import CodeHealth from "./pages/CodeHealth";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/status" element={<ProtectedRoute><StatusPage /></ProtectedRoute>} />
+              <Route path="/code-health" element={<ProtectedRoute><CodeHealth /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
