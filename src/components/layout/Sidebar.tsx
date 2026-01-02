@@ -22,14 +22,11 @@ import {
   Bot,
   TrendingUp,
   FileText,
-  Lightbulb,
-  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { useCodeHealth } from "@/hooks/useCodeHealth";
-import { useAgentAlerts } from "@/hooks/useAgentAlerts";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -63,9 +60,7 @@ const menuItems: MenuItem[] = [
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
   { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
   { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
-  { icon: AlertTriangle, label: "התראות AI", path: "/agent-alerts", moduleKey: "ai_agent" },
   { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
-  { icon: Lightbulb, label: "בקשות פיצ'רים", path: "/feature-requests", moduleKey: "features" },
 ];
 
 const settingsItems = [
@@ -88,7 +83,6 @@ export function Sidebar() {
   const { user, signOut, role } = useAuth();
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
   const { stats: codeHealthStats } = useCodeHealth();
-  const { unreadCount } = useAgentAlerts();
 
   const handleSignOut = async () => {
     await signOut();
@@ -164,7 +158,6 @@ export function Sidebar() {
       <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
         {visibleMenuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
-          const isAlertItem = item.path === "/agent-alerts";
           return (
             <Link
               key={item.path}
@@ -181,22 +174,11 @@ export function Sidebar() {
               <div className="relative">
                 <item.icon className={cn(
                   "w-5 h-5 transition-transform duration-200 shrink-0",
-                  isActive && "scale-110",
-                  isAlertItem && unreadCount > 0 && "text-warning"
+                  isActive && "scale-110"
                 )} />
-                {isAlertItem && unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-warning text-warning-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
               </div>
               {!collapsed && (
                 <span className="font-medium flex-1">{item.label}</span>
-              )}
-              {!collapsed && isAlertItem && unreadCount > 0 && (
-                <Badge variant="secondary" className="bg-warning/20 text-warning text-xs">
-                  {unreadCount} חדשות
-                </Badge>
               )}
               {isActive && (
                 <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
