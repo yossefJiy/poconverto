@@ -19,6 +19,7 @@ import {
   Activity,
   Network,
   HeartPulse,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +56,7 @@ const menuItems: MenuItem[] = [
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
+  { icon: Bot, label: "AI Agents", path: "/ai-agents" },
 ];
 
 const settingsItems = [

@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agent_actions: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          agent_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string | null
+          created_at: string
+          executed_at: string | null
+          id: string
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          agent_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          agent_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          result?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_actions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_actions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agents: {
+        Row: {
+          agent_type: string
+          capabilities: string[] | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          agent_type?: string
+          capabilities?: string[] | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          agent_type?: string
+          capabilities?: string[] | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_snapshots: {
         Row: {
           client_id: string
@@ -318,6 +422,91 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "client_credit_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_insights: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          insight_type: string
+          insights: Json | null
+          metrics: Json | null
+          period_end: string
+          period_start: string
+          recommendations: string[] | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          insight_type: string
+          insights?: Json | null
+          metrics?: Json | null
+          period_end: string
+          period_start: string
+          recommendations?: string[] | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          insight_type?: string
+          insights?: Json | null
+          metrics?: Json | null
+          period_end?: string
+          period_start?: string
+          recommendations?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_insights_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_performance_history: {
+        Row: {
+          client_id: string
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_unit: string | null
+          metric_value: number
+          recorded_at: string
+          source: string | null
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_unit?: string | null
+          metric_value: number
+          recorded_at?: string
+          source?: string | null
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_unit?: string | null
+          metric_value?: number
+          recorded_at?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_performance_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
