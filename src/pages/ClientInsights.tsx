@@ -21,6 +21,13 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
+  Brain,
+  ShoppingCart,
+  ListTodo,
+  Users,
+  FileText,
+  Lightbulb,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -136,7 +143,7 @@ export default function ClientInsights() {
     enabled: !!selectedClient,
   });
 
-  // Fetch client insights
+  // Fetch client insights (including AI agent insights)
   const { data: insights = [], isLoading: insightsLoading } = useQuery({
     queryKey: ["client-insights", selectedClient?.id],
     queryFn: async () => {
@@ -146,14 +153,29 @@ export default function ClientInsights() {
         .from("client_insights")
         .select("*")
         .eq("client_id", selectedClient.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .order("created_at", { ascending: false });
       
       if (error) throw error;
       return data || [];
     },
     enabled: !!selectedClient,
   });
+
+  // Separate agent insights from other insights
+  const agentInsights = insights.filter(i => i.insight_type.startsWith("agent_"));
+  const otherInsights = insights.filter(i => !i.insight_type.startsWith("agent_"));
+
+  // Module config for displaying agent insights
+  const agentModuleConfig: Record<string, { icon: any; label: string; color: string; bgColor: string }> = {
+    agent_marketing: { icon: Target, label: "שיווק ופרסום", color: "text-blue-500", bgColor: "bg-blue-500/10" },
+    agent_analytics: { icon: BarChart3, label: "אנליטיקס", color: "text-green-500", bgColor: "bg-green-500/10" },
+    agent_ecommerce: { icon: ShoppingCart, label: "איקומרס", color: "text-orange-500", bgColor: "bg-orange-500/10" },
+    agent_tasks: { icon: ListTodo, label: "משימות", color: "text-purple-500", bgColor: "bg-purple-500/10" },
+    agent_campaigns: { icon: TrendingUp, label: "קמפיינים", color: "text-pink-500", bgColor: "bg-pink-500/10" },
+    agent_team: { icon: Users, label: "צוות", color: "text-cyan-500", bgColor: "bg-cyan-500/10" },
+    agent_reports: { icon: FileText, label: "דוחות", color: "text-amber-500", bgColor: "bg-amber-500/10" },
+    agent_insights: { icon: Lightbulb, label: "תובנות", color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  };
 
   // Process chart data from snapshots
   const chartData = useMemo(() => {
@@ -425,15 +447,74 @@ export default function ClientInsights() {
               </div>
             </div>
 
-            {/* AI Insights */}
-            {insights.length > 0 && (
+            {/* AI Agent Insights - Central Hub */}
+            {agentInsights.length > 0 && (
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-primary" />
+                    תובנות מצטברות מהסוכנים
+                  </h3>
+                  <Badge variant="secondary">{agentInsights.length} סוכנים</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {agentInsights.map((insight) => {
+                    const config = agentModuleConfig[insight.insight_type] || {
+                      icon: Brain,
+                      label: insight.insight_type.replace("agent_", ""),
+                      color: "text-primary",
+                      bgColor: "bg-primary/10",
+                    };
+                    const AgentIcon = config.icon;
+                    const insightData = insight.insights as { summary?: string; updatedAt?: string; createdAt?: string } | null;
+                    
+                    return (
+                      <div key={insight.id} className={cn("p-4 rounded-xl border border-border", config.bgColor)}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center bg-background/50", config.color)}>
+                            <AgentIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">סוכן {config.label}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              עודכן: {format(new Date(insight.period_end), "dd/MM/yyyy", { locale: he })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+                          {insightData?.summary || "אין תובנות זמינות"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* No agent insights yet */}
+            {agentInsights.length === 0 && (
+              <div className="glass rounded-xl p-8 text-center">
+                <Brain className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">אין תובנות מצטברות עדיין</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  התחל שיחות עם הסוכנים השונים ושמור את התובנות כדי שיופיעו כאן
+                </p>
+                <Button variant="outline" onClick={() => window.location.href = "/ai-agents"}>
+                  <Brain className="w-4 h-4 ml-2" />
+                  עבור לסוכנים
+                </Button>
+              </div>
+            )}
+
+            {/* Other AI Insights */}
+            {otherInsights.length > 0 && (
               <div className="glass rounded-xl p-6">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-primary" />
-                  תובנות AI
+                  תובנות נוספות
                 </h3>
                 <div className="space-y-3">
-                  {insights.map((insight) => (
+                  {otherInsights.map((insight) => (
                     <div key={insight.id} className="p-4 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline">{insight.insight_type}</Badge>
