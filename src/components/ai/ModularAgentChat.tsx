@@ -27,6 +27,8 @@ import {
   Trash2,
   Brain,
   RefreshCw,
+  Save,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,6 +250,86 @@ export function ModularAgentChat({
   const [showInsightsSummary, setShowInsightsSummary] = useState(false);
   const [insightsSummary, setInsightsSummary] = useState<string>("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isSavingInsights, setIsSavingInsights] = useState(false);
+
+  // Fetch saved insights for this client and module
+  const { data: savedInsights, refetch: refetchInsights } = useQuery({
+    queryKey: ["client-insights", selectedClient?.id, moduleType],
+    queryFn: async () => {
+      if (!selectedClient?.id) return null;
+      const { data } = await supabase
+        .from("client_insights")
+        .select("*")
+        .eq("client_id", selectedClient.id)
+        .eq("insight_type", `agent_${moduleType}`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      return data;
+    },
+    enabled: !!selectedClient?.id,
+  });
+
+  // Load saved insights when opening summary panel
+  useEffect(() => {
+    if (showInsightsSummary && savedInsights && !insightsSummary) {
+      const insights = savedInsights.insights as { summary?: string } | null;
+      if (insights?.summary) {
+        setInsightsSummary(insights.summary);
+      }
+    }
+  }, [showInsightsSummary, savedInsights]);
+
+  // Save insights to client profile
+  const saveInsightsToProfile = async () => {
+    if (!selectedClient?.id || !insightsSummary) {
+      toast.error("אין תובנות לשמור או לא נבחר לקוח");
+      return;
+    }
+
+    setIsSavingInsights(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if insights already exist for this module
+      const { data: existing } = await supabase
+        .from("client_insights")
+        .select("id")
+        .eq("client_id", selectedClient.id)
+        .eq("insight_type", `agent_${moduleType}`)
+        .single();
+
+      if (existing) {
+        // Update existing
+        await supabase
+          .from("client_insights")
+          .update({
+            insights: { summary: insightsSummary, updatedAt: new Date().toISOString() },
+            period_end: today,
+          })
+          .eq("id", existing.id);
+      } else {
+        // Create new
+        await supabase
+          .from("client_insights")
+          .insert({
+            client_id: selectedClient.id,
+            insight_type: `agent_${moduleType}`,
+            insights: { summary: insightsSummary, createdAt: new Date().toISOString() },
+            period_start: today,
+            period_end: today,
+          });
+      }
+
+      toast.success("התובנות נשמרו בפרופיל הלקוח");
+      refetchInsights();
+    } catch (error) {
+      console.error("Error saving insights:", error);
+      toast.error("שגיאה בשמירת התובנות");
+    } finally {
+      setIsSavingInsights(false);
+    }
+  };
 
   const config = moduleAgentConfig[moduleType] || moduleAgentConfig.insights;
   const ModuleIcon = config.icon;
@@ -692,8 +774,30 @@ ${allMessages.join("\n").slice(0, 10000)}
               <div className="flex items-center gap-2">
                 <Brain className="w-4 h-4 text-primary" />
                 <p className="text-sm font-semibold">תובנות מצטברות</p>
+                {savedInsights && (
+                  <Badge variant="outline" className="text-xs">
+                    <BookOpen className="w-3 h-3 ml-1" />
+                    נשמר
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-1">
+                {insightsSummary && selectedClient && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={saveInsightsToProfile}
+                    disabled={isSavingInsights}
+                    title="שמור לפרופיל הלקוח"
+                  >
+                    {isSavingInsights ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Save className="w-3 h-3" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -720,8 +824,15 @@ ${allMessages.join("\n").slice(0, 10000)}
                 <span className="text-sm">מנתח את כל השיחות...</span>
               </div>
             ) : (
-              <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                {insightsSummary || "אין תובנות עדיין"}
+              <div className="space-y-2">
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {insightsSummary || (savedInsights ? (savedInsights.insights as { summary?: string })?.summary : "לחץ על כפתור הרענון ליצירת תובנות")}
+                </div>
+                {savedInsights && (
+                  <p className="text-xs text-muted-foreground">
+                    עודכן לאחרונה: {new Date(savedInsights.period_end).toLocaleDateString("he-IL")}
+                  </p>
+                )}
               </div>
             )}
           </div>
