@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Bot, 
   Send, 
@@ -14,6 +15,10 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  History,
+  Plus,
+  Globe,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +31,13 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  usedWebSearch?: boolean;
+}
+
+interface Conversation {
+  id: string;
+  title: string | null;
+  created_at: string;
 }
 
 interface AIInsightsChatProps {
@@ -43,12 +55,40 @@ const quickPrompts = [
 
 export function AIInsightsChat({ performanceData = [], campaignsData = [], insightsData = [] }: AIInsightsChatProps) {
   const { selectedClient } = useClient();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch conversations history
+  const { data: conversations = [] } = useQuery({
+    queryKey: ["chat-conversations", user?.id, selectedClient?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const query = supabase
+        .from("chat_conversations")
+        .select("id, title, created_at")
+        .eq("user_id", user.id)
+        .eq("agent_type", "insights")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      
+      if (selectedClient) {
+        query.eq("client_id", selectedClient.id);
+      }
+      
+      const { data } = await query;
+      return (data || []) as Conversation[];
+    },
+    enabled: !!user,
+  });
 
   // Fetch all data sources
   const { data: campaigns = [] } = useQuery({
@@ -95,6 +135,52 @@ export function AIInsightsChat({ performanceData = [], campaignsData = [], insig
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Create new conversation
+  const createConversation = useMutation({
+    mutationFn: async (firstMessage: string) => {
+      if (!user) throw new Error("User not authenticated");
+      
+      const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : "");
+      const { data, error } = await supabase
+        .from("chat_conversations")
+        .insert({
+          user_id: user.id,
+          client_id: selectedClient?.id || null,
+          agent_type: "insights",
+          title,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setCurrentConversationId(data.id);
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+    },
+  });
+
+  // Load conversation messages
+  const loadConversation = async (conversationId: string) => {
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    
+    if (data) {
+      setMessages(data.map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: new Date(m.created_at),
+        usedWebSearch: (m.metadata as any)?.usedWebSearch,
+      })));
+      setCurrentConversationId(conversationId);
+      setShowHistory(false);
+    }
+  };
 
   const buildContextPrompt = () => {
     const context = {
@@ -157,6 +243,13 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
     setIsLoading(true);
 
     try {
+      // Create conversation if this is the first message
+      let convId = currentConversationId;
+      if (!convId && user) {
+        const conv = await createConversation.mutateAsync(messageText);
+        convId = conv.id;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/insights-chat`,
         {
@@ -169,17 +262,24 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             userMessage: messageText,
             context: buildContextPrompt(),
+            conversationId: convId,
+            clientId: selectedClient?.id,
+            userId: user?.id,
           }),
         }
       );
 
+      const usedWebSearch = response.headers.get("X-Used-Web-Search") === "true";
+
       if (response.status === 429) {
         toast.error("יותר מדי בקשות, נסה שוב בעוד דקה");
+        setMessages(prev => prev.slice(0, -1));
         return;
       }
 
       if (response.status === 402) {
         toast.error("נדרש טעינת קרדיטים");
+        setMessages(prev => prev.slice(0, -1));
         return;
       }
 
@@ -193,7 +293,12 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
       let assistantContent = "";
       let textBuffer = "";
 
-      setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date() }]);
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: "", 
+        timestamp: new Date(),
+        usedWebSearch 
+      }]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -237,15 +342,16 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
     } catch (error) {
       console.error("Chat error:", error);
       toast.error("שגיאה בקבלת תשובה");
-      // Remove the empty assistant message
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const clearChat = () => {
+  const startNewChat = () => {
     setMessages([]);
+    setCurrentConversationId(null);
+    setShowHistory(false);
   };
 
   if (!isOpen) {
@@ -283,10 +389,19 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={clearChat}
-            title="נקה צ'אט"
+            onClick={() => setShowHistory(!showHistory)}
+            title="היסטוריית שיחות"
           >
-            <RefreshCw className="w-4 h-4" />
+            <History className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={startNewChat}
+            title="שיחה חדשה"
+          >
+            <Plus className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
@@ -306,6 +421,39 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
           </Button>
         </div>
       </div>
+
+      {/* History sidebar */}
+      {showHistory && (
+        <div className="absolute top-16 left-0 right-0 bottom-16 bg-background z-10 border-t border-border">
+          <ScrollArea className="h-full p-4">
+            <h4 className="font-bold mb-3 text-sm">שיחות קודמות</h4>
+            {conversations.length === 0 ? (
+              <p className="text-sm text-muted-foreground">אין שיחות קודמות</p>
+            ) : (
+              <div className="space-y-2">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
+                    className={cn(
+                      "w-full text-right p-3 rounded-lg hover:bg-muted transition-colors",
+                      currentConversationId === conv.id && "bg-muted"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm truncate">{conv.title || "שיחה ללא כותרת"}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(conv.created_at).toLocaleDateString('he-IL')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
@@ -357,23 +505,35 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
               >
                 {message.role === "assistant" && (
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4 text-primary" />
+                    {message.usedWebSearch ? (
+                      <Globe className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Bot className="w-4 h-4 text-primary" />
+                    )}
                   </div>
                 )}
-                <div
-                  className={cn(
-                    "max-w-[80%] p-3 rounded-xl text-sm whitespace-pre-wrap",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                <div className="max-w-[80%]">
+                  {message.usedWebSearch && message.role === "assistant" && (
+                    <Badge variant="outline" className="text-xs mb-1 gap-1">
+                      <Globe className="w-3 h-3" />
+                      חיפוש אינטרנט
+                    </Badge>
                   )}
-                >
-                  {message.content || (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>חושב...</span>
-                    </div>
-                  )}
+                  <div
+                    className={cn(
+                      "p-3 rounded-xl text-sm whitespace-pre-wrap",
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    )}
+                  >
+                    {message.content || (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>חושב...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
