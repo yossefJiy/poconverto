@@ -306,6 +306,62 @@ const platformOptions: PlatformOption[] = [
     features: ["יצירת תוכן", "סיכום מסמכים", "ניתוח נתונים", "המלצות חכמות"],
   },
   { 
+    id: "perplexity", 
+    name: "Perplexity AI", 
+    icon: () => <Search className="w-5 h-5" />,
+    color: "bg-[#20808D]",
+    category: "ai",
+    description: "חיפוש AI עם מקורות מאומתים בזמן אמת",
+    credentialKey: "api_key",
+    placeholder: "pplx-...",
+    steps: [
+      { title: "היכנס ל-Perplexity", description: "עבור ל-perplexity.ai/settings/api" },
+      { title: "צור API Key", description: "לחץ על 'Generate' ליצירת מפתח חדש" },
+      { title: "העתק את ה-API Key", description: "המפתח מתחיל ב-pplx-" },
+    ],
+    helpUrl: "https://docs.perplexity.ai/",
+    features: ["חיפוש בזמן אמת", "מקורות מאומתים", "ניתוח עמוק", "תשובות מדויקות"],
+  },
+  { 
+    id: "openrouter", 
+    name: "OpenRouter", 
+    icon: () => <Sparkles className="w-5 h-5" />,
+    color: "bg-gradient-to-r from-[#6366F1] to-[#8B5CF6]",
+    category: "ai",
+    description: "גישה למגוון מודלים של AI (GPT, Claude, Gemini ועוד)",
+    credentialKey: "api_key",
+    placeholder: "sk-or-...",
+    steps: [
+      { title: "היכנס ל-OpenRouter", description: "עבור ל-openrouter.ai/keys" },
+      { title: "צור API Key", description: "לחץ על 'Create Key'" },
+      { title: "העתק את ה-API Key", description: "המפתח מתחיל ב-sk-or-" },
+    ],
+    helpUrl: "https://openrouter.ai/docs",
+    features: ["גישה לכל המודלים", "Perplexity Sonar", "Claude", "GPT-4"],
+  },
+  { 
+    id: "tiktok", 
+    name: "TikTok Ads", 
+    icon: () => (
+      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+      </svg>
+    ),
+    color: "bg-black",
+    category: "analytics",
+    description: "סנכרון קמפיינים ונתוני ביצועים מ-TikTok",
+    credentialKey: "access_token",
+    placeholder: "Access Token",
+    steps: [
+      { title: "היכנס ל-TikTok Business Center", description: "עבור ל-ads.tiktok.com" },
+      { title: "צור App ב-TikTok for Developers", description: "קבל Access Token מ-Marketing API" },
+      { title: "העתק את ה-Access Token", description: "הדבק את הטוקן ואת מזהה המפרסם" },
+    ],
+    helpUrl: "https://ads.tiktok.com/marketing_api/docs",
+    features: ["קמפיינים", "קבוצות מודעות", "סטטיסטיקות", "המרות"],
+    useFacebookCredentials: true, // Reuse the same pattern for access token + account ID
+  },
+  { 
     id: "notebooklm", 
     name: "NotebookLM", 
     icon: () => <BookOpen className="w-5 h-5" />,
