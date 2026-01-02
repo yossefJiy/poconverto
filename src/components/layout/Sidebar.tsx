@@ -21,6 +21,8 @@ import {
   HeartPulse,
   Bot,
   TrendingUp,
+  FileText,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +61,8 @@ const menuItems: MenuItem[] = [
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
   { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
   { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
+  { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
+  { icon: Lightbulb, label: "בקשות פיצ'רים", path: "/feature-requests", moduleKey: "features" },
 ];
 
 const settingsItems = [

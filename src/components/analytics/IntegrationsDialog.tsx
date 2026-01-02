@@ -305,30 +305,14 @@ const platformOptions: PlatformOption[] = [
     helpUrl: "https://ai.google.dev/",
     features: ["יצירת תוכן", "סיכום מסמכים", "ניתוח נתונים", "המלצות חכמות"],
   },
-  { 
-    id: "perplexity", 
-    name: "Perplexity AI", 
-    icon: () => <Search className="w-5 h-5" />,
-    color: "bg-[#20808D]",
-    category: "ai",
-    description: "חיפוש AI עם מקורות מאומתים בזמן אמת",
-    credentialKey: "api_key",
-    placeholder: "pplx-...",
-    steps: [
-      { title: "היכנס ל-Perplexity", description: "עבור ל-perplexity.ai/settings/api" },
-      { title: "צור API Key", description: "לחץ על 'Generate' ליצירת מפתח חדש" },
-      { title: "העתק את ה-API Key", description: "המפתח מתחיל ב-pplx-" },
-    ],
-    helpUrl: "https://docs.perplexity.ai/",
-    features: ["חיפוש בזמן אמת", "מקורות מאומתים", "ניתוח עמוק", "תשובות מדויקות"],
-  },
+  // Perplexity הוסר - זמין דרך OpenRouter
   { 
     id: "openrouter", 
     name: "OpenRouter", 
     icon: () => <Sparkles className="w-5 h-5" />,
     color: "bg-gradient-to-r from-[#6366F1] to-[#8B5CF6]",
     category: "ai",
-    description: "גישה למגוון מודלים של AI (GPT, Claude, Gemini ועוד)",
+    description: "גישה למגוון מודלים של AI כולל Perplexity Sonar לחיפוש",
     credentialKey: "api_key",
     placeholder: "sk-or-...",
     steps: [
@@ -337,7 +321,7 @@ const platformOptions: PlatformOption[] = [
       { title: "העתק את ה-API Key", description: "המפתח מתחיל ב-sk-or-" },
     ],
     helpUrl: "https://openrouter.ai/docs",
-    features: ["גישה לכל המודלים", "Perplexity Sonar", "Claude", "GPT-4"],
+    features: ["Perplexity Sonar (חיפוש)", "Claude", "GPT-4", "Gemini", "Llama"],
   },
   { 
     id: "tiktok", 
