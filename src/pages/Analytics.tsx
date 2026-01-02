@@ -8,7 +8,7 @@ import { usePermissions, useAuth } from "@/hooks/useAuth";
 import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { GlobalKPIBar } from "@/components/analytics/GlobalKPIBar";
 import { PlatformCompactCard } from "@/components/analytics/PlatformCompactCard";
-
+import { AIAnalyticsSummary } from "@/components/ai/AIAnalyticsSummary";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { ConnectionStatusDialog } from "@/components/analytics/ConnectionStatusDialog";
 import { AuthLoadingState } from "@/components/analytics/AuthLoadingState";
@@ -334,6 +334,13 @@ export default function Analytics() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* AI Analytics Summary */}
+            <AIAnalyticsSummary 
+              platformData={platformData} 
+              clientName={selectedClient?.name}
+              dateRange={{ start: dateRange.startDate, end: dateRange.endDate }}
+            />
+
             {/* Global KPI Summary Bar */}
             {(hasShopify || hasGoogleAds || hasFacebookAds) && (
               <GlobalKPIBar platformData={platformData} isLoading={isLoading} />

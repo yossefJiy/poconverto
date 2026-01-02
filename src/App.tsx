@@ -36,6 +36,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import StatusPage from "./pages/StatusPage";
 import CodeHealth from "./pages/CodeHealth";
+import AIAgents from "./pages/AIAgents";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/analytics/google-analytics" element={<ProtectedRoute><GoogleAnalyticsDetail /></ProtectedRoute>} />
               <Route path="/campaigns/:campaignId" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
+              <Route path="/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
               <Route path="/system-diagram" element={<SystemDiagram />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
