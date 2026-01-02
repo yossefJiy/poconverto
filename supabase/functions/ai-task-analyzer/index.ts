@@ -65,6 +65,38 @@ ${teamMembers?.map((m: any) => `- ${m.name} (${m.departments?.join(", ") || "כ�
       systemPrompt = `אתה עוזר AI מומחה בניתוח נתונים עסקיים.
 נתח את הנתונים שניתנים לך ותן תובנות מעשיות.
 ענה בעברית בצורה ברורה ותמציתית.`;
+    } else if (type === "analyze_campaigns") {
+      systemPrompt = `אתה עוזר AI מומחה בשיווק דיגיטלי וניתוח קמפיינים.
+תפקידך לנתח קמפיינים ולהציע פעולות לשיפור ביצועים.
+
+ענה תמיד בפורמט JSON עם המבנה הבא:
+{
+  "proposals": [
+    {
+      "action_type": "סוג הפעולה (optimize_creative/reduce_cpc/increase_budget/improve_landing_page)",
+      "title": "כותרת הפעולה",
+      "description": "תיאור מפורט של הבעיה",
+      "impact": "high" | "medium" | "low",
+      "campaign_id": "מזהה הקמפיין",
+      "campaign_name": "שם הקמפיין",
+      "suggested_change": "שינוי מוצע ספציפי"
+    }
+  ],
+  "summary": "סיכום כללי של מצב הקמפיינים"
+}
+
+נתח את הקמפיינים לפי:
+1. CTR - אם נמוך מ-1% זה בעייתי
+2. CPC - אם גבוה מ-10 ש"ח זה יקר
+3. ניצול תקציב - פחות מ-50% או יותר מ-95%
+4. יחס המרה - קליקים גבוהים עם המרות נמוכות`;
+
+      userPrompt = `קמפיינים לניתוח:
+${JSON.stringify(context?.campaigns || [], null, 2)}
+
+לקוח: ${context?.clientName || "לא צוין"}
+
+נתח את הקמפיינים והצע פעולות שיווקיות לשיפור ביצועים.`;
     } else {
       systemPrompt = `אתה עוזר AI חכם ומועיל. ענה בעברית בצורה ברורה ותמציתית.`;
     }

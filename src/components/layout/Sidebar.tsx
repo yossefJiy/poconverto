@@ -20,6 +20,7 @@ import {
   Network,
   HeartPulse,
   Bot,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +58,7 @@ const menuItems: MenuItem[] = [
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
   { icon: Bot, label: "AI Agents", path: "/ai-agents" },
+  { icon: TrendingUp, label: "תובנות", path: "/insights" },
 ];
 
 const settingsItems = [
