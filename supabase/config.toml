@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.ai-task-analyzer]
 verify_jwt = false
+
+[functions.daily-campaign-analyzer]
+verify_jwt = false
