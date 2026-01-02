@@ -67,6 +67,7 @@ import {
 import { CampaignEditDialog } from "@/components/campaigns/CampaignEditDialog";
 import { CampaignAssets } from "@/components/campaigns/CampaignAssets";
 import { Badge } from "@/components/ui/badge";
+import { AgentCampaignAnalyzer } from "@/components/ai/AgentCampaignAnalyzer";
 
 const platformConfig: Record<string, { color: string; name: string; logo: string; canCreate: boolean }> = {
   google_ads: { 
@@ -644,6 +645,25 @@ export default function Campaigns() {
                 </Badge>
               )}
             </div>
+
+            {/* AI Campaign Analyzer */}
+            {allCampaigns.length > 0 && (
+              <AgentCampaignAnalyzer 
+                campaigns={allCampaigns.map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  platform: c.platform,
+                  status: c.status,
+                  budget: c.budget,
+                  spent: c.spent,
+                  impressions: c.impressions,
+                  clicks: c.clicks,
+                  conversions: c.conversions,
+                  ctr: c.ctr,
+                  cpc: c.cpc,
+                }))}
+              />
+            )}
 
             {/* Campaigns Grid */}
             {isLoading ? (
