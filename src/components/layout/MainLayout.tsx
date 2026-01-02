@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
+import { GlobalAgentFAB } from "@/components/ai/GlobalAgentFAB";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,6 +17,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       <main className="mr-64 min-h-screen">
         {children}
       </main>
+      
+      {/* Global AI Agent FAB - appears on all pages */}
+      <GlobalAgentFAB />
+      
       <SessionTimeoutDialog 
         open={showWarning} 
         remainingTime={remainingTime} 

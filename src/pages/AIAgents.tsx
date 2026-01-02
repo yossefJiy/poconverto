@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
+import { useClientModules } from "@/hooks/useClientModules";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -24,7 +25,13 @@ import {
   TrendingUp,
   AlertCircle,
   Check,
-  X
+  X,
+  ShoppingCart,
+  ListTodo,
+  Users,
+  Lightbulb,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,6 +68,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { ModularAgentChat, moduleAgentConfig } from "@/components/ai/ModularAgentChat";
 
 interface AIAgent {
   id: string;
@@ -91,11 +99,16 @@ interface AgentAction {
 }
 
 const agentTypes = [
-  { value: 'marketing', label: 'שיווק ופרסום', icon: Target, color: 'text-blue-500' },
-  { value: 'analytics', label: 'ניתוח נתונים', icon: BarChart3, color: 'text-green-500' },
-  { value: 'content', label: 'יצירת תוכן', icon: MessageSquare, color: 'text-purple-500' },
-  { value: 'optimization', label: 'אופטימיזציה', icon: TrendingUp, color: 'text-orange-500' },
-  { value: 'general', label: 'כללי', icon: Brain, color: 'text-gray-500' },
+  { value: 'marketing', label: 'שיווק ופרסום', icon: Target, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+  { value: 'analytics', label: 'אנליטיקס', icon: BarChart3, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+  { value: 'ecommerce', label: 'איקומרס', icon: ShoppingCart, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+  { value: 'tasks', label: 'משימות', icon: ListTodo, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+  { value: 'campaigns', label: 'קמפיינים', icon: TrendingUp, color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
+  { value: 'team', label: 'צוות', icon: Users, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
+  { value: 'insights', label: 'תובנות', icon: Lightbulb, color: 'text-yellow-500', bgColor: 'bg-yellow-500/10' },
+  { value: 'reports', label: 'דוחות', icon: FileText, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
+  { value: 'content', label: 'יצירת תוכן', icon: MessageSquare, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+  { value: 'general', label: 'כללי', icon: Brain, color: 'text-gray-500', bgColor: 'bg-gray-500/10' },
 ];
 
 const capabilityOptions = [
@@ -118,11 +131,13 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 
 export default function AIAgents() {
   const { selectedClient } = useClient();
+  const { isModuleEnabled } = useClientModules();
   const queryClient = useQueryClient();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; agent: AIAgent | null }>({ open: false, agent: null });
+  const [activeAgentChat, setActiveAgentChat] = useState<string | null>(null);
   
   // Form state
   const [formName, setFormName] = useState("");
@@ -313,19 +328,59 @@ export default function AIAgents() {
     return agentTypes.find(t => t.value === type) || agentTypes[4];
   };
 
+  // Get enabled modules for quick access
+  const enabledModules = Object.keys(moduleAgentConfig).filter(key => 
+    isModuleEnabled(key as any)
+  );
+
   return (
     <MainLayout>
       <div className="p-4 md:p-8 space-y-6">
         <PageHeader 
-          title="AI Agents"
-          description="ניהול סוכני AI מותאמים אישית עם יכולות שונות"
+          title="סוכני AI"
+          description="סוכני AI חכמים לכל מודול ולקוח - בחר סוכן והתחל לעבוד"
           actions={
             <Button onClick={() => openDialog()}>
               <Plus className="w-4 h-4 ml-2" />
-              סוכן חדש
+              סוכן מותאם אישית
             </Button>
           }
         />
+
+        {/* Module Agents Quick Access */}
+        <div className="glass rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold">סוכנים לפי מודול</h2>
+            <Badge variant="secondary">{selectedClient?.name || "כללי"}</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            לחץ על סוכן כדי להתחיל שיחה - כל סוכן מותאם לתחום שלו עם הקשר הלקוח הנוכחי
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {enabledModules.map((module) => {
+              const config = moduleAgentConfig[module];
+              if (!config) return null;
+              const Icon = config.icon;
+              return (
+                <button
+                  key={module}
+                  onClick={() => setActiveAgentChat(module)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border border-border transition-all hover:scale-105",
+                    config.bgColor,
+                    "hover:shadow-lg hover:border-primary/50"
+                  )}
+                >
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center bg-background/50", config.color)}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm font-medium">{config.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Pending Actions Section */}
         {pendingActions.length > 0 && (
@@ -583,6 +638,16 @@ export default function AIAgents() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Module Agent Chat */}
+      {activeAgentChat && (
+        <ModularAgentChat
+          moduleType={activeAgentChat as keyof typeof moduleAgentConfig}
+          isOpen={true}
+          onClose={() => setActiveAgentChat(null)}
+          onToggleExpand={() => {}}
+        />
+      )}
     </MainLayout>
   );
 }
