@@ -272,6 +272,226 @@ export function ModularAgentChat({
     enabled: !!selectedClient?.id,
   });
 
+  // Fetch module-specific data for agent context
+  const { data: moduleData } = useQuery({
+    queryKey: ["module-data", selectedClient?.id, moduleType],
+    queryFn: async () => {
+      if (!selectedClient?.id) return null;
+      
+      const data: Record<string, any> = {};
+      
+      switch (moduleType) {
+        case "marketing":
+        case "campaigns": {
+          const { data: campaigns } = await supabase
+            .from("campaigns")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+          data.campaigns = campaigns || [];
+          
+          const { data: snapshots } = await supabase
+            .from("analytics_snapshots")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("snapshot_date", { ascending: false })
+            .limit(7);
+          data.recentAnalytics = snapshots || [];
+          break;
+        }
+        case "analytics": {
+          const { data: snapshots } = await supabase
+            .from("analytics_snapshots")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("snapshot_date", { ascending: false })
+            .limit(14);
+          data.snapshots = snapshots || [];
+          
+          const { data: integrations } = await supabase
+            .from("integrations_safe")
+            .select("*")
+            .eq("client_id", selectedClient.id);
+          data.integrations = integrations || [];
+          break;
+        }
+        case "ecommerce": {
+          const { data: integrations } = await supabase
+            .from("integrations_safe")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .in("platform", ["shopify", "woocommerce"]);
+          data.ecommerceIntegrations = integrations || [];
+          
+          const { data: snapshots } = await supabase
+            .from("analytics_snapshots")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .in("platform", ["shopify", "woocommerce"])
+            .order("snapshot_date", { ascending: false })
+            .limit(7);
+          data.salesData = snapshots || [];
+          break;
+        }
+        case "tasks": {
+          const { data: tasks } = await supabase
+            .from("tasks")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("created_at", { ascending: false })
+            .limit(20);
+          data.tasks = tasks || [];
+          
+          const stats = {
+            open: tasks?.filter(t => t.status === "open").length || 0,
+            inProgress: tasks?.filter(t => t.status === "in_progress").length || 0,
+            completed: tasks?.filter(t => t.status === "completed").length || 0,
+          };
+          data.taskStats = stats;
+          break;
+        }
+        case "team": {
+          const { data: teamMembers } = await supabase
+            .from("client_team")
+            .select("*, team_member:team(*)")
+            .eq("client_id", selectedClient.id);
+          data.teamMembers = teamMembers || [];
+          
+          const { data: tasks } = await supabase
+            .from("tasks")
+            .select("assignee, status")
+            .eq("client_id", selectedClient.id);
+          
+          // Group tasks by assignee
+          const workload: Record<string, number> = {};
+          tasks?.forEach(t => {
+            if (t.assignee && t.status !== "completed") {
+              workload[t.assignee] = (workload[t.assignee] || 0) + 1;
+            }
+          });
+          data.workload = workload;
+          break;
+        }
+        case "reports": {
+          const { data: campaigns } = await supabase
+            .from("campaigns")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .limit(10);
+          data.campaigns = campaigns || [];
+          
+          const { data: snapshots } = await supabase
+            .from("analytics_snapshots")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("snapshot_date", { ascending: false })
+            .limit(30);
+          data.analytics = snapshots || [];
+          
+          const { data: credits } = await supabase
+            .from("client_credits")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .eq("is_active", true)
+            .single();
+          data.credits = credits;
+          break;
+        }
+        case "insights": {
+          // Fetch all available data for insights agent
+          const { data: campaigns } = await supabase
+            .from("campaigns")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .limit(10);
+          data.campaigns = campaigns || [];
+          
+          const { data: snapshots } = await supabase
+            .from("analytics_snapshots")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("snapshot_date", { ascending: false })
+            .limit(14);
+          data.analytics = snapshots || [];
+          
+          const { data: tasks } = await supabase
+            .from("tasks")
+            .select("*")
+            .eq("client_id", selectedClient.id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+          data.recentTasks = tasks || [];
+          break;
+        }
+      }
+      
+      return data;
+    },
+    enabled: !!selectedClient?.id && isOpen,
+  });
+
+  // Format module data for context
+  const formatModuleContext = () => {
+    if (!moduleData) return "";
+    
+    let context = "\n\n📊 נתונים זמינים לסוכן:\n";
+    
+    if (moduleData.campaigns?.length) {
+      context += `\n🎯 קמפיינים (${moduleData.campaigns.length}):\n`;
+      moduleData.campaigns.slice(0, 5).forEach((c: any) => {
+        context += `- ${c.name}: ${c.status}, תקציב ${c.budget || 0}₪, הוצאה ${c.spent || 0}₪, ${c.impressions || 0} חשיפות, ${c.clicks || 0} קליקים\n`;
+      });
+    }
+    
+    if (moduleData.snapshots?.length || moduleData.recentAnalytics?.length || moduleData.analytics?.length) {
+      const snaps = moduleData.snapshots || moduleData.recentAnalytics || moduleData.analytics || [];
+      context += `\n📈 נתוני אנליטיקס (${snaps.length} ימים אחרונים):\n`;
+      const latestByPlatform: Record<string, any> = {};
+      snaps.forEach((s: any) => {
+        if (!latestByPlatform[s.platform]) {
+          latestByPlatform[s.platform] = s;
+        }
+      });
+      Object.entries(latestByPlatform).forEach(([platform, snap]: [string, any]) => {
+        const m = snap.metrics || {};
+        context += `- ${platform}: ${m.impressions || 0} חשיפות, ${m.clicks || 0} קליקים, ${m.conversions || 0} המרות, הוצאה ${m.spend || m.cost || 0}₪\n`;
+      });
+    }
+    
+    if (moduleData.tasks?.length) {
+      context += `\n📋 משימות (${moduleData.tasks.length}):\n`;
+      context += `- פתוחות: ${moduleData.taskStats?.open || 0}\n`;
+      context += `- בתהליך: ${moduleData.taskStats?.inProgress || 0}\n`;
+      context += `- הושלמו: ${moduleData.taskStats?.completed || 0}\n`;
+    }
+    
+    if (moduleData.teamMembers?.length) {
+      context += `\n👥 חברי צוות (${moduleData.teamMembers.length}):\n`;
+      moduleData.teamMembers.slice(0, 5).forEach((tm: any) => {
+        const name = tm.team_member?.name || "לא ידוע";
+        const load = moduleData.workload?.[name] || 0;
+        context += `- ${name}: ${load} משימות פתוחות\n`;
+      });
+    }
+    
+    if (moduleData.salesData?.length) {
+      context += `\n🛒 נתוני מכירות:\n`;
+      moduleData.salesData.slice(0, 3).forEach((s: any) => {
+        const m = s.metrics || {};
+        context += `- ${s.platform} (${s.snapshot_date}): ${m.orders || 0} הזמנות, ${m.revenue || m.total_sales || 0}₪ הכנסות\n`;
+      });
+    }
+    
+    if (moduleData.credits) {
+      const c = moduleData.credits;
+      const remaining = c.total_credits - c.used_credits;
+      context += `\n💰 קרדיטים: ${remaining}/${c.total_credits} (${Math.round((remaining/c.total_credits)*100)}% נותר)\n`;
+    }
+    
+    return context;
+  };
+
   // Load saved insights when opening summary panel
   useEffect(() => {
     if (showInsightsSummary && savedInsights && !insightsSummary) {
@@ -617,7 +837,7 @@ ${allMessages.join("\n").slice(0, 10000)}
           body: JSON.stringify({
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             userMessage: messageText,
-            context: `${config.systemPrompt}\n\nלקוח נוכחי: ${selectedClient?.name || "לא נבחר"}\nמודול: ${config.label}\n\nהנחיות:\n- ענה בעברית\n- היה תמציתי וברור\n- השתמש באימוג'י כדי להמחיש נקודות\n- אם רלוונטי, הצג נתונים בטבלה או רשימה מסודרת\n- אם אתה מזהה תובנה חשובה או חריגה בנתונים, התחל את התשובה עם 🚨 התראה:`,
+            context: `${config.systemPrompt}\n\nלקוח נוכחי: ${selectedClient?.name || "לא נבחר"}\nמודול: ${config.label}${formatModuleContext()}\n\nהנחיות:\n- ענה בעברית\n- היה תמציתי וברור\n- השתמש באימוג'י כדי להמחיש נקודות\n- השתמש בנתונים הזמינים לך כדי לתת תשובות מבוססות\n- אם רלוונטי, הצג נתונים בטבלה או רשימה מסודרת\n- אם אתה מזהה תובנה חשובה או חריגה בנתונים, התחל את התשובה עם 🚨 התראה:`,
             clientId: selectedClient?.id,
             userId: user?.id,
           }),

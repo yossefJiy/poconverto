@@ -37,6 +37,7 @@ import TermsOfService from "./pages/TermsOfService";
 import StatusPage from "./pages/StatusPage";
 import CodeHealth from "./pages/CodeHealth";
 import AIAgents from "./pages/AIAgents";
+import AgentAlerts from "./pages/AgentAlerts";
 import ClientInsights from "./pages/ClientInsights";
 import Reports from "./pages/Reports";
 import FeatureRequests from "./pages/FeatureRequests";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/campaigns/:campaignId" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />
               <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
               <Route path="/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
+              <Route path="/agent-alerts" element={<ProtectedRoute><AgentAlerts /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute><ClientInsights /></ProtectedRoute>} />
               <Route path="/system-diagram" element={<SystemDiagram />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
