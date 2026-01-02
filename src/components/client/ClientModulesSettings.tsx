@@ -18,6 +18,10 @@ import {
   Loader2,
   Save,
   RefreshCw,
+  TrendingUp,
+  Bot,
+  Lightbulb,
+  FileText,
 } from "lucide-react";
 import { 
   Select,
@@ -42,6 +46,10 @@ const moduleConfig = [
   { key: "campaigns", label: "קמפיינים", icon: Megaphone, color: "text-orange-500", bgColor: "bg-orange-500/20", description: "ניהול קמפיינים פרסומיים" },
   { key: "tasks", label: "משימות", icon: CheckSquare, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "רשימת משימות וניהול פרויקטים" },
   { key: "team", label: "צוות משויך", icon: Users, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "חברי צוות המשויכים ללקוח" },
+  { key: "insights", label: "תובנות", icon: TrendingUp, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניתוח ביצועים והיסטוריה" },
+  { key: "ai_agent", label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות" },
+  { key: "features", label: "בקשות פיצ'רים", icon: Lightbulb, color: "text-amber-500", bgColor: "bg-amber-500/20", description: "ניהול בקשות פיצ'רים מלקוחות" },
+  { key: "reports", label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות" },
 ] as const;
 
 export function ClientModulesSettings({
