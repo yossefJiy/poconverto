@@ -23,11 +23,29 @@ import {
   FileText,
   Globe,
   CheckCircle2,
+  History,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -179,9 +197,16 @@ const moduleAgentConfig: Record<string, {
 };
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+}
+
+interface Conversation {
+  id: string;
+  title: string | null;
+  created_at: string;
 }
 
 interface ModularAgentChatProps {
@@ -201,11 +226,21 @@ export function ModularAgentChat({
 }: ModularAgentChatProps) {
   const { selectedClient } = useClient();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Task creation state
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [taskContent, setTaskContent] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskPriority, setTaskPriority] = useState<string>("medium");
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   const config = moduleAgentConfig[moduleType] || moduleAgentConfig.insights;
   const ModuleIcon = config.icon;
@@ -214,10 +249,139 @@ export function ModularAgentChat({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Reset messages when module changes
+  // Fetch conversation history for this module
+  const { data: conversations = [] } = useQuery({
+    queryKey: ["module-conversations", user?.id, selectedClient?.id, moduleType],
+    queryFn: async () => {
+      if (!user) return [];
+      const query = supabase
+        .from("chat_conversations")
+        .select("id, title, created_at")
+        .eq("user_id", user.id)
+        .eq("agent_type", `module_${moduleType}`)
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      
+      if (selectedClient) {
+        query.eq("client_id", selectedClient.id);
+      }
+      
+      const { data } = await query;
+      return (data || []) as Conversation[];
+    },
+    enabled: !!user,
+  });
+
+  // Load last conversation on mount
   useEffect(() => {
+    if (conversations.length > 0 && !currentConversationId && messages.length === 0) {
+      loadConversation(conversations[0].id);
+    }
+  }, [conversations]);
+
+  // Create new conversation
+  const createConversation = async (firstMessage: string) => {
+    if (!user) return null;
+    
+    const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : "");
+    const { data, error } = await supabase
+      .from("chat_conversations")
+      .insert({
+        user_id: user.id,
+        client_id: selectedClient?.id || null,
+        agent_type: `module_${moduleType}`,
+        title,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    setCurrentConversationId(data.id);
+    queryClient.invalidateQueries({ queryKey: ["module-conversations"] });
+    return data.id;
+  };
+
+  // Save message to database
+  const saveMessage = async (conversationId: string, role: string, content: string) => {
+    await supabase
+      .from("chat_messages")
+      .insert({
+        conversation_id: conversationId,
+        role,
+        content,
+        metadata: { moduleType, clientId: selectedClient?.id }
+      });
+  };
+
+  // Load conversation messages
+  const loadConversation = async (conversationId: string) => {
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    
+    if (data) {
+      setMessages(data.map(m => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: new Date(m.created_at),
+      })));
+      setCurrentConversationId(conversationId);
+      setShowHistory(false);
+    }
+  };
+
+  // Start new chat
+  const startNewChat = () => {
     setMessages([]);
-  }, [moduleType]);
+    setCurrentConversationId(null);
+    setShowHistory(false);
+  };
+
+  // Open task dialog
+  const openTaskDialog = (content: string) => {
+    const lines = content.split('\n').filter(l => l.trim());
+    const title = lines[0]?.slice(0, 100) || "משימה מ-AI";
+    setTaskTitle(title);
+    setTaskContent(content);
+    setShowTaskDialog(true);
+  };
+
+  // Create task
+  const createTask = async () => {
+    if (!taskTitle.trim()) {
+      toast.error("נא להזין כותרת למשימה");
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      const { error } = await supabase.from("tasks").insert({
+        title: taskTitle,
+        description: taskContent,
+        priority: taskPriority,
+        status: "open",
+        client_id: selectedClient?.id || null,
+        category: `AI-${config.label}`,
+      });
+
+      if (error) throw error;
+
+      toast.success("המשימה נוצרה בהצלחה");
+      setShowTaskDialog(false);
+      setTaskTitle("");
+      setTaskContent("");
+      setTaskPriority("medium");
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("שגיאה ביצירת המשימה");
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
 
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isLoading) return;
@@ -233,6 +397,17 @@ export function ModularAgentChat({
     setIsLoading(true);
 
     try {
+      // Create or get conversation
+      let convId = currentConversationId;
+      if (!convId) {
+        convId = await createConversation(messageText);
+      }
+
+      // Save user message
+      if (convId) {
+        await saveMessage(convId, "user", messageText);
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/insights-chat`,
         {
@@ -317,6 +492,11 @@ export function ModularAgentChat({
         }
       }
 
+      // Save assistant message
+      if (convId && assistantContent) {
+        await saveMessage(convId, "assistant", assistantContent);
+      }
+
     } catch (error) {
       console.error("Chat error:", error);
       toast.error("שגיאה בקבלת תשובה");
@@ -329,131 +509,251 @@ export function ModularAgentChat({
   if (!isOpen) return null;
 
   return (
-    <div 
-      className={cn(
-        "fixed z-50 bg-card border border-border rounded-xl shadow-elevated flex flex-col overflow-hidden transition-all duration-300",
-        isExpanded 
-          ? "inset-4 md:inset-8" 
-          : "bottom-4 left-4 w-96 h-[500px] max-h-[80vh]"
-      )}
-    >
-      {/* Header */}
-      <div className={cn("flex items-center justify-between px-4 py-3 border-b border-border", config.bgColor)}>
-        <div className="flex items-center gap-3">
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-background/50", config.color)}>
-            <ModuleIcon className="w-5 h-5" />
+    <>
+      <div 
+        className={cn(
+          "fixed z-50 bg-card border border-border rounded-xl shadow-elevated flex flex-col overflow-hidden transition-all duration-300",
+          isExpanded 
+            ? "inset-4 md:inset-8" 
+            : "bottom-4 left-4 w-96 h-[500px] max-h-[80vh]"
+        )}
+      >
+        {/* Header */}
+        <div className={cn("flex items-center justify-between px-4 py-3 border-b border-border", config.bgColor)}>
+          <div className="flex items-center gap-3">
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-background/50", config.color)}>
+              <ModuleIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">סוכן {config.label}</h3>
+              <p className="text-xs text-muted-foreground">
+                {selectedClient?.name || "כללי"} • {conversations.length} שיחות
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-foreground">סוכן {config.label}</h3>
-            <p className="text-xs text-muted-foreground">
-              {selectedClient?.name || "כללי"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {onToggleExpand && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleExpand}>
-              {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={() => setShowHistory(!showHistory)}
+              title="היסטוריה"
+            >
+              <History className="w-4 h-4" />
             </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-4", config.bgColor, config.color)}>
-              <ModuleIcon className="w-8 h-8" />
-            </div>
-            <h4 className="font-bold text-lg mb-2">שלום! 👋</h4>
-            <p className="text-muted-foreground text-sm mb-4 max-w-xs">
-              אני הסוכן של {config.label}. איך אני יכול לעזור?
-            </p>
-            
-            {/* Quick Actions */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {config.quickActions.map((action, idx) => (
-                <Button
-                  key={idx}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => sendMessage(action.prompt)}
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={startNewChat}
+              title="שיחה חדשה"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+            {onToggleExpand && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleExpand}>
+                {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((message, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "flex gap-3",
-                  message.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                {message.role === "assistant" && (
-                  <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
-                    <ModuleIcon className="w-4 h-4" />
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-3",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-tl-sm"
-                      : "bg-muted rounded-tr-sm"
-                  )}
-                >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-3">
-                <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-                <div className="bg-muted rounded-2xl rounded-tr-sm px-4 py-3">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </div>
-                </div>
+        </div>
+
+        {/* History Panel */}
+        {showHistory && (
+          <div className="border-b border-border bg-muted/50 p-3 max-h-40 overflow-y-auto">
+            <p className="text-xs text-muted-foreground mb-2">שיחות קודמות</p>
+            {conversations.length === 0 ? (
+              <p className="text-xs text-muted-foreground">אין שיחות קודמות</p>
+            ) : (
+              <div className="space-y-1">
+                {conversations.map(conv => (
+                  <button
+                    key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
+                    className={cn(
+                      "w-full text-right px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors",
+                      currentConversationId === conv.id && "bg-muted"
+                    )}
+                  >
+                    <p className="truncate font-medium">{conv.title || "שיחה ללא כותרת"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(conv.created_at).toLocaleDateString("he-IL")}
+                    </p>
+                  </button>
+                ))}
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         )}
-      </ScrollArea>
 
-      {/* Input */}
-      <div className="p-4 border-t border-border bg-background/50">
-        <form 
-          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-          className="flex gap-2"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="כתוב הודעה..."
-            className="flex-1"
-            disabled={isLoading}
-          />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-4">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-4", config.bgColor, config.color)}>
+                <ModuleIcon className="w-8 h-8" />
+              </div>
+              <h4 className="font-bold text-lg mb-2">שלום! 👋</h4>
+              <p className="text-muted-foreground text-sm mb-4 max-w-xs">
+                אני הסוכן של {config.label}. איך אני יכול לעזור?
+              </p>
+              
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2 justify-center">
+                {config.quickActions.map((action, idx) => (
+                  <Button
+                    key={idx}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => sendMessage(action.prompt)}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "flex gap-3",
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  )}
+                >
+                  {message.role === "assistant" && (
+                    <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
+                      <ModuleIcon className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1 max-w-[80%]">
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-3",
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-tl-sm"
+                          : "bg-muted rounded-tr-sm"
+                      )}
+                    >
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    </div>
+                    {/* Create task button for assistant messages */}
+                    {message.role === "assistant" && message.content && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs self-start gap-1 text-muted-foreground hover:text-foreground"
+                        onClick={() => openTaskDialog(message.content)}
+                      >
+                        <ListTodo className="w-3 h-3" />
+                        צור משימה
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className={cn("w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center", config.bgColor, config.color)}>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                  <div className="bg-muted rounded-2xl rounded-tr-sm px-4 py-3">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Input */}
+        <div className="p-4 border-t border-border bg-background/50">
+          <form 
+            onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+            className="flex gap-2"
+          >
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="כתוב הודעה..."
+              className="flex-1"
+              disabled={isLoading}
+            />
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+        </div>
       </div>
-    </div>
+
+      {/* Task Creation Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListTodo className="w-5 h-5 text-primary" />
+              יצירת משימה מתגובת AI
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>כותרת</Label>
+              <Input
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="כותרת המשימה"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>תיאור</Label>
+              <Textarea
+                value={taskContent}
+                onChange={(e) => setTaskContent(e.target.value)}
+                placeholder="תיאור המשימה"
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>עדיפות</Label>
+              <Select value={taskPriority} onValueChange={setTaskPriority}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">נמוכה</SelectItem>
+                  <SelectItem value="medium">בינונית</SelectItem>
+                  <SelectItem value="high">גבוהה</SelectItem>
+                  <SelectItem value="urgent">דחופה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              מקור: סוכן {config.label}
+            </Badge>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
+              ביטול
+            </Button>
+            <Button onClick={createTask} disabled={isCreatingTask}>
+              {isCreatingTask && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              <CheckCircle2 className="w-4 h-4 ml-2" />
+              צור משימה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
