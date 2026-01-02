@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.daily-campaign-analyzer]
 verify_jwt = false
+
+[functions.insights-chat]
+verify_jwt = false
