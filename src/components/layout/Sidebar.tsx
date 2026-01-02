@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   Activity,
   Network,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +61,7 @@ const settingsItems = [
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
   { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
+  { icon: HeartPulse, label: "בריאות קוד", path: "/code-health", adminOnly: true },
   { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
   { icon: BarChart3, label: "קרדיטים", path: "/credits", adminOnly: true },
 ];

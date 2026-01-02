@@ -471,6 +471,96 @@ export type Database = {
         }
         Relationships: []
       }
+      code_health_issues: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          details: Json | null
+          detected_at: string
+          id: string
+          ignore_reason: string | null
+          ignored_at: string | null
+          ignored_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          details?: Json | null
+          detected_at?: string
+          id?: string
+          ignore_reason?: string | null
+          ignored_at?: string | null
+          ignored_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          details?: Json | null
+          detected_at?: string
+          id?: string
+          ignore_reason?: string | null
+          ignored_at?: string | null
+          ignored_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      code_health_reports: {
+        Row: {
+          created_at: string
+          critical_count: number
+          email_sent: boolean | null
+          email_sent_at: string | null
+          id: string
+          info_count: number
+          issues_data: Json | null
+          report_date: string
+          total_issues: number
+          warning_count: number
+        }
+        Insert: {
+          created_at?: string
+          critical_count?: number
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          info_count?: number
+          issues_data?: Json | null
+          report_date?: string
+          total_issues?: number
+          warning_count?: number
+        }
+        Update: {
+          created_at?: string
+          critical_count?: number
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          info_count?: number
+          issues_data?: Json | null
+          report_date?: string
+          total_issues?: number
+          warning_count?: number
+        }
+        Relationships: []
+      }
       credit_alerts: {
         Row: {
           alert_type: string

@@ -11,11 +11,10 @@ const corsHeaders = {
 
 interface HealthIssue {
   category: string;
-  severity: string;
+  severity: "critical" | "warning" | "info";
   title: string;
   description: string;
-  file_path?: string;
-  metadata?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -36,11 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const issues: HealthIssue[] = [];
 
-    // 1. Check for tables without RLS policies
-    console.log("[Code Health Audit] Checking RLS policies...");
-    const { data: tablesWithoutPolicies } = await supabase.rpc('get_tables_without_policies').maybeSingle();
-    
-    // 2. Check for unused integrations (connected but not synced in 30 days)
+    // 1. Check for stale integrations (connected but not synced in 30 days)
     console.log("[Code Health Audit] Checking stale integrations...");
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -54,18 +49,18 @@ const handler = async (req: Request): Promise<Response> => {
     if (staleIntegrations && staleIntegrations.length > 0) {
       issues.push({
         category: "database",
-        severity: "warn",
+        severity: "warning",
         title: `${staleIntegrations.length} אינטגרציות לא סונכרנו 30+ יום`,
         description: `אינטגרציות מחוברות שלא סונכרנו לאחרונה: ${staleIntegrations.map(i => i.platform).join(", ")}`,
-        metadata: { integrations: staleIntegrations }
+        details: { integrations: staleIntegrations }
       });
     }
 
-    // 3. Check for tasks without assigned client
+    // 2. Check for tasks without assigned client
     console.log("[Code Health Audit] Checking orphan tasks...");
-    const { data: orphanTasks, count: orphanTasksCount } = await supabase
+    const { count: orphanTasksCount } = await supabase
       .from("tasks")
-      .select("id", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .is("client_id", null);
 
     if (orphanTasksCount && orphanTasksCount > 10) {
@@ -74,40 +69,29 @@ const handler = async (req: Request): Promise<Response> => {
         severity: "info",
         title: `${orphanTasksCount} משימות ללא לקוח משויך`,
         description: "ישנן משימות רבות במערכת שאינן משויכות ללקוח ספציפי",
-        metadata: { count: orphanTasksCount }
+        details: { count: orphanTasksCount }
       });
     }
 
-    // 4. Check for clients without active credits
-    console.log("[Code Health Audit] Checking clients without credits...");
-    const { data: clientsWithoutCredits } = await supabase
-      .from("clients")
-      .select(`
-        id,
-        name,
-        client_credits!inner(is_active)
-      `)
-      .eq("client_credits.is_active", false);
-
-    // 5. Check for failed notifications
+    // 3. Check for failed notifications
     console.log("[Code Health Audit] Checking failed notifications...");
-    const { data: failedNotifications, count: failedCount } = await supabase
+    const { count: failedCount } = await supabase
       .from("notification_history")
-      .select("id", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .eq("status", "failed")
       .gte("created_at", thirtyDaysAgo.toISOString());
 
     if (failedCount && failedCount > 5) {
       issues.push({
         category: "performance",
-        severity: "warn",
+        severity: "warning",
         title: `${failedCount} הודעות נכשלו ב-30 יום האחרונים`,
         description: "מספר גבוה של הודעות דוא\"ל או SMS שנכשלו בשליחה",
-        metadata: { count: failedCount }
+        details: { count: failedCount }
       });
     }
 
-    // 6. Check service health
+    // 4. Check service health
     console.log("[Code Health Audit] Checking service health...");
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -122,45 +106,101 @@ const handler = async (req: Request): Promise<Response> => {
       const affectedServices = [...new Set(recentHealthIssues.map(h => h.service_name))];
       issues.push({
         category: "security",
-        severity: "error",
+        severity: "critical",
         title: `${affectedServices.length} שירותים לא זמינים`,
         description: `שירותים שדווחו כלא זמינים: ${affectedServices.join(", ")}`,
-        metadata: { services: affectedServices, issues: recentHealthIssues }
+        details: { services: affectedServices, issues: recentHealthIssues }
       });
     }
 
-    // 7. Security: Check for tokens that might need refresh
-    console.log("[Code Health Audit] Checking security status...");
-    const { data: oldDevices } = await supabase
+    // 5. Check for expired trusted devices that should be cleaned
+    console.log("[Code Health Audit] Checking expired trusted devices...");
+    const { count: expiredDevicesCount } = await supabase
       .from("trusted_devices")
-      .select("id", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .lt("trusted_until", new Date().toISOString());
 
-    // Save issues to database
-    console.log(`[Code Health Audit] Found ${issues.length} issues`);
-    
-    if (issues.length > 0) {
-      // Clear old open issues and insert new ones
-      await supabase
-        .from("code_health_issues")
-        .update({ status: "resolved", resolved_at: new Date().toISOString() })
-        .eq("status", "open");
-
-      const issuesToInsert = issues.map(issue => ({
-        ...issue,
-        status: "open"
-      }));
-
-      await supabase
-        .from("code_health_issues")
-        .insert(issuesToInsert);
+    if (expiredDevicesCount && expiredDevicesCount > 20) {
+      issues.push({
+        category: "security",
+        severity: "info",
+        title: `${expiredDevicesCount} מכשירים מהימנים פגי תוקף`,
+        description: "יש לנקות מכשירים מהימנים שפג תוקפם לשיפור ביצועים",
+        details: { count: expiredDevicesCount }
+      });
     }
 
-    // Send email if there are warnings or errors
-    const criticalIssues = issues.filter(i => i.severity === "error" || i.severity === "critical");
-    const warningIssues = issues.filter(i => i.severity === "warn");
+    // 6. Check for users without roles
+    console.log("[Code Health Audit] Checking users without roles...");
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id");
     
-    const shouldSendEmail = criticalIssues.length > 0 || warningIssues.length >= 3;
+    if (profiles) {
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("user_id");
+      
+      const usersWithRoles = new Set(userRoles?.map(ur => ur.user_id) || []);
+      const usersWithoutRoles = profiles.filter(p => !usersWithRoles.has(p.id));
+      
+      if (usersWithoutRoles.length > 0) {
+        issues.push({
+          category: "security",
+          severity: "warning",
+          title: `${usersWithoutRoles.length} משתמשים ללא תפקיד מוגדר`,
+          description: "משתמשים ללא תפקיד עלולים לגשת לנתונים ללא הרשאה מתאימה",
+          details: { count: usersWithoutRoles.length }
+        });
+      }
+    }
+
+    console.log(`[Code Health Audit] Found ${issues.length} issues`);
+    
+    // Insert new issues to database
+    if (issues.length > 0) {
+      const issuesToInsert = issues.map(issue => ({
+        category: issue.category,
+        severity: issue.severity,
+        title: issue.title,
+        description: issue.description,
+        details: issue.details || {},
+        detected_at: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await supabase
+        .from("code_health_issues")
+        .insert(issuesToInsert);
+
+      if (insertError) {
+        console.error("[Code Health Audit] Error inserting issues:", insertError);
+      }
+    }
+
+    // Count issues by severity
+    const criticalCount = issues.filter(i => i.severity === "critical").length;
+    const warningCount = issues.filter(i => i.severity === "warning").length;
+    const infoCount = issues.filter(i => i.severity === "info").length;
+
+    // Create report
+    const { error: reportError } = await supabase
+      .from("code_health_reports")
+      .insert({
+        report_date: new Date().toISOString().split('T')[0],
+        total_issues: issues.length,
+        critical_count: criticalCount,
+        warning_count: warningCount,
+        info_count: infoCount,
+        issues_data: issues,
+        email_sent: false
+      });
+
+    if (reportError) {
+      console.error("[Code Health Audit] Error creating report:", reportError);
+    }
+
+    // Send email if there are critical issues or multiple warnings
+    const shouldSendEmail = criticalCount > 0 || warningCount >= 3;
     const adminEmail = Deno.env.get("ADMIN_EMAIL") || "yossef@jiy.co.il";
 
     if (shouldSendEmail) {
@@ -171,10 +211,9 @@ const handler = async (req: Request): Promise<Response> => {
           <td style="padding: 12px;">
             <span style="background: ${
               issue.severity === "critical" ? "#dc2626" :
-              issue.severity === "error" ? "#ef4444" :
-              issue.severity === "warn" ? "#f59e0b" : "#3b82f6"
+              issue.severity === "warning" ? "#f59e0b" : "#3b82f6"
             }; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
-              ${issue.severity.toUpperCase()}
+              ${issue.severity === "critical" ? "קריטי" : issue.severity === "warning" ? "אזהרה" : "מידע"}
             </span>
           </td>
           <td style="padding: 12px;">${issue.category}</td>
@@ -186,7 +225,7 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "JIY System <onboarding@resend.dev>",
         to: [adminEmail],
-        subject: `[דוח בריאות מערכת] ${criticalIssues.length} קריטי, ${warningIssues.length} אזהרות`,
+        subject: `[דוח בריאות מערכת] ${criticalCount} קריטי, ${warningCount} אזהרות`,
         html: `
           <!DOCTYPE html>
           <html dir="rtl" lang="he">
@@ -200,29 +239,26 @@ const handler = async (req: Request): Promise<Response> => {
               .footer { background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 16px 16px; font-size: 12px; text-align: center; }
               table { width: 100%; border-collapse: collapse; margin-top: 20px; }
               th { background: #f8fafc; padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
-              .summary { display: flex; gap: 20px; margin-bottom: 20px; }
-              .summary-item { background: #f8fafc; padding: 20px; border-radius: 12px; flex: 1; text-align: center; }
-              .summary-number { font-size: 32px; font-weight: bold; }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1 style="margin: 0; font-size: 28px;">🔍 דוח בריאות מערכת</h1>
+                <h1 style="margin: 0; font-size: 28px;">🔍 דוח בריאות מערכת שבועי</h1>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">סריקה אוטומטית - ${new Date().toLocaleDateString('he-IL')}</p>
               </div>
               <div class="content">
-                <div class="summary">
-                  <div class="summary-item">
-                    <div class="summary-number" style="color: #ef4444;">${criticalIssues.length}</div>
-                    <div>קריטי/שגיאות</div>
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                  <div style="background: #fef2f2; padding: 20px; border-radius: 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 32px; font-weight: bold; color: #dc2626;">${criticalCount}</div>
+                    <div>קריטי</div>
                   </div>
-                  <div class="summary-item">
-                    <div class="summary-number" style="color: #f59e0b;">${warningIssues.length}</div>
+                  <div style="background: #fffbeb; padding: 20px; border-radius: 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 32px; font-weight: bold; color: #f59e0b;">${warningCount}</div>
                     <div>אזהרות</div>
                   </div>
-                  <div class="summary-item">
-                    <div class="summary-number" style="color: #3b82f6;">${issues.filter(i => i.severity === "info").length}</div>
+                  <div style="background: #eff6ff; padding: 20px; border-radius: 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 32px; font-weight: bold; color: #3b82f6;">${infoCount}</div>
                     <div>מידע</div>
                   </div>
                 </div>
@@ -243,12 +279,12 @@ const handler = async (req: Request): Promise<Response> => {
                 </table>
                 
                 <p style="margin-top: 30px; padding: 15px; background: #fef3c7; border-radius: 8px;">
-                  <strong>💡 המלצה:</strong> יש לטפל בבעיות הקריטיות בהקדם האפשרי כדי למנוע השפעה על פעילות המערכת.
+                  <strong>💡 המלצה:</strong> יש לטפל בבעיות הקריטיות בהקדם. ניתן לצפות ולנהל את כל הבעיות בדשבורד בריאות הקוד.
                 </p>
               </div>
               <div class="footer">
                 <p>הודעה זו נשלחה אוטומטית ממערכת JIY Dashboard</p>
-                <p>ניתן לצפות בכל הבעיות בלוח הבקרה</p>
+                <p>📍 <a href="https://ovkuabbfubtiwnlksmxd.supabase.co/code-health" style="color: #8b5cf6;">צפה בדשבורד בריאות הקוד</a></p>
               </div>
             </div>
           </body>
@@ -256,19 +292,16 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       });
 
-      // Record the report
+      // Update report that email was sent
       await supabase
         .from("code_health_reports")
-        .insert({
-          report_type: "audit",
-          issues_count: issues.length,
-          issues_summary: {
-            critical: criticalIssues.length,
-            warnings: warningIssues.length,
-            info: issues.filter(i => i.severity === "info").length
-          },
-          sent_to: adminEmail
-        });
+        .update({ 
+          email_sent: true, 
+          email_sent_at: new Date().toISOString() 
+        })
+        .eq("report_date", new Date().toISOString().split('T')[0])
+        .order("created_at", { ascending: false })
+        .limit(1);
 
       console.log("[Code Health Audit] Email sent successfully");
     }
@@ -277,6 +310,9 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({
         success: true,
         issues_found: issues.length,
+        critical: criticalCount,
+        warnings: warningCount,
+        info: infoCount,
         email_sent: shouldSendEmail,
         issues
       }),
@@ -285,10 +321,11 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
-  } catch (error: any) {
-    console.error("[Code Health Audit] Error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Code Health Audit] Error:", errorMessage);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
