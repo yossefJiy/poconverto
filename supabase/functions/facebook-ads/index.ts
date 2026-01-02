@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 import { healthCheckResponse, checkEnvVars, createLogger } from "../_shared/utils.ts";
 import { SERVICE_VERSIONS, REQUIRED_ENV_VARS } from "../_shared/constants.ts";
+import { validateDateRange, validationErrorResponse } from "../_shared/validation.ts";
 
 const log = createLogger('Facebook Ads');
 
@@ -295,6 +296,13 @@ serve(async (req) => {
     
     const requestStartDate = startDate || thirtyDaysAgo.toISOString().split('T')[0];
     const requestEndDate = endDate || today.toISOString().split('T')[0];
+
+    // Validate date range
+    const dateValidation = validateDateRange(requestStartDate, requestEndDate);
+    if (!dateValidation.valid) {
+      log.error('Date validation failed:', dateValidation.error);
+      return validationErrorResponse(dateValidation.error || 'Invalid date range', corsHeaders);
+    }
 
     // Fetch data based on action
     if (action === 'campaigns') {
