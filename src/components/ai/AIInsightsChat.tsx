@@ -26,11 +26,14 @@ import {
   Zap,
   Users,
   ShoppingCart,
+  ListTodo,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +42,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -152,6 +170,13 @@ export function AIInsightsChat({ performanceData = [], campaignsData = [], insig
   const [selectedModel, setSelectedModel] = useState<string>("auto");
   const [availableModels, setAvailableModels] = useState<Record<string, AIModel>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Task creation state
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [taskContent, setTaskContent] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskPriority, setTaskPriority] = useState<string>("medium");
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   // Fetch available models
   useEffect(() => {
@@ -470,6 +495,50 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
     setShowHistory(false);
   };
 
+  // Open task dialog with AI content
+  const openTaskDialog = (content: string) => {
+    // Extract first line as title, rest as description
+    const lines = content.trim().split('\n');
+    const firstLine = lines[0].replace(/^[#*\-\d.]+\s*/, '').trim();
+    const title = firstLine.slice(0, 100) + (firstLine.length > 100 ? '...' : '');
+    
+    setTaskTitle(title);
+    setTaskContent(content);
+    setTaskPriority("medium");
+    setShowTaskDialog(true);
+  };
+
+  // Create task from AI insight
+  const createTaskFromInsight = async () => {
+    if (!selectedClient || !taskTitle.trim()) {
+      toast.error("נא למלא כותרת ולבחור לקוח");
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      const { error } = await supabase.from("tasks").insert({
+        title: taskTitle,
+        description: taskContent,
+        priority: taskPriority,
+        status: "pending",
+        client_id: selectedClient.id,
+        category: "ai-recommendation",
+      });
+
+      if (error) throw error;
+
+      toast.success("המשימה נוצרה בהצלחה!");
+      setShowTaskDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("שגיאה ביצירת המשימה");
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
   if (!isOpen) {
     return (
       <button
@@ -720,6 +789,18 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
                       </div>
                     )}
                   </div>
+                  {/* Create Task Button for AI messages */}
+                  {message.role === "assistant" && message.content && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openTaskDialog(message.content)}
+                      className="mt-1 h-7 text-xs gap-1 text-muted-foreground hover:text-primary"
+                    >
+                      <ListTodo className="w-3 h-3" />
+                      צור משימה
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -753,6 +834,74 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
           </Button>
         </form>
       </div>
+
+      {/* Create Task Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
+              צור משימה מתובנת AI
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>כותרת המשימה</Label>
+              <Input
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="כותרת המשימה..."
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>תיאור</Label>
+              <Textarea
+                value={taskContent}
+                onChange={(e) => setTaskContent(e.target.value)}
+                rows={4}
+                className="text-sm"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>עדיפות</Label>
+              <Select value={taskPriority} onValueChange={setTaskPriority}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">נמוכה</SelectItem>
+                  <SelectItem value="medium">בינונית</SelectItem>
+                  <SelectItem value="high">גבוהה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!selectedClient && (
+              <p className="text-sm text-destructive">יש לבחור לקוח כדי ליצור משימה</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
+              ביטול
+            </Button>
+            <Button 
+              onClick={createTaskFromInsight} 
+              disabled={isCreatingTask || !selectedClient || !taskTitle.trim()}
+            >
+              {isCreatingTask ? (
+                <Loader2 className="w-4 h-4 animate-spin ml-2" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 ml-2" />
+              )}
+              צור משימה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
