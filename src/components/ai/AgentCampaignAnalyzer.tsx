@@ -141,7 +141,7 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
 
       const generatedProposals = data.parsed?.proposals || generateLocalProposals(campaigns);
       setProposals(generatedProposals);
-      
+
       // Auto-create pending actions for high impact proposals
       for (const proposal of generatedProposals.filter((p: ActionProposal) => p.impact === "high")) {
         await createActionMutation.mutateAsync(proposal);
@@ -149,6 +149,12 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
 
     } catch (err) {
       console.error("Analysis error:", err);
+      const status = (err as any)?.context?.status;
+      if (status === 429) {
+        toast.error('יותר מדי בקשות ל-AI — מציג ניתוח מקומי זמני');
+      } else if (status === 402) {
+        toast.error('נגמרו הקרדיטים של ה-AI — מציג ניתוח מקומי זמני');
+      }
       // Fallback to local analysis
       const localProposals = generateLocalProposals(campaigns);
       setProposals(localProposals);
