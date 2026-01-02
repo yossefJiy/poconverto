@@ -2,6 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useClientModules } from "@/hooks/useClientModules";
+import { useCodeHealth } from "@/hooks/useCodeHealth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -17,7 +18,8 @@ import {
   Circle,
   Calendar,
   Clock,
-  Building2
+  Building2,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -31,10 +33,13 @@ import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
 import { DraggableTimelineWidget } from "@/components/dashboard/DraggableTimelineWidget";
 import { JiyPremiumCard } from "@/components/dashboard/JiyPremiumCard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
   const { isModuleEnabled } = useClientModules();
+  const { stats: codeHealthStats } = useCodeHealth();
 
   // Get current user's team member name
   const { data: currentTeamMember } = useQuery({
@@ -235,6 +240,25 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
+            {/* Critical Code Issues Alert */}
+            {codeHealthStats && codeHealthStats.criticalCount > 0 && (
+              <Alert variant="destructive" className="mb-6 animate-fade-in">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>בעיות קוד קריטיות</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>
+                    יש {codeHealthStats.criticalCount} בעיות קריטיות פתוחות שדורשות טיפול מיידי
+                  </span>
+                  <Link 
+                    to="/code-health" 
+                    className="text-destructive-foreground underline hover:no-underline font-medium"
+                  >
+                    צפה בבעיות
+                  </Link>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Greeting with elegant quote */}
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-2">
