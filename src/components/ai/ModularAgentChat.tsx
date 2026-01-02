@@ -25,6 +25,8 @@ import {
   CheckCircle2,
   History,
   Trash2,
+  Brain,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +244,11 @@ export function ModularAgentChat({
   const [taskPriority, setTaskPriority] = useState<string>("medium");
   const [isCreatingTask, setIsCreatingTask] = useState(false);
 
+  // Insights summary state
+  const [showInsightsSummary, setShowInsightsSummary] = useState(false);
+  const [insightsSummary, setInsightsSummary] = useState<string>("");
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
   const config = moduleAgentConfig[moduleType] || moduleAgentConfig.insights;
   const ModuleIcon = config.icon;
 
@@ -338,6 +345,113 @@ export function ModularAgentChat({
     setMessages([]);
     setCurrentConversationId(null);
     setShowHistory(false);
+  };
+
+  // Generate insights summary from all conversations
+  const generateInsightsSummary = async () => {
+    if (conversations.length === 0) {
+      toast.error("אין שיחות קודמות לסיכום");
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    setShowInsightsSummary(true);
+    setInsightsSummary("");
+
+    try {
+      // Fetch all messages from all conversations
+      const allMessages: string[] = [];
+      for (const conv of conversations.slice(0, 10)) { // Limit to last 10 conversations
+        const { data } = await supabase
+          .from("chat_messages")
+          .select("role, content")
+          .eq("conversation_id", conv.id)
+          .order("created_at", { ascending: true });
+        
+        if (data) {
+          allMessages.push(`--- שיחה: ${conv.title || "ללא כותרת"} ---`);
+          data.forEach(m => {
+            allMessages.push(`${m.role === "user" ? "משתמש" : "סוכן"}: ${m.content}`);
+          });
+        }
+      }
+
+      const summaryPrompt = `בהתבסס על כל השיחות הבאות עם הלקוח, סכם את התובנות המצטברות שלמדת:
+
+${allMessages.join("\n").slice(0, 10000)}
+
+צור סיכום תמציתי בפורמט הבא:
+📊 **תובנות מפתח** - מה למדת על הלקוח
+🎯 **דפוסים שזוהו** - התנהגויות או צרכים חוזרים
+💡 **המלצות** - פעולות מומלצות בהתבסס על מה שלמדת
+⚡ **נקודות לתשומת לב** - דברים חשובים לזכור`;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/insights-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: [],
+            userMessage: summaryPrompt,
+            context: `${config.systemPrompt}\n\nאתה מסכם את כל התובנות שצברת מהשיחות עם הלקוח. היה תמציתי וממוקד.`,
+            clientId: selectedClient?.id,
+            userId: user?.id,
+          }),
+        }
+      );
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to get summary");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let summaryContent = "";
+      let textBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              summaryContent += content;
+              setInsightsSummary(summaryContent);
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error("Summary error:", error);
+      toast.error("שגיאה ביצירת הסיכום");
+      setShowInsightsSummary(false);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
   };
 
   // Open task dialog
@@ -536,6 +650,16 @@ export function ModularAgentChat({
               variant="ghost" 
               size="icon" 
               className="h-8 w-8" 
+              onClick={generateInsightsSummary}
+              title="תובנות מצטברות"
+              disabled={isGeneratingSummary}
+            >
+              {isGeneratingSummary ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
               onClick={() => setShowHistory(!showHistory)}
               title="היסטוריה"
             >
@@ -561,8 +685,50 @@ export function ModularAgentChat({
           </div>
         </div>
 
+        {/* Insights Summary Panel */}
+        {showInsightsSummary && (
+          <div className="border-b border-border bg-gradient-to-br from-primary/5 to-primary/10 p-4 max-h-64 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">תובנות מצטברות</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={generateInsightsSummary}
+                  disabled={isGeneratingSummary}
+                  title="רענן סיכום"
+                >
+                  <RefreshCw className={cn("w-3 h-3", isGeneratingSummary && "animate-spin")} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowInsightsSummary(false)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+            {isGeneratingSummary && !insightsSummary ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">מנתח את כל השיחות...</span>
+              </div>
+            ) : (
+              <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                {insightsSummary || "אין תובנות עדיין"}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* History Panel */}
-        {showHistory && (
+        {showHistory && !showInsightsSummary && (
           <div className="border-b border-border bg-muted/50 p-3 max-h-40 overflow-y-auto">
             <p className="text-xs text-muted-foreground mb-2">שיחות קודמות</p>
             {conversations.length === 0 ? (
