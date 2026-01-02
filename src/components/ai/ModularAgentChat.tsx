@@ -942,10 +942,10 @@ ${allMessages.join("\n").slice(0, 10000)}
       <div 
         dir="rtl"
         className={cn(
-          "fixed z-50 bg-card border border-border rounded-xl shadow-elevated flex flex-col overflow-hidden transition-all duration-300",
+          "bg-card border border-border rounded-xl shadow-elevated flex flex-col overflow-hidden transition-all duration-300",
           isExpanded 
-            ? "inset-4 md:inset-8" 
-            : "bottom-4 right-4 w-96 h-[500px] max-h-[80vh]"
+            ? "fixed inset-4 md:inset-8 z-50" 
+            : "w-96 h-[500px] max-h-[80vh]"
         )}
       >
         {/* Header */}

@@ -10,9 +10,9 @@ import {
   Save,
   Loader2,
   Shield,
-  Sparkles,
   Coins,
-  Mail
+  Mail,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { AuthorizedUsersManager } from "@/components/admin/AuthorizedUsersManager";
-import { FutureFeatures } from "@/components/FutureFeatures";
-import { FeatureRequestsManager } from "@/components/features/FeatureRequestsManager";
 import { EmailTestingSection } from "@/components/admin/EmailTestingSection";
 
 const settingsSections = [
@@ -31,7 +29,7 @@ const settingsSections = [
   { id: "users", icon: Shield, title: "משתמשים", description: "ניהול משתמשים מורשים", adminOnly: true },
   { id: "email-testing", icon: Mail, title: "בדיקת מיילים", description: "בדיקת שליחת מיילים", adminOnly: true },
   { id: "credits", icon: Coins, title: "קרדיטים", description: "ניהול קרדיטים לקוחות", adminOnly: true },
-  { id: "features", icon: Sparkles, title: "פיצ'רים עתידיים", description: "רשימת פיצ'רים לפיתוח", adminOnly: true },
+  { id: "alerts", icon: AlertTriangle, title: "התראות AI", description: "צפייה בהתראות סוכנים", adminOnly: true },
 ];
 
 export default function Settings() {
@@ -185,10 +183,17 @@ export default function Settings() {
               </div>
             )}
 
-            {activeSection === "features" && isAdmin && (
-              <div className="space-y-6">
-                <FeatureRequestsManager />
-                <FutureFeatures />
+            {activeSection === "alerts" && isAdmin && (
+              <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up p-6" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold">התראות AI</h2>
+                  <Link to="/agent-alerts">
+                    <Button>מעבר לעמוד התראות</Button>
+                  </Link>
+                </div>
+                <p className="text-muted-foreground">
+                  צפה בכל ההתראות שהסוכנים זיהו, כולל חריגות ותובנות חשובות.
+                </p>
               </div>
             )}
           </div>

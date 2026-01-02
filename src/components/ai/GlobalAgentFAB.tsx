@@ -109,15 +109,17 @@ export function GlobalAgentFAB() {
         </Button>
       </div>
 
-      {/* Chat Panel */}
+      {/* Chat Panel - positioned to the right of the FAB */}
       {selectedModule && (
-        <ModularAgentChat
-          moduleType={selectedModule as keyof typeof moduleAgentConfig}
-          isOpen={true}
-          onClose={handleCloseChat}
-          isExpanded={isChatExpanded}
-          onToggleExpand={() => setIsChatExpanded(!isChatExpanded)}
-        />
+        <div className="fixed bottom-6 left-24 z-40">
+          <ModularAgentChat
+            moduleType={selectedModule as keyof typeof moduleAgentConfig}
+            isOpen={true}
+            onClose={handleCloseChat}
+            isExpanded={isChatExpanded}
+            onToggleExpand={() => setIsChatExpanded(!isChatExpanded)}
+          />
+        </div>
       )}
 
       {/* Backdrop when menu is open */}
