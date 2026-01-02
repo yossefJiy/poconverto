@@ -57,8 +57,8 @@ const menuItems: MenuItem[] = [
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
-  { icon: Bot, label: "AI Agents", path: "/ai-agents" },
-  { icon: TrendingUp, label: "תובנות", path: "/insights" },
+  { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
+  { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
 ];
 
 const settingsItems = [
