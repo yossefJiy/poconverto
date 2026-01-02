@@ -46,6 +46,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { AIInsightsChat } from "@/components/ai/AIInsightsChat";
 
 type TimeRange = "7d" | "30d" | "90d" | "12m";
 
@@ -457,6 +458,13 @@ export default function ClientInsights() {
             )}
           </>
         )}
+
+        {/* AI Insights Chat Agent */}
+        <AIInsightsChat 
+          performanceData={chartData}
+          campaignsData={[]}
+          insightsData={insights}
+        />
       </div>
     </MainLayout>
   );
