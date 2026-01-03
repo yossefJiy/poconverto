@@ -25,6 +25,8 @@ interface IntegrationRequest {
     advertiser_id?: string;
     consumer_key?: string;
     consumer_secret?: string;
+    facebook_page_id?: string;
+    instagram_account_id?: string;
   };
   notify_email?: string;
 }
@@ -232,7 +234,7 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
     // Test the connection by fetching account info
     try {
       const accountId = `act_${cleanAccountId}`;
-      const url = `https://graph.facebook.com/v18.0/${accountId}?fields=id,name,account_status,currency&access_token=${credentials.access_token}`;
+      const url = `https://graph.facebook.com/v18.0/${accountId}?fields=id,name,account_status,currency,business_name,timezone_name,amount_spent&access_token=${credentials.access_token}`;
       
       console.log('[Facebook Ads] Testing API with account:', accountId);
       
@@ -258,17 +260,73 @@ const platformHandlers: Record<string, (credentials: any) => Promise<{ success: 
       
       console.log('[Facebook Ads] Connection successful:', data.name);
       
+      // Build the result with all connected assets
+      const resultData: any = {
+        ad_account_id: accountId,
+        account_name: data.name,
+        business_name: data.business_name || null,
+        currency: data.currency,
+        timezone: data.timezone_name,
+        account_status: data.account_status,
+        amount_spent: data.amount_spent,
+        connected_at: new Date().toISOString(),
+        features: ['campaigns', 'ad_sets', 'ads', 'insights', 'audiences']
+      };
+      
+      // Validate Facebook Page if provided
+      if (credentials.facebook_page_id) {
+        const pageUrl = `https://graph.facebook.com/v18.0/${credentials.facebook_page_id}?fields=id,name,category,followers_count,fan_count&access_token=${credentials.access_token}`;
+        const pageResponse = await fetch(pageUrl);
+        const pageData = await pageResponse.json();
+        
+        if (!pageData.error) {
+          resultData.facebook_page = {
+            id: pageData.id,
+            name: pageData.name,
+            category: pageData.category,
+            followers: pageData.followers_count || pageData.fan_count,
+          };
+          resultData.features.push('facebook_page');
+          console.log('[Facebook Ads] Facebook page connected:', pageData.name);
+        } else {
+          console.log('[Facebook Ads] Facebook page not accessible:', pageData.error.message);
+        }
+      }
+      
+      // Validate Instagram account if provided
+      if (credentials.instagram_account_id) {
+        const igUrl = `https://graph.facebook.com/v18.0/${credentials.instagram_account_id}?fields=id,username,name,followers_count,media_count&access_token=${credentials.access_token}`;
+        const igResponse = await fetch(igUrl);
+        const igData = await igResponse.json();
+        
+        if (!igData.error) {
+          resultData.instagram_account = {
+            id: igData.id,
+            username: igData.username,
+            name: igData.name,
+            followers: igData.followers_count,
+            media_count: igData.media_count,
+          };
+          resultData.features.push('instagram');
+          console.log('[Facebook Ads] Instagram connected:', igData.username);
+        } else {
+          console.log('[Facebook Ads] Instagram not accessible:', igData.error.message);
+        }
+      }
+      
+      // Build success message
+      let successMessage = `החיבור ל-Facebook Ads הצליח! חשבון: ${data.name}`;
+      if (resultData.facebook_page) {
+        successMessage += ` | עמוד: ${resultData.facebook_page.name}`;
+      }
+      if (resultData.instagram_account) {
+        successMessage += ` | אינסטגרם: @${resultData.instagram_account.username}`;
+      }
+      
       return { 
         success: true, 
-        message: `החיבור ל-Facebook Ads הצליח! חשבון: ${data.name}`,
-        data: {
-          ad_account_id: accountId,
-          account_name: data.name,
-          currency: data.currency,
-          account_status: data.account_status,
-          connected_at: new Date().toISOString(),
-          features: ['campaigns', 'ad_sets', 'ads', 'insights']
-        }
+        message: successMessage,
+        data: resultData
       };
     } catch (error) {
       console.error('[Facebook Ads] Connection error:', error);
@@ -665,7 +723,7 @@ serve(async (req) => {
         }
 
         // Store only non-sensitive metadata in settings
-        const safeSettings = {
+        const safeSettings: Record<string, any> = {
           store_url: credentials.store_url,
           property_id: credentials.property_id,
           customer_id: credentials.customer_id,
@@ -674,6 +732,19 @@ serve(async (req) => {
           connection_data: result.data,
           connected_at: new Date().toISOString(),
         };
+        
+        // Add Facebook-specific page and Instagram data
+        if (platform === 'facebook_ads') {
+          safeSettings.facebook_page_id = credentials.facebook_page_id || null;
+          safeSettings.instagram_account_id = credentials.instagram_account_id || null;
+          // Store the connected assets info from result
+          if (result.data?.facebook_page) {
+            safeSettings.facebook_page = result.data.facebook_page;
+          }
+          if (result.data?.instagram_account) {
+            safeSettings.instagram_account = result.data.instagram_account;
+          }
+        }
 
         if (clientExistingIntegration) {
           // Update existing integration
