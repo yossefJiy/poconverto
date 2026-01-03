@@ -648,7 +648,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
 
   // Mutation for connecting multiple Facebook assets
   const connectAssetsMutation = useMutation({
-    mutationFn: async ({ assets, accessToken }: { assets: any; accessToken: string }) => {
+    mutationFn: async ({ assets, accessToken, assetsData }: { assets: any; accessToken: string; assetsData?: any }) => {
       if (!selectedClient) throw new Error("Missing client");
       
       const { data, error } = await supabase.functions.invoke('connect-integration', {
@@ -658,17 +658,23 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           client_id: selectedClient.id,
           credentials: { access_token: accessToken },
           selected_assets: assets,
+          assets_data: assetsData,
         }
       });
       
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        // Invalidate and refetch integrations
+        await queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        await queryClient.refetchQueries({ queryKey: ["integrations", selectedClient?.id] });
         toast.success(data.message);
-        resetDialog();
+        // Small delay to ensure UI updates before closing
+        setTimeout(() => {
+          resetDialog();
+        }, 300);
       } else {
         toast.error(data.message);
       }
@@ -678,8 +684,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     },
   });
 
-  const handleFacebookAssetsSelected = (assets: any, accessToken: string) => {
-    connectAssetsMutation.mutate({ assets, accessToken });
+  const handleFacebookAssetsSelected = (assets: any, accessToken: string, assetsData?: any) => {
+    connectAssetsMutation.mutate({ assets, accessToken, assetsData });
   };
 
   if (!selectedClient) {
@@ -755,18 +761,43 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                                   
                                   {/* Facebook-specific info */}
                                   {platformId === 'facebook_ads' && (
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      {settings?.selected_pages?.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                      {(settings?.pages?.length > 0 || settings?.selected_pages?.length > 0) && (
                                         <span className="flex items-center gap-1">
                                           <FileText className="w-3 h-3" />
-                                          {settings.selected_pages.length} עמודים
+                                          {settings.pages?.length || settings.selected_pages?.length} עמודים
                                         </span>
                                       )}
-                                      {settings?.selected_instagram?.length > 0 && (
+                                      {(settings?.instagram_accounts?.length > 0 || settings?.selected_instagram?.length > 0) && (
                                         <span className="flex items-center gap-1">
                                           <Instagram className="w-3 h-3" />
-                                          {settings.selected_instagram.length} אינסטגרם
+                                          {settings.instagram_accounts?.length || settings.selected_instagram?.length} אינסטגרם
                                         </span>
+                                      )}
+                                      {(settings?.pixels?.length > 0 || settings?.selected_pixels?.length > 0) && (
+                                        <span className="flex items-center gap-1">
+                                          🎯 {settings.pixels?.length || settings.selected_pixels?.length} פיקסלים
+                                        </span>
+                                      )}
+                                      {(settings?.catalogs?.length > 0 || settings?.selected_catalogs?.length > 0) && (
+                                        <span className="flex items-center gap-1">
+                                          📦 {settings.catalogs?.length || settings.selected_catalogs?.length} קטלוגים
+                                        </span>
+                                      )}
+                                      {settings?.token_expires_at && (
+                                        (() => {
+                                          const expiryDate = new Date(settings.token_expires_at);
+                                          const now = new Date();
+                                          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                          if (daysUntilExpiry <= 7) {
+                                            return (
+                                              <Badge variant={daysUntilExpiry <= 3 ? "destructive" : "outline"} className="text-[10px]">
+                                                ⚠️ טוקן פג בעוד {daysUntilExpiry} ימים
+                                              </Badge>
+                                            );
+                                          }
+                                          return null;
+                                        })()
                                       )}
                                       {facebookPage && (
                                         <span className="flex items-center gap-1">
