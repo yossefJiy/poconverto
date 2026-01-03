@@ -604,7 +604,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action, platform, client_id, integration_id, credentials, notify_email } = await req.json() as IntegrationRequest;
+    const requestBody = await req.json() as IntegrationRequest;
+    const { action, platform, client_id, integration_id, credentials, notify_email, selected_assets } = requestBody;
 
     console.log(`Integration action: ${action} for platform: ${platform}`);
 
@@ -810,18 +811,19 @@ serve(async (req) => {
 
     // Handle connecting multiple Facebook assets at once
     if (action === 'connect_assets' && platform === 'facebook_ads') {
-      const { selected_assets, credentials: assetCredentials } = await req.json() as IntegrationRequest;
-      
-      if (!selected_assets || !assetCredentials?.access_token) {
+      if (!selected_assets || !credentials?.access_token) {
         return new Response(
           JSON.stringify({ success: false, message: 'חסרים נכסים או Access Token' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      const accessToken = assetCredentials.access_token;
+      const accessToken = credentials.access_token;
       const connectedAssets: any[] = [];
       const errors: string[] = [];
+      
+      console.log(`[Connect Assets] Connecting ${selected_assets.adAccounts.length} ad accounts for client ${client_id}`);
+      console.log(`[Connect Assets] Selected pages: ${selected_assets.pages.length}, Instagram: ${selected_assets.instagramAccounts.length}`);
       
       // Connect each selected ad account as a separate integration
       for (const adAccountId of selected_assets.adAccounts) {
