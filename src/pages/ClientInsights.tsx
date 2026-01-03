@@ -177,14 +177,14 @@ export default function ClientInsights() {
     agent_insights: { icon: Lightbulb, label: "תובנות", color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
   };
 
-  // Process chart data from snapshots
+  // Process chart data from snapshots - prioritize real data
   const chartData = useMemo(() => {
     if (!snapshots.length) {
-      // Generate demo data if no real data
-      return generateDemoData(timeRange);
+      // No real data - show empty state instead of demo data
+      return [];
     }
 
-    // Group by date and aggregate metrics
+    // Group by date and aggregate metrics from all platforms
     const grouped = snapshots.reduce((acc: any, snapshot) => {
       const date = snapshot.snapshot_date;
       if (!acc[date]) {
@@ -194,14 +194,27 @@ export default function ClientInsights() {
           clicks: 0,
           conversions: 0,
           spend: 0,
+          revenue: 0,
+          orders: 0,
+          sessions: 0,
         };
       }
       
       const metrics = snapshot.metrics as any;
-      acc[date].impressions += metrics?.impressions || 0;
-      acc[date].clicks += metrics?.clicks || 0;
-      acc[date].conversions += metrics?.conversions || 0;
-      acc[date].spend += metrics?.spend || 0;
+      const data = snapshot.data as any;
+      
+      // Aggregate based on platform
+      if (snapshot.platform === 'google_ads' || snapshot.platform === 'facebook_ads') {
+        acc[date].impressions += metrics?.total_impressions || metrics?.impressions || 0;
+        acc[date].clicks += metrics?.total_clicks || metrics?.clicks || 0;
+        acc[date].conversions += metrics?.total_conversions || metrics?.conversions || 0;
+        acc[date].spend += metrics?.total_spent || metrics?.spend || 0;
+      } else if (snapshot.platform === 'shopify' || snapshot.platform === 'woocommerce') {
+        acc[date].revenue += data?.total_revenue || metrics?.total_revenue || 0;
+        acc[date].orders += data?.orders_count || metrics?.orders_count || data?.orders || 0;
+      } else if (snapshot.platform === 'google_analytics') {
+        acc[date].sessions += metrics?.sessions || 0;
+      }
       
       return acc;
     }, {});
@@ -211,8 +224,8 @@ export default function ClientInsights() {
       ctr: item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0,
       cpc: item.clicks > 0 ? item.spend / item.clicks : 0,
       label: format(new Date(item.date), "dd/MM", { locale: he }),
-    }));
-  }, [snapshots, timeRange]);
+    })).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [snapshots]);
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {

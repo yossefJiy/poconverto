@@ -374,26 +374,39 @@ export default function Campaigns() {
       });
     }
 
-    // Filter by recent activity (created or spent in last month)
+    // Filter by recent activity - show campaigns from last month (created, started, or any activity)
     if (showRecentOnly) {
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       
       filtered = filtered.filter(c => {
-        // Has spent budget = active in period
+        // Any of these conditions means "recent":
+        // 1. Has any spend (was active at some point)
         if (c.spent && c.spent > 0) return true;
         
-        // Created in last month
+        // 2. Has any impressions (campaign ran)
+        if (c.impressions && c.impressions > 0) return true;
+        
+        // 3. Created in last month
         if (c.created_at) {
           const createdDate = new Date(c.created_at);
           if (createdDate >= oneMonthAgo) return true;
         }
         
-        // Started in last month
+        // 4. Started in last month or will start soon
         if (c.start_date) {
           const startDate = new Date(c.start_date);
-          if (startDate >= oneMonthAgo) return true;
+          // Include if started in last month OR scheduled to start in next 2 weeks
+          const twoWeeksFromNow = new Date();
+          twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+          if (startDate >= oneMonthAgo || startDate <= twoWeeksFromNow) return true;
         }
+        
+        // 5. For external campaigns without dates - show if has any data
+        if (c.source !== 'internal' && (c.clicks || c.conversions)) return true;
+        
+        // 6. Draft or new internal campaigns (no data yet)
+        if (c.source === 'internal' && c.status === 'draft') return true;
         
         return false;
       });
