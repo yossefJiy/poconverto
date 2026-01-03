@@ -9,11 +9,23 @@ import {
   Database,
   Webhook,
   Bot,
-  ExternalLink
+  ExternalLink,
+  Server,
+  Shield,
+  Globe,
+  RefreshCw,
+  Lock,
+  Unlock,
+  Activity,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_BASE = `https://ovkuabbfubtiwnlksmxd.supabase.co/functions/v1`;
 
@@ -61,8 +73,39 @@ const mcpActions = [
   { action: "help", description: "רשימת כל הפעולות הזמינות" },
 ];
 
+interface GatewayRoute {
+  path: string;
+  methods: string[];
+  description: string;
+  requireAuth: boolean;
+}
+
+interface GatewayStatus {
+  status: string;
+  version: string;
+  routes: GatewayRoute[];
+}
+
+const methodColors: Record<string, string> = {
+  GET: "bg-green-500/20 text-green-600 dark:text-green-400",
+  POST: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
+  PUT: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400",
+  DELETE: "bg-red-500/20 text-red-600 dark:text-red-400",
+};
+
 export default function ApiDocs() {
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Fetch gateway status
+  const { data: gatewayData, isLoading: gatewayLoading, refetch: refetchGateway } = useQuery<GatewayStatus>({
+    queryKey: ["api-gateway-status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("api-gateway", { body: {} });
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -76,11 +119,15 @@ export default function ApiDocs() {
       <div className="p-8 max-w-5xl">
         <PageHeader 
           title="API ותיעוד"
-          description="חיבור מערכות חיצוניות, webhooks ו-MCP"
+          description="חיבור מערכות חיצוניות, API Gateway, Webhooks ו-MCP"
         />
 
-        <Tabs defaultValue="api" className="mt-6">
-          <TabsList className="grid grid-cols-3 w-fit">
+        <Tabs defaultValue="gateway" className="mt-6">
+          <TabsList className="grid grid-cols-4 w-fit">
+            <TabsTrigger value="gateway" className="gap-2">
+              <Server className="w-4 h-4" />
+              API Gateway
+            </TabsTrigger>
             <TabsTrigger value="api" className="gap-2">
               <Database className="w-4 h-4" />
               Data API
@@ -94,6 +141,126 @@ export default function ApiDocs() {
               MCP Server
             </TabsTrigger>
           </TabsList>
+
+          {/* API Gateway Tab */}
+          <TabsContent value="gateway" className="mt-6 space-y-6">
+            <div className="glass rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Server className="w-5 h-5 text-primary" />
+                  API Gateway
+                </h2>
+                <Button variant="outline" size="sm" onClick={() => refetchGateway()}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  רענן
+                </Button>
+              </div>
+              <p className="text-muted-foreground mb-4">
+                נקודת כניסה אחידה לכל שירותי הפלטפורמה עם אימות, Rate Limiting והפניה אוטומטית.
+              </p>
+
+              {/* Status Cards */}
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded">
+                        <Activity className="h-4 w-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">סטטוס</p>
+                        <p className="font-semibold text-sm text-green-500">
+                          {gatewayData?.status === "healthy" ? "פעיל" : "בודק..."}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded">
+                        <Globe className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">נקודות קצה</p>
+                        <p className="font-semibold text-sm">{gatewayData?.routes?.length || 0}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded">
+                        <Shield className="h-4 w-4 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">גרסה</p>
+                        <p className="font-semibold text-sm">{gatewayData?.version || "1.0.0"}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded">
+                        <Clock className="h-4 w-4 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Rate Limit</p>
+                        <p className="font-semibold text-sm text-green-500">פעיל</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Base URL */}
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg flex items-center justify-between">
+                <code className="text-sm font-mono" dir="ltr">
+                  {API_BASE}/api-gateway
+                </code>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => copyToClipboard(`${API_BASE}/api-gateway`, "gateway-base")}
+                >
+                  {copied === "gateway-base" ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+
+              {/* Routes */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {gatewayData?.routes?.map((route, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg text-sm">
+                    <div className="flex gap-1">
+                      {route.methods.map((method) => (
+                        <Badge key={method} className={`${methodColors[method]} text-xs px-1.5`}>
+                          {method}
+                        </Badge>
+                      ))}
+                    </div>
+                    <code className="font-mono text-primary flex-1">{route.path}</code>
+                    {route.requireAuth ? (
+                      <span title="דורש אימות"><Lock className="h-3 w-3 text-yellow-500" /></span>
+                    ) : (
+                      <span title="ציבורי"><Unlock className="h-3 w-3 text-green-500" /></span>
+                    )}
+                    <span className="text-muted-foreground text-xs">{route.description}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <Button variant="outline" onClick={() => window.open(`${API_BASE}/api-gateway/docs`, "_blank")}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  OpenAPI Spec
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
 
           <TabsContent value="api" className="mt-6 space-y-6">
             <div className="glass rounded-xl p-6">
