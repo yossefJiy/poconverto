@@ -314,7 +314,7 @@ export default function Campaigns() {
           platform: 'facebook_ads',
           status: c.status === 'ACTIVE' ? 'ENABLED' : c.status,
           budget: c.budget,
-          spent: c.spend,
+          spent: c.cost,
           impressions: c.impressions,
           clicks: c.clicks,
           conversions: c.conversions,
