@@ -22,59 +22,86 @@ interface FacebookAdsRequest {
   clientId: string;
 }
 
-// Helper function to get access token from client's encrypted credentials
-async function getClientAccessToken(clientId: string): Promise<{ accessToken: string; adAccountId: string }> {
+interface IntegrationAccount {
+  accessToken: string;
+  adAccountId: string;
+  accountName: string;
+  integrationId: string;
+}
+
+// Helper function to get ALL access tokens from client's encrypted credentials
+async function getAllClientAccounts(clientId: string): Promise<IntegrationAccount[]> {
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
   
-  // Get the Facebook Ads integration for this client
-  const { data: integration, error: fetchError } = await supabaseClient
+  // Get ALL Facebook Ads integrations for this client
+  const { data: integrations, error: fetchError } = await supabaseClient
     .from('integrations')
     .select('id, encrypted_credentials, settings, external_account_id')
     .eq('client_id', clientId)
     .eq('platform', 'facebook_ads')
-    .eq('is_connected', true)
-    .single();
+    .eq('is_connected', true);
   
-  if (fetchError || !integration) {
-    log.error('No Facebook Ads integration found for client:', clientId);
-    throw new Error('לא נמצא חיבור Facebook Ads עבור לקוח זה');
+  if (fetchError || !integrations || integrations.length === 0) {
+    log.error('No Facebook Ads integrations found for client:', clientId);
+    throw new Error('לא נמצאו חיבורי Facebook Ads עבור לקוח זה');
   }
   
-  if (!integration.encrypted_credentials) {
-    log.error('No encrypted credentials found for integration:', integration.id);
-    throw new Error('לא נמצאו פרטי התחברות לחשבון Facebook Ads');
+  log.info(`Found ${integrations.length} Facebook Ads integrations for client`);
+  
+  const accounts: IntegrationAccount[] = [];
+  
+  for (const integration of integrations) {
+    if (!integration.encrypted_credentials) {
+      log.warn('No encrypted credentials found for integration:', integration.id);
+      continue;
+    }
+    
+    try {
+      // Decrypt the credentials
+      const { data: decryptedData, error: decryptError } = await supabaseClient
+        .rpc('decrypt_integration_credentials', { encrypted_data: integration.encrypted_credentials });
+      
+      if (decryptError || !decryptedData) {
+        log.error('Failed to decrypt credentials for integration:', integration.id);
+        continue;
+      }
+      
+      const credentials = decryptedData as { access_token?: string };
+      
+      if (!credentials.access_token) {
+        log.warn('Access Token not found for integration:', integration.id);
+        continue;
+      }
+      
+      // Get ad account ID and name from settings
+      const settings = integration.settings as { ad_account_id?: string; account_name?: string } | null;
+      const adAccountId = settings?.ad_account_id || integration.external_account_id || '';
+      const accountName = settings?.account_name || 'Unknown Account';
+      
+      if (!adAccountId) {
+        log.warn('Ad account ID not found for integration:', integration.id);
+        continue;
+      }
+      
+      accounts.push({
+        accessToken: credentials.access_token,
+        adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
+        accountName,
+        integrationId: integration.id,
+      });
+    } catch (err) {
+      log.error('Error processing integration:', integration.id, err);
+    }
   }
   
-  // Decrypt the credentials
-  const { data: decryptedData, error: decryptError } = await supabaseClient
-    .rpc('decrypt_integration_credentials', { encrypted_data: integration.encrypted_credentials });
-  
-  if (decryptError || !decryptedData) {
-    log.error('Failed to decrypt credentials:', decryptError);
-    throw new Error('שגיאה בפענוח פרטי ההתחברות');
+  if (accounts.length === 0) {
+    throw new Error('לא נמצאו חשבונות Facebook Ads תקינים');
   }
   
-  const credentials = decryptedData as { access_token?: string };
-  
-  if (!credentials.access_token) {
-    throw new Error('Access Token לא נמצא בפרטי ההתחברות');
-  }
-  
-  // Get ad account ID from settings or external_account_id
-  const settings = integration.settings as { ad_account_id?: string } | null;
-  const adAccountId = settings?.ad_account_id || integration.external_account_id || '';
-  
-  if (!adAccountId) {
-    throw new Error('מספר חשבון מודעות לא נמצא');
-  }
-  
-  return { 
-    accessToken: credentials.access_token,
-    adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
-  };
+  return accounts;
 }
 
 // Fetch campaigns from Facebook Ads API
@@ -286,9 +313,9 @@ serve(async (req) => {
       });
     }
 
-    // Get access token and ad account ID from client's integration
-    const { accessToken, adAccountId } = await getClientAccessToken(clientId);
-    log.info(`Using client-specific credentials for account: ${adAccountId}`);
+    // Get ALL accounts from client's integrations
+    const accounts = await getAllClientAccounts(clientId);
+    log.info(`Processing ${accounts.length} Facebook Ads accounts`);
     
     // Default date range: last 30 days
     const today = new Date();
@@ -304,119 +331,166 @@ serve(async (req) => {
       return validationErrorResponse(dateValidation.error || 'Invalid date range', corsHeaders);
     }
 
-    // Fetch data based on action
-    if (action === 'campaigns') {
-      const campaigns = await fetchCampaigns(accessToken, adAccountId);
-      return new Response(JSON.stringify({ campaigns }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Fetch data from ALL accounts
+    const allCampaigns: any[] = [];
+    const allDaily: any[] = [];
+    const allAdSets: any[] = [];
+    const allAds: any[] = [];
+    const allAudiences: any[] = [];
+    const accountSummaries: any[] = [];
+
+    for (const account of accounts) {
+      try {
+        log.info(`Fetching data for account: ${account.accountName} (${account.adAccountId})`);
+
+        const [campaigns, insights, dailyInsights, adSets, ads, audiences] = await Promise.all([
+          fetchCampaigns(account.accessToken, account.adAccountId),
+          fetchInsights(account.accessToken, account.adAccountId, requestStartDate, requestEndDate),
+          fetchDailyInsights(account.accessToken, account.adAccountId, requestStartDate, requestEndDate),
+          fetchAdSets(account.accessToken, account.adAccountId),
+          fetchAds(account.accessToken, account.adAccountId),
+          fetchCustomAudiences(account.accessToken, account.adAccountId),
+        ]);
+
+        // Process campaign data with insights
+        const processedCampaigns = campaigns.map((campaign: any) => {
+          const campaignInsight = insights.find((i: any) => i.campaign_id === campaign.id) || {};
+          const { conversions, conversionValue } = parseConversions(campaignInsight.actions);
+          
+          return {
+            id: campaign.id,
+            name: campaign.name,
+            status: campaign.status,
+            objective: campaign.objective,
+            budget: parseFloat(campaign.daily_budget || campaign.lifetime_budget || '0') / 100,
+            impressions: parseInt(campaignInsight.impressions || '0'),
+            clicks: parseInt(campaignInsight.clicks || '0'),
+            cost: parseFloat(campaignInsight.spend || '0'),
+            reach: parseInt(campaignInsight.reach || '0'),
+            conversions,
+            conversionValue,
+            ctr: parseFloat(campaignInsight.ctr || '0'),
+            cpc: parseFloat(campaignInsight.cpc || '0'),
+            // Add account info for display
+            ad_account_id: account.adAccountId,
+            account_name: account.accountName,
+          };
+        });
+        allCampaigns.push(...processedCampaigns);
+
+        // Process daily data
+        const processedDaily = dailyInsights.map((day: any) => {
+          const { conversions } = parseConversions(day.actions);
+          return {
+            date: day.date_start,
+            impressions: parseInt(day.impressions || '0'),
+            clicks: parseInt(day.clicks || '0'),
+            cost: parseFloat(day.spend || '0'),
+            reach: parseInt(day.reach || '0'),
+            conversions,
+            ctr: parseFloat(day.ctr || '0'),
+            ad_account_id: account.adAccountId,
+            account_name: account.accountName,
+          };
+        });
+        allDaily.push(...processedDaily);
+
+        // Process ad sets
+        const processedAdSets = adSets.map((adSet: any) => {
+          const targeting = adSet.targeting || {};
+          let targetingSummary = '';
+          if (targeting.geo_locations?.countries) {
+            targetingSummary = targeting.geo_locations.countries.join(', ');
+          }
+          
+          return {
+            id: adSet.id,
+            name: adSet.name,
+            status: adSet.status,
+            campaign_id: adSet.campaign_id,
+            daily_budget: parseFloat(adSet.daily_budget || '0') / 100,
+            lifetime_budget: parseFloat(adSet.lifetime_budget || '0') / 100,
+            targeting_summary: targetingSummary,
+            optimization_goal: adSet.optimization_goal,
+            ad_account_id: account.adAccountId,
+            account_name: account.accountName,
+          };
+        });
+        allAdSets.push(...processedAdSets);
+
+        // Process ads
+        const processedAds = ads.map((ad: any) => ({
+          id: ad.id,
+          name: ad.name,
+          status: ad.status,
+          adset_id: ad.adset_id,
+          campaign_id: ad.campaign_id,
+          creative_type: ad.creative?.object_type,
+          creative_name: ad.creative?.name,
+          thumbnail_url: ad.creative?.thumbnail_url,
+          ad_account_id: account.adAccountId,
+          account_name: account.accountName,
+        }));
+        allAds.push(...processedAds);
+
+        // Process audiences
+        const processedAudiences = audiences.map((audience: any) => ({
+          id: audience.id,
+          name: audience.name,
+          subtype: audience.subtype,
+          approximate_count: audience.approximate_count,
+          description: audience.description,
+          ad_account_id: account.adAccountId,
+          account_name: account.accountName,
+        }));
+        allAudiences.push(...processedAudiences);
+
+        // Add account summary
+        const accountTotals = {
+          impressions: processedCampaigns.reduce((sum: number, c: any) => sum + c.impressions, 0),
+          clicks: processedCampaigns.reduce((sum: number, c: any) => sum + c.clicks, 0),
+          cost: processedCampaigns.reduce((sum: number, c: any) => sum + c.cost, 0),
+          reach: processedCampaigns.reduce((sum: number, c: any) => sum + c.reach, 0),
+          conversions: processedCampaigns.reduce((sum: number, c: any) => sum + c.conversions, 0),
+        };
+        
+        accountSummaries.push({
+          ad_account_id: account.adAccountId,
+          account_name: account.accountName,
+          campaigns_count: processedCampaigns.length,
+          ...accountTotals,
+        });
+
+        log.info(`Successfully fetched data for ${account.accountName}: ${processedCampaigns.length} campaigns`);
+
+      } catch (accountError) {
+        log.error(`Error fetching data for account ${account.accountName}:`, accountError);
+        // Continue with other accounts even if one fails
+        accountSummaries.push({
+          ad_account_id: account.adAccountId,
+          account_name: account.accountName,
+          error: accountError instanceof Error ? accountError.message : 'Unknown error',
+        });
+      }
     }
 
-    // Default: fetch all data
-    log.info(`Fetching all Facebook Ads data for ${adAccountId}`);
-
-    const [campaigns, insights, dailyInsights, adSets, ads, audiences] = await Promise.all([
-      fetchCampaigns(accessToken, adAccountId),
-      fetchInsights(accessToken, adAccountId, requestStartDate, requestEndDate),
-      fetchDailyInsights(accessToken, adAccountId, requestStartDate, requestEndDate),
-      fetchAdSets(accessToken, adAccountId),
-      fetchAds(accessToken, adAccountId),
-      fetchCustomAudiences(accessToken, adAccountId),
-    ]);
-
-    // Process campaign data with insights
-    const processedCampaigns = campaigns.map((campaign: any) => {
-      const campaignInsight = insights.find((i: any) => i.campaign_id === campaign.id) || {};
-      const { conversions, conversionValue } = parseConversions(campaignInsight.actions);
-      
-      return {
-        id: campaign.id,
-        name: campaign.name,
-        status: campaign.status,
-        objective: campaign.objective,
-        budget: parseFloat(campaign.daily_budget || campaign.lifetime_budget || '0') / 100, // Facebook uses cents
-        impressions: parseInt(campaignInsight.impressions || '0'),
-        clicks: parseInt(campaignInsight.clicks || '0'),
-        cost: parseFloat(campaignInsight.spend || '0'),
-        reach: parseInt(campaignInsight.reach || '0'),
-        conversions,
-        conversionValue,
-        ctr: parseFloat(campaignInsight.ctr || '0'),
-        cpc: parseFloat(campaignInsight.cpc || '0'),
-      };
-    });
-
-    // Process daily data
-    const processedDaily = dailyInsights.map((day: any) => {
-      const { conversions } = parseConversions(day.actions);
-      return {
-        date: day.date_start,
-        impressions: parseInt(day.impressions || '0'),
-        clicks: parseInt(day.clicks || '0'),
-        cost: parseFloat(day.spend || '0'),
-        reach: parseInt(day.reach || '0'),
-        conversions,
-        ctr: parseFloat(day.ctr || '0'),
-      };
-    });
-
-    // Calculate totals
+    // Calculate combined totals
     const totals = {
-      impressions: processedCampaigns.reduce((sum: number, c: any) => sum + c.impressions, 0),
-      clicks: processedCampaigns.reduce((sum: number, c: any) => sum + c.clicks, 0),
-      cost: processedCampaigns.reduce((sum: number, c: any) => sum + c.cost, 0),
-      reach: processedCampaigns.reduce((sum: number, c: any) => sum + c.reach, 0),
-      conversions: processedCampaigns.reduce((sum: number, c: any) => sum + c.conversions, 0),
-      conversionValue: processedCampaigns.reduce((sum: number, c: any) => sum + c.conversionValue, 0),
+      impressions: allCampaigns.reduce((sum: number, c: any) => sum + c.impressions, 0),
+      clicks: allCampaigns.reduce((sum: number, c: any) => sum + c.clicks, 0),
+      cost: allCampaigns.reduce((sum: number, c: any) => sum + c.cost, 0),
+      reach: allCampaigns.reduce((sum: number, c: any) => sum + c.reach, 0),
+      conversions: allCampaigns.reduce((sum: number, c: any) => sum + c.conversions, 0),
+      conversionValue: allCampaigns.reduce((sum: number, c: any) => sum + c.conversionValue, 0),
     };
 
-    // Process ad sets
-    const processedAdSets = adSets.map((adSet: any) => {
-      const targeting = adSet.targeting || {};
-      let targetingSummary = '';
-      if (targeting.geo_locations?.countries) {
-        targetingSummary = targeting.geo_locations.countries.join(', ');
-      }
-      
-      return {
-        id: adSet.id,
-        name: adSet.name,
-        status: adSet.status,
-        campaign_id: adSet.campaign_id,
-        daily_budget: parseFloat(adSet.daily_budget || '0') / 100,
-        lifetime_budget: parseFloat(adSet.lifetime_budget || '0') / 100,
-        targeting_summary: targetingSummary,
-        optimization_goal: adSet.optimization_goal,
-      };
-    });
-
-    // Process ads
-    const processedAds = ads.map((ad: any) => ({
-      id: ad.id,
-      name: ad.name,
-      status: ad.status,
-      adset_id: ad.adset_id,
-      campaign_id: ad.campaign_id,
-      creative_type: ad.creative?.object_type,
-      creative_name: ad.creative?.name,
-      thumbnail_url: ad.creative?.thumbnail_url,
-    }));
-
-    // Process audiences
-    const processedAudiences = audiences.map((audience: any) => ({
-      id: audience.id,
-      name: audience.name,
-      subtype: audience.subtype,
-      approximate_count: audience.approximate_count,
-      description: audience.description,
-    }));
-
     const response = {
-      campaigns: processedCampaigns,
-      daily: processedDaily,
-      adSets: processedAdSets,
-      ads: processedAds,
-      audiences: processedAudiences,
+      campaigns: allCampaigns,
+      daily: allDaily,
+      adSets: allAdSets,
+      ads: allAds,
+      audiences: allAudiences,
+      accounts: accountSummaries,
       totals,
       dateRange: {
         startDate: requestStartDate,
@@ -424,7 +498,7 @@ serve(async (req) => {
       },
     };
 
-    log.info(`Facebook Ads data fetched successfully: ${processedCampaigns.length} campaigns, ${processedAdSets.length} ad sets, ${processedAds.length} ads`);
+    log.info(`Facebook Ads data fetched: ${allCampaigns.length} campaigns from ${accounts.length} accounts`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

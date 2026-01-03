@@ -26,6 +26,7 @@ import {
   Sparkles,
   BookOpen,
   Instagram,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FacebookAssetSelector } from "./FacebookAssetSelector";
+import { IntegrationAccessManager } from "./IntegrationAccessManager";
 
 const NOTIFY_EMAIL = "yossef@jiy.co.il";
 
@@ -390,8 +392,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
   const [showFacebookAssetSelector, setShowFacebookAssetSelector] = useState(false);
+  const [managingIntegration, setManagingIntegration] = useState<any>(null);
 
-  // Auto-select platform if defaultPlatform is provided
   useEffect(() => {
     if (open && defaultPlatform) {
       const platform = platformOptions.find(p => p.id === defaultPlatform);
@@ -839,6 +841,9 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                                 <Badge variant={integration.is_connected ? "default" : "secondary"}>
                                   {integration.is_connected ? "מחובר" : "מנותק"}
                                 </Badge>
+                                <Button variant="ghost" size="icon" onClick={() => setManagingIntegration(integration)} title="ניהול גישה והגדרות">
+                                  <Settings className="w-4 h-4" />
+                                </Button>
                                 <Button variant="ghost" size="icon" onClick={() => syncMutation.mutate(integration.id)} disabled={syncMutation.isPending}>
                                   <RefreshCw className={cn("w-4 h-4", syncMutation.isPending && "animate-spin")} />
                                 </Button>
@@ -1374,6 +1379,19 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           </div>
         )}
       </DialogContent>
+
+      {/* Integration Access Manager Dialog */}
+      {selectedClient && (
+        <IntegrationAccessManager
+          open={!!managingIntegration}
+          onOpenChange={(open) => !open && setManagingIntegration(null)}
+          integration={managingIntegration}
+          clientId={selectedClient.id}
+          onDisconnect={() => {
+            queryClient.invalidateQueries({ queryKey: ["integrations", selectedClient.id] });
+          }}
+        />
+      )}
     </Dialog>
   );
 }
