@@ -11,7 +11,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface IntegrationRequest {
-  action: "connect" | "test" | "disconnect" | "sync";
+  action: "connect" | "test" | "disconnect" | "sync" | "connect_assets";
   platform: string;
   client_id: string;
   integration_id?: string;
@@ -27,6 +27,12 @@ interface IntegrationRequest {
     consumer_secret?: string;
     facebook_page_id?: string;
     instagram_account_id?: string;
+  };
+  // For connect_assets action - multiple assets selection
+  selected_assets?: {
+    adAccounts: string[];
+    pages: string[];
+    instagramAccounts: string[];
   };
   notify_email?: string;
 }
@@ -798,6 +804,109 @@ serve(async (req) => {
       // Always return 200 so the client can handle success/failure properly
       return new Response(
         JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle connecting multiple Facebook assets at once
+    if (action === 'connect_assets' && platform === 'facebook_ads') {
+      const { selected_assets, credentials: assetCredentials } = await req.json() as IntegrationRequest;
+      
+      if (!selected_assets || !assetCredentials?.access_token) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'חסרים נכסים או Access Token' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const accessToken = assetCredentials.access_token;
+      const connectedAssets: any[] = [];
+      const errors: string[] = [];
+      
+      // Connect each selected ad account as a separate integration
+      for (const adAccountId of selected_assets.adAccounts) {
+        try {
+          const cleanAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId.replace(/\D/g, '')}`;
+          
+          // Fetch account details
+          const accountUrl = `https://graph.facebook.com/v18.0/${cleanAccountId}?fields=id,name,account_status,currency,business_name&access_token=${accessToken}`;
+          const accountResponse = await fetch(accountUrl);
+          const accountData = await accountResponse.json();
+          
+          if (accountData.error) {
+            errors.push(`חשבון ${adAccountId}: ${accountData.error.message}`);
+            continue;
+          }
+          
+          // Encrypt credentials
+          const { data: encryptedCredentials } = await supabaseClient
+            .rpc('encrypt_integration_credentials', { credentials: { access_token: accessToken } });
+          
+          // Check if this account already exists for this client
+          const { data: existingIntegration } = await supabaseClient
+            .from('integrations')
+            .select('id')
+            .eq('platform', 'facebook_ads')
+            .eq('client_id', client_id)
+            .eq('external_account_id', cleanAccountId)
+            .single();
+          
+          const integrationData = {
+            client_id,
+            platform: 'facebook_ads',
+            external_account_id: cleanAccountId,
+            is_connected: true,
+            encrypted_credentials: encryptedCredentials,
+            settings: {
+              ad_account_id: cleanAccountId,
+              account_name: accountData.name,
+              business_name: accountData.business_name,
+              currency: accountData.currency,
+              account_status: accountData.account_status,
+              selected_pages: selected_assets.pages,
+              selected_instagram: selected_assets.instagramAccounts,
+              connected_at: new Date().toISOString(),
+            },
+            last_sync_at: new Date().toISOString(),
+          };
+          
+          if (existingIntegration) {
+            await supabaseClient
+              .from('integrations')
+              .update({ ...integrationData, updated_at: new Date().toISOString() })
+              .eq('id', existingIntegration.id);
+          } else {
+            await supabaseClient
+              .from('integrations')
+              .insert(integrationData);
+          }
+          
+          connectedAssets.push({
+            id: cleanAccountId,
+            name: accountData.name,
+            type: 'ad_account',
+          });
+        } catch (err) {
+          errors.push(`חשבון ${adAccountId}: ${(err as Error).message}`);
+        }
+      }
+      
+      if (connectedAssets.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: errors.length > 0 ? errors.join(', ') : 'לא הצלחנו לחבר אף נכס' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `חוברו ${connectedAssets.length} חשבונות מודעות בהצלחה`,
+          data: { connected: connectedAssets, errors }
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

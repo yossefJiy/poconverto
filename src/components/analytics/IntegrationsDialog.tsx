@@ -25,6 +25,7 @@ import {
   CalendarDays,
   Sparkles,
   BookOpen,
+  Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import {
 } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FacebookAssetSelector } from "./FacebookAssetSelector";
 
 const NOTIFY_EMAIL = "yossef@jiy.co.il";
 
@@ -387,6 +389,7 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [connectionMessage, setConnectionMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [showFacebookAssetSelector, setShowFacebookAssetSelector] = useState(false);
 
   // Auto-select platform if defaultPlatform is provided
   useEffect(() => {
@@ -547,6 +550,13 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConnectionMessage("");
     setSearchQuery("");
     setValidationError("");
+    
+    // For Facebook Ads, show the asset selector
+    if (platform.id === 'facebook_ads') {
+      setShowFacebookAssetSelector(true);
+    } else {
+      setShowFacebookAssetSelector(false);
+    }
   };
 
   const handleMccAccountSelect = (account: MccAccount) => {
@@ -633,6 +643,43 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConnectionMessage("");
     setSearchQuery("");
     setValidationError("");
+    setShowFacebookAssetSelector(false);
+  };
+
+  // Mutation for connecting multiple Facebook assets
+  const connectAssetsMutation = useMutation({
+    mutationFn: async ({ assets, accessToken }: { assets: any; accessToken: string }) => {
+      if (!selectedClient) throw new Error("Missing client");
+      
+      const { data, error } = await supabase.functions.invoke('connect-integration', {
+        body: {
+          action: "connect_assets",
+          platform: "facebook_ads",
+          client_id: selectedClient.id,
+          credentials: { access_token: accessToken },
+          selected_assets: assets,
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        toast.success(data.message);
+        resetDialog();
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "שגיאה בחיבור הנכסים");
+    },
+  });
+
+  const handleFacebookAssetsSelected = (assets: any, accessToken: string) => {
+    connectAssetsMutation.mutate({ assets, accessToken });
   };
 
   if (!selectedClient) {
@@ -665,83 +712,116 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
             {integrations.length > 0 && (
               <div className="space-y-3">
                 <h4 className="font-semibold text-sm text-muted-foreground">חיבורים קיימים:</h4>
-                {integrations.map((integration) => {
-                  const platform = platformOptions.find(p => p.id === integration.platform);
-                  const settings = integration.settings as any;
-                  const connectionData = settings?.connection_data;
+                {/* Group Facebook integrations together */}
+                {(() => {
+                  // Group integrations by platform
+                  const grouped = integrations.reduce((acc, integration) => {
+                    const key = integration.platform;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(integration);
+                    return acc;
+                  }, {} as Record<string, typeof integrations>);
                   
-                  // Get additional info for Facebook integrations
-                  const facebookPage = connectionData?.facebook_page || settings?.facebook_page;
-                  const instagramAccount = connectionData?.instagram_account || settings?.instagram_account;
-                  const accountStatus = connectionData?.account_status;
-                  
-                  return (
-                    <div key={integration.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white", platform?.color)}>
-                          {platform && <platform.icon />}
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{platform?.name}</p>
-                            {connectionData?.account_name && (
-                              <span className="text-xs text-muted-foreground">• {connectionData.account_name}</span>
-                            )}
-                          </div>
+                  return Object.entries(grouped).map(([platformId, platformIntegrations]) => {
+                    const platform = platformOptions.find(p => p.id === platformId);
+                    const isMultiple = platformIntegrations.length > 1;
+                    
+                    return (
+                      <div key={platformId} className="space-y-2">
+                        {platformIntegrations.map((integration, idx) => {
+                          const settings = integration.settings as any;
+                          const connectionData = settings?.connection_data;
+                          const accountName = settings?.account_name || connectionData?.account_name || integration.external_account_id;
+                          const accountStatus = settings?.account_status || connectionData?.account_status;
+                          const facebookPage = connectionData?.facebook_page || settings?.facebook_page;
+                          const instagramAccount = connectionData?.instagram_account || settings?.instagram_account;
                           
-                          {/* Facebook-specific info */}
-                          {integration.platform === 'facebook_ads' && (facebookPage || instagramAccount) && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              {facebookPage && (
-                                <span className="flex items-center gap-1">
-                                  📄 {facebookPage.name}
-                                </span>
-                              )}
-                              {instagramAccount && (
-                                <span className="flex items-center gap-1">
-                                  📸 @{instagramAccount.username}
-                                </span>
-                              )}
+                          return (
+                            <div key={integration.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                              <div className="flex items-center gap-3">
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white", platform?.color)}>
+                                  {platform && <platform.icon />}
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">
+                                      {platform?.name}
+                                      {isMultiple && <span className="text-muted-foreground text-xs"> ({idx + 1})</span>}
+                                    </p>
+                                    {accountName && (
+                                      <span className="text-xs text-muted-foreground">• {accountName}</span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Facebook-specific info */}
+                                  {platformId === 'facebook_ads' && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      {settings?.selected_pages?.length > 0 && (
+                                        <span className="flex items-center gap-1">
+                                          <FileText className="w-3 h-3" />
+                                          {settings.selected_pages.length} עמודים
+                                        </span>
+                                      )}
+                                      {settings?.selected_instagram?.length > 0 && (
+                                        <span className="flex items-center gap-1">
+                                          <Instagram className="w-3 h-3" />
+                                          {settings.selected_instagram.length} אינסטגרם
+                                        </span>
+                                      )}
+                                      {facebookPage && (
+                                        <span className="flex items-center gap-1">
+                                          📄 {facebookPage.name}
+                                        </span>
+                                      )}
+                                      {instagramAccount && (
+                                        <span className="flex items-center gap-1">
+                                          📸 @{instagramAccount.username}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {integration.last_sync_at ? new Date(integration.last_sync_at).toLocaleString("he-IL") : "לא סונכרן"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* Account status for Facebook */}
+                                {platformId === 'facebook_ads' && accountStatus !== undefined && (
+                                  <Badge 
+                                    variant={accountStatus === 1 ? "default" : "secondary"}
+                                    className={cn(
+                                      "text-[10px]",
+                                      accountStatus === 1 ? "bg-green-500" : 
+                                      accountStatus === 2 ? "bg-yellow-500" : 
+                                      accountStatus === 3 ? "bg-red-500" : ""
+                                    )}
+                                  >
+                                    {accountStatus === 1 ? "פעיל" : 
+                                     accountStatus === 2 ? "מושבת" : 
+                                     accountStatus === 3 ? "לא מאושר" : 
+                                     `סטטוס: ${accountStatus}`}
+                                  </Badge>
+                                )}
+                                <Badge variant={integration.is_connected ? "default" : "secondary"}>
+                                  {integration.is_connected ? "מחובר" : "מנותק"}
+                                </Badge>
+                                <Button variant="ghost" size="icon" onClick={() => syncMutation.mutate(integration.id)} disabled={syncMutation.isPending}>
+                                  <RefreshCw className={cn("w-4 h-4", syncMutation.isPending && "animate-spin")} />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => disconnectMutation.mutate(integration.id)}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
-                          )}
-                          
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {integration.last_sync_at ? new Date(integration.last_sync_at).toLocaleString("he-IL") : "לא סונכרן"}
-                          </p>
-                        </div>
+                          );
+                        })}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {/* Account status for Facebook */}
-                        {integration.platform === 'facebook_ads' && accountStatus !== undefined && (
-                          <Badge 
-                            variant={accountStatus === 1 ? "default" : "secondary"}
-                            className={cn(
-                              "text-[10px]",
-                              accountStatus === 1 ? "bg-green-500" : 
-                              accountStatus === 2 ? "bg-yellow-500" : 
-                              accountStatus === 3 ? "bg-red-500" : ""
-                            )}
-                          >
-                            {accountStatus === 1 ? "פעיל" : 
-                             accountStatus === 2 ? "מושבת" : 
-                             accountStatus === 3 ? "לא מאושר" : 
-                             `סטטוס: ${accountStatus}`}
-                          </Badge>
-                        )}
-                        <Badge variant={integration.is_connected ? "default" : "secondary"}>
-                          {integration.is_connected ? "מחובר" : "מנותק"}
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={() => syncMutation.mutate(integration.id)} disabled={syncMutation.isPending}>
-                          <RefreshCw className={cn("w-4 h-4", syncMutation.isPending && "animate-spin")} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => disconnectMutation.mutate(integration.id)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -810,6 +890,22 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                 ))}
               </Tabs>
             </div>
+          </div>
+        ) : showFacebookAssetSelector && selectedPlatform.id === 'facebook_ads' ? (
+          <div className="mt-4">
+            <FacebookAssetSelector
+              onAssetsSelected={handleFacebookAssetsSelected}
+              onCancel={() => {
+                setShowFacebookAssetSelector(false);
+                setSelectedPlatform(null);
+              }}
+            />
+            {connectAssetsMutation.isPending && (
+              <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>מחבר נכסים...</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6 mt-4">
