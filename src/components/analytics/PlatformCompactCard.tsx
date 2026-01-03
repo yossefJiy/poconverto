@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ interface PlatformCompactCardProps {
   onLinkPlatform?: () => void;
 }
 
-export function PlatformCompactCard({
+export const PlatformCompactCard = forwardRef<HTMLDivElement, PlatformCompactCardProps>(function PlatformCompactCard({
   platform,
   platformKey,
   icon,
@@ -43,7 +43,7 @@ export function PlatformCompactCard({
   canCreateCampaign,
   onCreateCampaign,
   onLinkPlatform,
-}: PlatformCompactCardProps) {
+}, ref) {
   const navigate = useNavigate();
 
   if (isLoading) {
@@ -168,4 +168,6 @@ export function PlatformCompactCard({
       </div>
     </div>
   );
-}
+});
+
+PlatformCompactCard.displayName = "PlatformCompactCard";

@@ -35,11 +35,12 @@ export function validateDateFormat(date: string | undefined | null): ValidationR
     return { valid: false, error: 'Invalid date value' };
   }
 
-  // Check if date is not in the future
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  if (parsed > today) {
-    return { valid: false, error: 'Date cannot be in the future' };
+  // Check if date is not too far in the future (allow 1 day buffer for timezone differences)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 59, 59, 999);
+  if (parsed > tomorrow) {
+    return { valid: false, error: 'Date cannot be more than 1 day in the future' };
   }
 
   // Check if date is not too old (max 2 years ago)
