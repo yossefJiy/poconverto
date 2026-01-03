@@ -1,14 +1,7 @@
 import { useState } from "react";
-import { Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Calendar, ChevronDown } from "lucide-react";
+import { format, isToday, subDays, startOfMonth, startOfYear } from "date-fns";
 import { he } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -27,23 +20,37 @@ interface GlobalDateFilterProps {
   onCustomDateChange?: (range: { from: Date; to: Date }) => void;
 }
 
+const quickOptions: { value: DateFilterValue; label: string }[] = [
+  { value: "today", label: "היום" },
+  { value: "yesterday", label: "אתמול" },
+  { value: "7", label: "7 ימים" },
+  { value: "14", label: "14 ימים" },
+  { value: "30", label: "30 ימים" },
+  { value: "90", label: "90 ימים" },
+  { value: "mtd", label: "מתחילת החודש" },
+  { value: "ytd", label: "מתחילת השנה" },
+];
+
 export function GlobalDateFilter({ 
   value, 
   onChange, 
   customDateRange,
   onCustomDateChange 
 }: GlobalDateFilterProps) {
-  const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [tempRange, setTempRange] = useState<{ from?: Date; to?: Date }>({
     from: customDateRange?.from,
     to: customDateRange?.to,
   });
+  const [showCustomCalendar, setShowCustomCalendar] = useState(false);
 
-  const handleValueChange = (newValue: DateFilterValue) => {
-    if (newValue === "custom") {
-      setIsCustomOpen(true);
+  const handleQuickSelect = (quickValue: DateFilterValue) => {
+    if (quickValue === "custom") {
+      setShowCustomCalendar(true);
     } else {
-      onChange(newValue);
+      onChange(quickValue);
+      setOpen(false);
+      setShowCustomCalendar(false);
     }
   };
 
@@ -51,89 +58,160 @@ export function GlobalDateFilter({
     if (tempRange.from && tempRange.to && onCustomDateChange) {
       onCustomDateChange({ from: tempRange.from, to: tempRange.to });
       onChange("custom");
-      setIsCustomOpen(false);
+      setOpen(false);
+      setShowCustomCalendar(false);
     }
   };
 
-  const getDisplayValue = () => {
+  const getDateRangeDisplay = () => {
+    const today = new Date();
+    let start: Date;
+    let end: Date = today;
+
     switch (value) {
       case "today":
-        return "היום";
+        return { start: today, end: today, label: "היום" };
       case "yesterday":
-        return "אתמול";
+        start = subDays(today, 1);
+        return { start, end: start, label: "אתמול" };
+      case "7":
+        start = subDays(today, 6);
+        return { start, end: today, label: null };
+      case "14":
+        start = subDays(today, 13);
+        return { start, end: today, label: null };
+      case "30":
+        start = subDays(today, 29);
+        return { start, end: today, label: null };
+      case "90":
+        start = subDays(today, 89);
+        return { start, end: today, label: null };
       case "mtd":
-        return "מתחילת החודש";
+        start = startOfMonth(today);
+        return { start, end: today, label: "מתחילת החודש" };
       case "ytd":
-        return "מתחילת השנה";
+        start = startOfYear(today);
+        return { start, end: today, label: "מתחילת השנה" };
       case "custom":
         if (customDateRange?.from && customDateRange?.to) {
-          return `${format(customDateRange.from, "dd/MM")} - ${format(customDateRange.to, "dd/MM")}`;
+          return { start: customDateRange.from, end: customDateRange.to, label: null };
         }
-        return "תאריכים מותאמים";
-      case "7":
-        return "7 ימים";
-      case "14":
-        return "14 ימים";
-      case "30":
-        return "30 ימים";
-      case "90":
-        return "90 ימים";
+        return { start: today, end: today, label: "בחר תאריכים" };
       default:
-        return "בחר תקופה";
+        return { start: startOfMonth(today), end: today, label: null };
     }
   };
 
-  return (
-    <div className="flex items-center gap-2">
-      <Popover open={isCustomOpen} onOpenChange={setIsCustomOpen}>
-        <Select value={value} onValueChange={handleValueChange}>
-          <SelectTrigger className="w-[180px]">
-            <Calendar className="w-4 h-4 ml-2" />
-            <SelectValue>{getDisplayValue()}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">היום</SelectItem>
-            <SelectItem value="yesterday">אתמול</SelectItem>
-            <SelectItem value="mtd">מתחילת החודש</SelectItem>
-            <SelectItem value="ytd">מתחילת השנה</SelectItem>
-            <SelectItem value="7">7 ימים</SelectItem>
-            <SelectItem value="14">14 ימים</SelectItem>
-            <SelectItem value="30">30 ימים</SelectItem>
-            <SelectItem value="90">90 ימים</SelectItem>
-            <SelectItem value="custom">תאריכים מותאמים אישית</SelectItem>
-          </SelectContent>
-        </Select>
+  const displayInfo = getDateRangeDisplay();
 
-        <PopoverTrigger asChild>
-          <span className="hidden" />
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "justify-between text-right font-normal min-w-[200px]",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 opacity-70" />
+            <div className="flex items-center gap-2">
+              {displayInfo.label ? (
+                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+                  {displayInfo.label}
+                </span>
+              ) : null}
+              <div className="flex items-center gap-1">
+                {/* Start Date Cube */}
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-muted text-sm font-bold">
+                  {format(displayInfo.start, "d")}
+                </span>
+                <span className="text-muted-foreground text-xs">/</span>
+                <span className="inline-flex items-center justify-center px-1.5 h-7 rounded-md bg-muted text-xs font-medium">
+                  {format(displayInfo.start, "MMM", { locale: he })}
+                </span>
+                
+                {/* Separator if range */}
+                {displayInfo.start.getTime() !== displayInfo.end.getTime() && (
+                  <>
+                    <span className="text-muted-foreground mx-1">—</span>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-muted text-sm font-bold">
+                      {format(displayInfo.end, "d")}
+                    </span>
+                    <span className="text-muted-foreground text-xs">/</span>
+                    <span className="inline-flex items-center justify-center px-1.5 h-7 rounded-md bg-muted text-xs font-medium">
+                      {format(displayInfo.end, "MMM", { locale: he })}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <ChevronDown className="w-4 h-4 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        {!showCustomCalendar ? (
+          <div className="p-2 space-y-1">
+            <div className="grid grid-cols-2 gap-1">
+              {quickOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={value === option.value ? "default" : "ghost"}
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => handleQuickSelect(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <div className="border-t pt-2 mt-2">
+              <Button
+                variant={value === "custom" ? "default" : "outline"}
+                size="sm"
+                className="w-full"
+                onClick={() => setShowCustomCalendar(true)}
+              >
+                <Calendar className="w-4 h-4 ml-2" />
+                תאריכים מותאמים אישית
+              </Button>
+            </div>
+          </div>
+        ) : (
           <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="sm" onClick={() => setShowCustomCalendar(false)}>
+                ← חזור
+              </Button>
+              <span className="text-sm font-medium">בחר טווח תאריכים</span>
+            </div>
             <div className="flex gap-4">
               <div>
-                <p className="text-sm font-medium mb-2">מתאריך</p>
+                <p className="text-sm font-medium mb-2 text-muted-foreground">מתאריך</p>
                 <CalendarComponent
                   mode="single"
                   selected={tempRange.from}
                   onSelect={(date) => setTempRange({ ...tempRange, from: date })}
                   locale={he}
-                  className={cn("p-3 pointer-events-auto")}
+                  className={cn("p-3 pointer-events-auto rounded-md border")}
                 />
               </div>
               <div>
-                <p className="text-sm font-medium mb-2">עד תאריך</p>
+                <p className="text-sm font-medium mb-2 text-muted-foreground">עד תאריך</p>
                 <CalendarComponent
                   mode="single"
                   selected={tempRange.to}
                   onSelect={(date) => setTempRange({ ...tempRange, to: date })}
                   locale={he}
                   disabled={(date) => tempRange.from ? date < tempRange.from : false}
-                  className={cn("p-3 pointer-events-auto")}
+                  className={cn("p-3 pointer-events-auto rounded-md border")}
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setIsCustomOpen(false)}>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" size="sm" onClick={() => setShowCustomCalendar(false)}>
                 ביטול
               </Button>
               <Button 
@@ -145,9 +223,9 @@ export function GlobalDateFilter({
               </Button>
             </div>
           </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -157,10 +235,9 @@ export function getDateRangeFromFilter(
   customRange?: { from: Date; to: Date }
 ): { startDate: string; endDate: string; dateFrom: string; dateTo: string } {
   const now = new Date();
-  // Today at midnight for start, today at end of day for calculations
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let start: Date;
-  let end: Date = today; // Always include today
+  let end: Date = today;
 
   switch (filter) {
     case "today":
@@ -169,7 +246,7 @@ export function getDateRangeFromFilter(
     case "yesterday":
       start = new Date(today);
       start.setDate(start.getDate() - 1);
-      end = new Date(start); // Yesterday only
+      end = new Date(start);
       break;
     case "mtd":
       start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -187,25 +264,24 @@ export function getDateRangeFromFilter(
       break;
     case "7":
       start = new Date(today);
-      start.setDate(start.getDate() - 6); // 7 days including today
+      start.setDate(start.getDate() - 6);
       break;
     case "14":
       start = new Date(today);
-      start.setDate(start.getDate() - 13); // 14 days including today
+      start.setDate(start.getDate() - 13);
       break;
     case "30":
       start = new Date(today);
-      start.setDate(start.getDate() - 29); // 30 days including today
+      start.setDate(start.getDate() - 29);
       break;
     case "90":
       start = new Date(today);
-      start.setDate(start.getDate() - 89); // 90 days including today
+      start.setDate(start.getDate() - 89);
       break;
     default:
       start = new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
-  // Format dates consistently as YYYY-MM-DD
   const formatDate = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');

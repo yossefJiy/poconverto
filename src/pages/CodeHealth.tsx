@@ -20,7 +20,10 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Play
+  Play,
+  Lock,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -34,6 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
+import { useSecurityIssues } from "@/hooks/useSecurityIssues";
 
 interface CodeHealthIssue {
   id: string;
@@ -99,6 +103,15 @@ export default function CodeHealth() {
   const [ignoreReason, setIgnoreReason] = useState("");
   const [isIgnoreDialogOpen, setIsIgnoreDialogOpen] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+
+  // Fetch security issues from Lovable scan
+  const { 
+    findings: securityFindings, 
+    isLoading: securityLoading, 
+    errorCount: securityErrorCount,
+    warningCount: securityWarningCount,
+    refetch: refetchSecurity 
+  } = useSecurityIssues();
 
   // Fetch open issues
   const { data: issues, isLoading: issuesLoading } = useQuery({
@@ -320,7 +333,7 @@ export default function CodeHealth() {
       
       <div className="space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -362,6 +375,21 @@ export default function CodeHealth() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Security Issues Card */}
+          <Card className="border-purple-500/30 bg-purple-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <Lock className="h-5 w-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{securityErrorCount + securityWarningCount}</p>
+                  <p className="text-sm text-muted-foreground">בעיות אבטחה</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           
           <Card>
             <CardContent className="p-4">
@@ -379,7 +407,11 @@ export default function CodeHealth() {
         </div>
 
         {/* Action Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => refetchSecurity()} disabled={securityLoading}>
+            <Shield className="h-4 w-4 mr-2" />
+            סרוק אבטחה
+          </Button>
           <Button onClick={runHealthCheck} disabled={isRunning}>
             {isRunning ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -395,6 +427,10 @@ export default function CodeHealth() {
           <TabsList>
             <TabsTrigger value="open">
               פתוחות ({openIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              אבטחה ({securityFindings.length})
             </TabsTrigger>
             <TabsTrigger value="resolved">
               נפתרו ({resolvedIssues.length})
@@ -420,6 +456,83 @@ export default function CodeHealth() {
               </Card>
             ) : (
               openIssues.map(issue => renderIssueCard(issue))
+            )}
+          </TabsContent>
+
+          {/* Security Issues Tab */}
+          <TabsContent value="security" className="space-y-3 mt-4">
+            {securityLoading ? (
+              <div className="text-center py-8 text-muted-foreground">טוען בעיות אבטחה...</div>
+            ) : securityFindings.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">אין בעיות אבטחה!</h3>
+                  <p className="text-muted-foreground">המערכת מאובטחת</p>
+                </CardContent>
+              </Card>
+            ) : (
+              securityFindings.map(finding => (
+                <Card 
+                  key={finding.internal_id} 
+                  className={`border-l-4 ${
+                    finding.level === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 
+                    finding.level === 'warn' ? 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : 
+                    'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10'
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        finding.level === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
+                        finding.level === 'warn' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
+                        'bg-blue-100 dark:bg-blue-900/30'
+                      }`}>
+                        <Lock className={`h-5 w-5 ${
+                          finding.level === 'error' ? 'text-red-500' :
+                          finding.level === 'warn' ? 'text-yellow-500' :
+                          'text-blue-500'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h4 className="font-medium">{finding.name}</h4>
+                          <Badge variant={finding.level === 'error' ? 'destructive' : finding.level === 'warn' ? 'default' : 'secondary'}>
+                            {finding.level === 'error' ? 'קריטי' : finding.level === 'warn' ? 'אזהרה' : 'מידע'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {finding.category}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {finding.remediation_difficulty === 'high' ? 'קשה לתיקון' : 
+                             finding.remediation_difficulty === 'medium' ? 'בינוני' : 'קל לתיקון'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{finding.description}</p>
+                        {finding.details && (
+                          <details className="text-xs text-muted-foreground mt-2">
+                            <summary className="cursor-pointer hover:text-foreground">פרטים נוספים</summary>
+                            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto whitespace-pre-wrap">
+                              {finding.details}
+                            </pre>
+                          </details>
+                        )}
+                        {finding.link && (
+                          <a 
+                            href={finding.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            קרא עוד על תיקון הבעיה
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
           
