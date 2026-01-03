@@ -35,7 +35,7 @@ async function getAllClientAccounts(clientId: string): Promise<IntegrationAccoun
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
-  
+
   // Get ALL Facebook Ads integrations for this client
   const { data: integrations, error: fetchError } = await supabaseClient
     .from('integrations')
@@ -43,64 +43,90 @@ async function getAllClientAccounts(clientId: string): Promise<IntegrationAccoun
     .eq('client_id', clientId)
     .eq('platform', 'facebook_ads')
     .eq('is_connected', true);
-  
+
   if (fetchError || !integrations || integrations.length === 0) {
     log.error('No Facebook Ads integrations found for client:', clientId);
     throw new Error('לא נמצאו חיבורי Facebook Ads עבור לקוח זה');
   }
-  
+
   log.info(`Found ${integrations.length} Facebook Ads integrations for client`);
-  
+
   const accounts: IntegrationAccount[] = [];
-  
+  const seen = new Set<string>();
+
   for (const integration of integrations) {
     if (!integration.encrypted_credentials) {
       log.warn('No encrypted credentials found for integration:', integration.id);
       continue;
     }
-    
+
     try {
       // Decrypt the credentials
       const { data: decryptedData, error: decryptError } = await supabaseClient
         .rpc('decrypt_integration_credentials', { encrypted_data: integration.encrypted_credentials });
-      
+
       if (decryptError || !decryptedData) {
         log.error('Failed to decrypt credentials for integration:', integration.id);
         continue;
       }
-      
+
       const credentials = decryptedData as { access_token?: string };
-      
+
       if (!credentials.access_token) {
         log.warn('Access Token not found for integration:', integration.id);
         continue;
       }
-      
-      // Get ad account ID and name from settings
-      const settings = integration.settings as { ad_account_id?: string; account_name?: string } | null;
-      const adAccountId = settings?.ad_account_id || integration.external_account_id || '';
-      const accountName = settings?.account_name || 'Unknown Account';
-      
-      if (!adAccountId) {
+
+      const settings = (integration.settings as any) || {};
+
+      // ✅ Preferred: multi-account storage in settings.ad_accounts (due to UNIQUE(client_id,platform))
+      const multiAccounts = Array.isArray(settings.ad_accounts) ? settings.ad_accounts : [];
+      if (multiAccounts.length > 0) {
+        for (const acc of multiAccounts) {
+          const rawId = (acc?.id || acc?.ad_account_id || acc) as string;
+          if (!rawId) continue;
+
+          const adAccountId = rawId.startsWith('act_') ? rawId : `act_${rawId}`;
+          if (seen.has(adAccountId)) continue;
+          seen.add(adAccountId);
+
+          accounts.push({
+            accessToken: credentials.access_token,
+            adAccountId,
+            accountName: acc?.name || settings.account_name || 'Unknown Account',
+            integrationId: integration.id,
+          });
+        }
+
+        continue;
+      }
+
+      // ↩️ Backward compatible single-account storage
+      const singleId = settings?.ad_account_id || integration.external_account_id || '';
+      if (!singleId) {
         log.warn('Ad account ID not found for integration:', integration.id);
         continue;
       }
-      
+
+      const adAccountId = singleId.startsWith('act_') ? singleId : `act_${singleId}`;
+      if (seen.has(adAccountId)) continue;
+      seen.add(adAccountId);
+
       accounts.push({
         accessToken: credentials.access_token,
-        adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
-        accountName,
+        adAccountId,
+        accountName: settings?.account_name || 'Unknown Account',
         integrationId: integration.id,
       });
     } catch (err) {
       log.error('Error processing integration:', integration.id, err);
     }
   }
-  
+
   if (accounts.length === 0) {
     throw new Error('לא נמצאו חשבונות Facebook Ads תקינים');
   }
-  
+
   return accounts;
 }
 
