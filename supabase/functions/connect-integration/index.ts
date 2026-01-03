@@ -28,11 +28,21 @@ interface IntegrationRequest {
     facebook_page_id?: string;
     instagram_account_id?: string;
   };
-  // For connect_assets action - multiple assets selection
+  // For connect_assets action - multiple assets selection with full data
   selected_assets?: {
     adAccounts: string[];
     pages: string[];
     instagramAccounts: string[];
+    pixels: string[];
+    catalogs: string[];
+  };
+  // Full asset data for storage
+  assets_data?: {
+    pages?: Array<{ id: string; name: string; category?: string; fan_count?: number; picture_url?: string }>;
+    instagram?: Array<{ id: string; username: string; name?: string; followers_count?: number }>;
+    pixels?: Array<{ id: string; name: string; last_fired_time?: string }>;
+    catalogs?: Array<{ id: string; name: string; product_count?: number }>;
+    token_expires_at?: string;
   };
   notify_email?: string;
 }
@@ -865,8 +875,18 @@ serve(async (req) => {
               business_name: accountData.business_name,
               currency: accountData.currency,
               account_status: accountData.account_status,
+              // Store selected asset IDs
               selected_pages: selected_assets.pages,
               selected_instagram: selected_assets.instagramAccounts,
+              selected_pixels: selected_assets.pixels || [],
+              selected_catalogs: selected_assets.catalogs || [],
+              // Store full asset data if provided
+              pages: requestBody.assets_data?.pages || [],
+              instagram_accounts: requestBody.assets_data?.instagram || [],
+              pixels: requestBody.assets_data?.pixels || [],
+              catalogs: requestBody.assets_data?.catalogs || [],
+              // Token expiry
+              token_expires_at: requestBody.assets_data?.token_expires_at || null,
               connected_at: new Date().toISOString(),
             },
             last_sync_at: new Date().toISOString(),

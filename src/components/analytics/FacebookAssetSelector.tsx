@@ -15,6 +15,10 @@ import {
   Users,
   DollarSign,
   Globe,
+  Target,
+  Package,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,15 +58,32 @@ interface FacebookPage {
   fan_count: number;
   picture_url?: string;
   has_instagram: boolean;
+  instagram_id?: string;
 }
 
 interface InstagramAccount {
   id: string;
   username: string;
+  name?: string;
   followers_count: number;
   profile_picture_url: string;
   connected_page_id: string;
   connected_page_name: string;
+}
+
+interface Pixel {
+  id: string;
+  name: string;
+  last_fired_time?: string;
+  is_created_by_business?: boolean;
+  ad_account_id?: string;
+}
+
+interface ProductCatalog {
+  id: string;
+  name: string;
+  product_count?: number;
+  ad_account_id?: string;
 }
 
 interface DiscoveredAssets {
@@ -70,11 +91,19 @@ interface DiscoveredAssets {
   adAccounts: AdAccount[];
   pages: FacebookPage[];
   instagramAccounts: InstagramAccount[];
+  pixels: Pixel[];
+  catalogs: ProductCatalog[];
+  tokenInfo?: {
+    expires_at: string | null;
+    is_valid: boolean;
+  };
   summary: {
     totalAdAccounts: number;
     activeAdAccounts: number;
     totalPages: number;
     totalInstagramAccounts: number;
+    totalPixels: number;
+    totalCatalogs: number;
   };
 }
 
@@ -82,10 +111,12 @@ interface SelectedAssets {
   adAccounts: string[];
   pages: string[];
   instagramAccounts: string[];
+  pixels: string[];
+  catalogs: string[];
 }
 
 interface FacebookAssetSelectorProps {
-  onAssetsSelected: (assets: SelectedAssets, accessToken: string) => void;
+  onAssetsSelected: (assets: SelectedAssets, accessToken: string, assetsData?: any) => void;
   onCancel: () => void;
 }
 
@@ -97,12 +128,16 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
     adAccounts: [],
     pages: [],
     instagramAccounts: [],
+    pixels: [],
+    catalogs: [],
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSections, setExpandedSections] = useState({
     adAccounts: true,
     pages: true,
     instagram: true,
+    pixels: false,
+    catalogs: false,
   });
 
   const discoverMutation = useMutation({
@@ -126,6 +161,13 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
           adAccounts: [activeAccounts[0].id],
         }));
       }
+      // Expand pixels/catalogs sections if they have data
+      if (data.pixels?.length > 0) {
+        setExpandedSections(prev => ({ ...prev, pixels: true }));
+      }
+      if (data.catalogs?.length > 0) {
+        setExpandedSections(prev => ({ ...prev, catalogs: true }));
+      }
     },
   });
 
@@ -145,8 +187,45 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
   };
 
   const handleConfirm = () => {
-    if (selectedAssets.adAccounts.length === 0) return;
-    onAssetsSelected(selectedAssets, accessToken);
+    if (selectedAssets.adAccounts.length === 0 || !discoveredAssets) return;
+    
+    // Build assets data with full details
+    const assetsData = {
+      pages: discoveredAssets.pages
+        .filter(p => selectedAssets.pages.includes(p.id))
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          fan_count: p.fan_count,
+          picture_url: p.picture_url,
+        })),
+      instagram: discoveredAssets.instagramAccounts
+        .filter(ig => selectedAssets.instagramAccounts.includes(ig.id))
+        .map(ig => ({
+          id: ig.id,
+          username: ig.username,
+          name: ig.name,
+          followers_count: ig.followers_count,
+        })),
+      pixels: (discoveredAssets.pixels || [])
+        .filter(px => selectedAssets.pixels.includes(px.id))
+        .map(px => ({
+          id: px.id,
+          name: px.name,
+          last_fired_time: px.last_fired_time,
+        })),
+      catalogs: (discoveredAssets.catalogs || [])
+        .filter(cat => selectedAssets.catalogs.includes(cat.id))
+        .map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          product_count: cat.product_count,
+        })),
+      token_expires_at: discoveredAssets.tokenInfo?.expires_at || null,
+    };
+    
+    onAssetsSelected(selectedAssets, accessToken, assetsData);
   };
 
   const getStatusBadge = (status: number) => {
@@ -181,6 +260,17 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
     );
   };
 
+  // Calculate days until token expiry
+  const getDaysUntilExpiry = (): number | null => {
+    if (!discoveredAssets?.tokenInfo?.expires_at) return null;
+    const expiryDate = new Date(discoveredAssets.tokenInfo.expires_at);
+    const now = new Date();
+    const diffTime = expiryDate.getTime() - now.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const daysUntilExpiry = discoveredAssets ? getDaysUntilExpiry() : null;
+
   // Step 1: Token Input
   if (!discoveredAssets) {
     return (
@@ -189,7 +279,7 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
           <Building2 className="h-4 w-4 text-blue-500" />
           <AlertTitle className="text-sm">חיבור אוטומטי לנכסי Facebook</AlertTitle>
           <AlertDescription className="text-xs">
-            הזן Access Token ואנחנו נשלוף אוטומטית את כל הנכסים שלך: חשבונות מודעות, עמודים ואינסטגרם
+            הזן Access Token ואנחנו נשלוף אוטומטית את כל הנכסים שלך: חשבונות מודעות, עמודים, אינסטגרם, פיקסלים וקטלוגים
           </AlertDescription>
         </Alert>
 
@@ -207,7 +297,7 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
             onKeyDown={(e) => e.key === 'Enter' && handleDiscover()}
           />
           <p className="text-xs text-muted-foreground">
-            צור ב-Graph API Explorer עם הרשאות: ads_read, pages_read_engagement, instagram_basic
+            צור ב-Graph API Explorer עם הרשאות: ads_read, pages_read_engagement, instagram_basic, business_management
           </p>
         </div>
 
@@ -253,7 +343,9 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
       {/* Summary Header */}
       <Alert className="border-green-500/50 bg-green-500/5">
         <Check className="h-4 w-4 text-green-500" />
-        <AlertTitle className="text-sm">נמצאו {discoveredAssets.summary.totalAdAccounts + discoveredAssets.summary.totalPages} נכסים</AlertTitle>
+        <AlertTitle className="text-sm">
+          נמצאו {discoveredAssets.summary.totalAdAccounts + discoveredAssets.summary.totalPages + (discoveredAssets.summary.totalPixels || 0) + (discoveredAssets.summary.totalCatalogs || 0)} נכסים
+        </AlertTitle>
         <AlertDescription className="text-xs">
           מחובר בתור: <strong>{discoveredAssets.user.name}</strong>
           <span className="mx-2">•</span>
@@ -262,8 +354,31 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
           {discoveredAssets.summary.totalPages} עמודים
           <span className="mx-2">•</span>
           {discoveredAssets.summary.totalInstagramAccounts} אינסטגרם
+          {discoveredAssets.summary.totalPixels > 0 && (
+            <>
+              <span className="mx-2">•</span>
+              {discoveredAssets.summary.totalPixels} פיקסלים
+            </>
+          )}
+          {discoveredAssets.summary.totalCatalogs > 0 && (
+            <>
+              <span className="mx-2">•</span>
+              {discoveredAssets.summary.totalCatalogs} קטלוגים
+            </>
+          )}
         </AlertDescription>
       </Alert>
+
+      {/* Token expiry warning */}
+      {daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
+        <Alert variant={daysUntilExpiry <= 3 ? "destructive" : "default"} className="py-2">
+          <Clock className="h-4 w-4" />
+          <AlertDescription className="text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            הטוקן יפוג בעוד {daysUntilExpiry} ימים. מומלץ ליצור Long-Lived Token חדש.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -426,13 +541,110 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
                       <img src={account.profile_picture_url} alt="" className="w-8 h-8 rounded-full" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">@{account.username}</span>
+                      <span className="font-medium text-sm">@{account.username || account.name}</span>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3" />
                           {formatNumber(account.followers_count)} עוקבים
                         </span>
                         <span>מחובר ל: {account.connected_page_name}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Pixels */}
+          {discoveredAssets.pixels && discoveredAssets.pixels.length > 0 && (
+            <Collapsible 
+              open={expandedSections.pixels}
+              onOpenChange={(open) => setExpandedSections(prev => ({ ...prev, pixels: open }))}
+            >
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg bg-muted/50 hover:bg-muted">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-purple-500" />
+                  <span className="font-medium text-sm">פיקסלים</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {selectedAssets.pixels.length}/{discoveredAssets.pixels.length}
+                  </Badge>
+                </div>
+                {expandedSections.pixels ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-2">
+                {filterAssets(discoveredAssets.pixels).map(pixel => (
+                  <label
+                    key={pixel.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      selectedAssets.pixels.includes(pixel.id)
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedAssets.pixels.includes(pixel.id)}
+                      onCheckedChange={() => toggleAsset('pixels', pixel.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{pixel.name}</span>
+                        {pixel.is_created_by_business && (
+                          <Badge variant="outline" className="text-[10px]">עסקי</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                        <span>ID: {pixel.id}</span>
+                        {pixel.last_fired_time && (
+                          <span>• אחרון: {new Date(pixel.last_fired_time).toLocaleDateString('he-IL')}</span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Catalogs */}
+          {discoveredAssets.catalogs && discoveredAssets.catalogs.length > 0 && (
+            <Collapsible 
+              open={expandedSections.catalogs}
+              onOpenChange={(open) => setExpandedSections(prev => ({ ...prev, catalogs: open }))}
+            >
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg bg-muted/50 hover:bg-muted">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-orange-500" />
+                  <span className="font-medium text-sm">קטלוגים</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {selectedAssets.catalogs.length}/{discoveredAssets.catalogs.length}
+                  </Badge>
+                </div>
+                {expandedSections.catalogs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-2">
+                {filterAssets(discoveredAssets.catalogs).map(catalog => (
+                  <label
+                    key={catalog.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      selectedAssets.catalogs.includes(catalog.id)
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedAssets.catalogs.includes(catalog.id)}
+                      onCheckedChange={() => toggleAsset('catalogs', catalog.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm truncate">{catalog.name}</span>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                        <span>ID: {catalog.id}</span>
+                        {catalog.product_count !== undefined && (
+                          <span>• {formatNumber(catalog.product_count)} מוצרים</span>
+                        )}
                       </div>
                     </div>
                   </label>
@@ -449,7 +661,7 @@ export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSel
           variant="outline" 
           onClick={() => {
             setDiscoveredAssets(null);
-            setSelectedAssets({ adAccounts: [], pages: [], instagramAccounts: [] });
+            setSelectedAssets({ adAccounts: [], pages: [], instagramAccounts: [], pixels: [], catalogs: [] });
           }}
           className="flex-shrink-0"
         >
