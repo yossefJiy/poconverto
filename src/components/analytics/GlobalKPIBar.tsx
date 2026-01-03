@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   DollarSign, 
@@ -51,7 +51,7 @@ function formatCurrency(num: number | undefined | null): string {
   return "₪" + formatNumber(num);
 }
 
-export function GlobalKPIBar({ platformData, isLoading }: GlobalKPIBarProps) {
+export const GlobalKPIBar = forwardRef<HTMLDivElement, GlobalKPIBarProps>(function GlobalKPIBar({ platformData, isLoading }, ref) {
   const navigate = useNavigate();
   
   const metrics = useMemo(() => {
@@ -205,4 +205,6 @@ export function GlobalKPIBar({ platformData, isLoading }: GlobalKPIBarProps) {
       </div>
     </div>
   );
-}
+});
+
+GlobalKPIBar.displayName = "GlobalKPIBar";

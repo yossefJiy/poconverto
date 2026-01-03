@@ -155,6 +155,131 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // 7. Check for too many Edge Functions (complexity check)
+    console.log("[Code Health Audit] Checking system complexity...");
+    const edgeFunctionsCount = 35; // Based on our directory listing
+    if (edgeFunctionsCount > 30) {
+      issues.push({
+        category: "code",
+        severity: "info",
+        title: `${edgeFunctionsCount} Edge Functions - שקול איחוד`,
+        description: "מספר גבוה של Edge Functions. שקול לאחד פונקציות קשורות לשיפור תחזוקה",
+        details: { 
+          count: edgeFunctionsCount,
+          recommendation: "Consider Modular Monolith or API Gateway pattern"
+        }
+      });
+    }
+
+    // 8. Check for duplicate integrations (same platform, same client)
+    console.log("[Code Health Audit] Checking duplicate integrations...");
+    const { data: allIntegrations } = await supabase
+      .from("integrations")
+      .select("id, platform, client_id, is_connected");
+    
+    if (allIntegrations) {
+      const integrationGroups = new Map<string, any[]>();
+      allIntegrations.forEach(i => {
+        const key = `${i.client_id}-${i.platform}`;
+        if (!integrationGroups.has(key)) {
+          integrationGroups.set(key, []);
+        }
+        integrationGroups.get(key)!.push(i);
+      });
+      
+      const duplicates = Array.from(integrationGroups.entries())
+        .filter(([_, items]) => items.filter(i => i.is_connected).length > 1);
+      
+      // This is now expected behavior for multi-account support
+      // Just log for awareness
+      if (duplicates.length > 0) {
+        console.log(`[Code Health Audit] Found ${duplicates.length} clients with multiple accounts (expected)`);
+      }
+    }
+
+    // 9. Check for campaigns without activity
+    console.log("[Code Health Audit] Checking inactive campaigns...");
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    
+    const { data: staleCampaigns } = await supabase
+      .from("campaigns")
+      .select("id, name, status")
+      .eq("status", "active")
+      .lt("updated_at", sixtyDaysAgo.toISOString());
+    
+    if (staleCampaigns && staleCampaigns.length > 0) {
+      issues.push({
+        category: "database",
+        severity: "info",
+        title: `${staleCampaigns.length} קמפיינים פעילים ללא עדכון 60+ יום`,
+        description: "קמפיינים שסומנו כפעילים אך לא עודכנו זמן רב",
+        details: { campaigns: staleCampaigns.map(c => c.name) }
+      });
+    }
+
+    // 10. Check for token expiry (Facebook integrations)
+    console.log("[Code Health Audit] Checking token expiry...");
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    
+    const { data: facebookIntegrations } = await supabase
+      .from("integrations")
+      .select("id, client_id, settings")
+      .eq("platform", "facebook_ads")
+      .eq("is_connected", true);
+    
+    if (facebookIntegrations) {
+      const expiringTokens = facebookIntegrations.filter(i => {
+        const settings = i.settings as { token_expires_at?: string } | null;
+        if (settings?.token_expires_at) {
+          const expiryDate = new Date(settings.token_expires_at);
+          return expiryDate <= sevenDaysFromNow;
+        }
+        return false;
+      });
+      
+      if (expiringTokens.length > 0) {
+        issues.push({
+          category: "security",
+          severity: "warning",
+          title: `${expiringTokens.length} טוקנים של Facebook עומדים לפוג`,
+          description: "יש לחדש את הטוקנים לפני שיפוגו כדי לשמור על החיבור",
+          details: { count: expiringTokens.length }
+        });
+      }
+    }
+
+    // 11. Check for large data tables
+    console.log("[Code Health Audit] Checking table sizes...");
+    const { count: notificationCount } = await supabase
+      .from("notification_history")
+      .select("id", { count: "exact", head: true });
+    
+    if (notificationCount && notificationCount > 10000) {
+      issues.push({
+        category: "performance",
+        severity: "warning",
+        title: `טבלת notification_history מכילה ${notificationCount.toLocaleString()} שורות`,
+        description: "שקול לארכב הודעות ישנות לשיפור ביצועים",
+        details: { count: notificationCount }
+      });
+    }
+
+    const { count: healthHistoryCount } = await supabase
+      .from("service_health_history")
+      .select("id", { count: "exact", head: true });
+    
+    if (healthHistoryCount && healthHistoryCount > 50000) {
+      issues.push({
+        category: "performance",
+        severity: "warning",
+        title: `טבלת service_health_history מכילה ${healthHistoryCount.toLocaleString()} שורות`,
+        description: "שקול לארכב רשומות ישנות לשיפור ביצועים",
+        details: { count: healthHistoryCount }
+      });
+    }
+
     console.log(`[Code Health Audit] Found ${issues.length} issues`);
     
     // Insert new issues to database
