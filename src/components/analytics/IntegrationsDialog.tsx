@@ -201,18 +201,18 @@ const platformOptions: PlatformOption[] = [
     icon: () => <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
     color: "bg-[#1877F2]",
     category: "analytics",
-    description: "קבלת נתוני קמפיינים מ-Facebook Business",
+    description: "מנהל מודעות, עמודים ואינסטגרם מ-Facebook Business",
     credentialKey: "ad_account_id",
     placeholder: "123456789",
     useFacebookCredentials: true,
     steps: [
       { title: "צור Access Token", description: "עבור ל-Facebook Developer > Tools > Graph API Explorer" },
-      { title: "הגדר הרשאות ads_read", description: "בחר הרשאות ads_read ו-ads_management" },
+      { title: "הגדר הרשאות", description: "ads_read, pages_read_engagement, instagram_basic" },
       { title: "צור Long-Lived Token", description: "בחר User Token ארוך-טווח (60 ימים)" },
-      { title: "העתק את מספר חשבון המודעות", description: "מספרים בלבד - נוסיף act_ אוטומטית" },
+      { title: "חבר נכסים", description: "מנהל מודעות, עמוד פייסבוק ואינסטגרם" },
     ],
     helpUrl: "https://developers.facebook.com/docs/marketing-api/overview",
-    features: ["קמפיינים", "קבוצות מודעות", "Insights", "המרות"],
+    features: ["מנהל מודעות", "עמודי פייסבוק", "אינסטגרם", "קהלים"],
   },
   // Google Workspace
   { 
@@ -380,6 +380,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
   const [consumerSecret, setConsumerSecret] = useState("");
   const [measurementId, setMeasurementId] = useState(""); // For Google Analytics Measurement ID (G-XXXXXX)
   const [facebookAccessToken, setFacebookAccessToken] = useState(""); // For Facebook Ads access token
+  const [facebookPageId, setFacebookPageId] = useState(""); // For Facebook Page ID
+  const [instagramAccountId, setInstagramAccountId] = useState(""); // For Instagram Business Account ID
   const [selectedMccAccount, setSelectedMccAccount] = useState<MccAccount | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
@@ -456,10 +458,12 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
           measurement_id: measurementId || "",
         };
       } else if (selectedPlatform.useFacebookCredentials) {
-        // Facebook Ads with access token + ad account ID
+        // Facebook Ads with access token + ad account ID + pages
         credentials = {
           ad_account_id: credential,
           access_token: facebookAccessToken,
+          facebook_page_id: facebookPageId || "",
+          instagram_account_id: instagramAccountId || "",
         };
       } else {
         credentials[selectedPlatform.credentialKey] = credential;
@@ -536,6 +540,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConsumerSecret("");
     setMeasurementId("");
     setFacebookAccessToken("");
+    setFacebookPageId("");
+    setInstagramAccountId("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -620,6 +626,8 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
     setConsumerSecret("");
     setMeasurementId("");
     setFacebookAccessToken("");
+    setFacebookPageId("");
+    setInstagramAccountId("");
     setSelectedMccAccount(null);
     setConnectionStatus("idle");
     setConnectionMessage("");
@@ -659,14 +667,44 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                 <h4 className="font-semibold text-sm text-muted-foreground">חיבורים קיימים:</h4>
                 {integrations.map((integration) => {
                   const platform = platformOptions.find(p => p.id === integration.platform);
+                  const settings = integration.settings as any;
+                  const connectionData = settings?.connection_data;
+                  
+                  // Get additional info for Facebook integrations
+                  const facebookPage = connectionData?.facebook_page || settings?.facebook_page;
+                  const instagramAccount = connectionData?.instagram_account || settings?.instagram_account;
+                  const accountStatus = connectionData?.account_status;
+                  
                   return (
                     <div key={integration.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                       <div className="flex items-center gap-3">
                         <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white", platform?.color)}>
                           {platform && <platform.icon />}
                         </div>
-                        <div>
-                          <p className="font-medium">{platform?.name}</p>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{platform?.name}</p>
+                            {connectionData?.account_name && (
+                              <span className="text-xs text-muted-foreground">• {connectionData.account_name}</span>
+                            )}
+                          </div>
+                          
+                          {/* Facebook-specific info */}
+                          {integration.platform === 'facebook_ads' && (facebookPage || instagramAccount) && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {facebookPage && (
+                                <span className="flex items-center gap-1">
+                                  📄 {facebookPage.name}
+                                </span>
+                              )}
+                              {instagramAccount && (
+                                <span className="flex items-center gap-1">
+                                  📸 @{instagramAccount.username}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {integration.last_sync_at ? new Date(integration.last_sync_at).toLocaleString("he-IL") : "לא סונכרן"}
@@ -674,6 +712,23 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Account status for Facebook */}
+                        {integration.platform === 'facebook_ads' && accountStatus !== undefined && (
+                          <Badge 
+                            variant={accountStatus === 1 ? "default" : "secondary"}
+                            className={cn(
+                              "text-[10px]",
+                              accountStatus === 1 ? "bg-green-500" : 
+                              accountStatus === 2 ? "bg-yellow-500" : 
+                              accountStatus === 3 ? "bg-red-500" : ""
+                            )}
+                          >
+                            {accountStatus === 1 ? "פעיל" : 
+                             accountStatus === 2 ? "מושבת" : 
+                             accountStatus === 3 ? "לא מאושר" : 
+                             `סטטוס: ${accountStatus}`}
+                          </Badge>
+                        )}
                         <Badge variant={integration.is_connected ? "default" : "secondary"}>
                           {integration.is_connected ? "מחובר" : "מנותק"}
                         </Badge>
@@ -913,39 +968,22 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
               </div>
             )}
 
-            {/* Facebook Ads with access token + ad account ID */}
-            {selectedPlatform.useFacebookCredentials && (
+            {/* Facebook Ads with full integration */}
+            {selectedPlatform.useFacebookCredentials && selectedPlatform.id === 'facebook_ads' && (
               <div className="space-y-4">
                 <Alert className="border-blue-500/50 bg-blue-500/5">
                   <Info className="h-4 w-4 text-blue-500" />
-                  <AlertTitle className="text-sm">חיבור Facebook Ads</AlertTitle>
+                  <AlertTitle className="text-sm">חיבור מלא ל-Facebook Business</AlertTitle>
                   <AlertDescription className="text-xs">
-                    יש ליצור User Access Token עם הרשאת ads_read דרך Graph API Explorer
+                    חבר את כל נכסי Facebook שלך: מנהל מודעות, עמוד פייסבוק ואינסטגרם
                   </AlertDescription>
                 </Alert>
                 
+                {/* Access Token - Required */}
                 <div className="space-y-2">
-                  <Label>Ad Account ID (מספרים בלבד):</Label>
-                  <Input
-                    value={credential}
-                    onChange={(e) => {
-                      // Remove non-digits and act_ prefix if entered
-                      const cleanValue = e.target.value.replace(/\D/g, '');
-                      setCredential(cleanValue);
-                      setCurrentStep(cleanValue ? 1 : 0);
-                      setConnectionStatus("idle");
-                      setValidationError("");
-                    }}
-                    placeholder="123456789012345"
-                    dir="ltr"
-                    className="text-left"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    מספר חשבון המודעות (ספרות בלבד). נמצא ב-Business Settings → Ad Accounts
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Access Token:</Label>
+                  <Label className="flex items-center gap-2">
+                    Access Token <Badge variant="destructive" className="text-[10px]">חובה</Badge>
+                  </Label>
                   <Input
                     type="password"
                     value={facebookAccessToken}
@@ -959,8 +997,128 @@ export function IntegrationsDialog({ open, onOpenChange, defaultPlatform }: Inte
                     className="text-left font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    צור ב-Graph API Explorer עם הרשאות ads_read. מומלץ ליצור Long-Lived Token
+                    צור ב-Graph API Explorer. הרשאות: ads_read, pages_read_engagement, instagram_basic
                   </p>
+                </div>
+
+                {/* Ad Account ID - Required */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    מזהה מנהל מודעות (Ad Account ID) <Badge variant="destructive" className="text-[10px]">חובה</Badge>
+                  </Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      const cleanValue = e.target.value.replace(/\D/g, '');
+                      setCredential(cleanValue);
+                      setCurrentStep(cleanValue ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="123456789012345"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Business Settings → Ad Accounts. מספרים בלבד (נוסיף act_ אוטומטית)
+                  </p>
+                </div>
+
+                {/* Facebook Page ID - Optional */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    מזהה עמוד פייסבוק (Page ID) <Badge variant="secondary" className="text-[10px]">אופציונלי</Badge>
+                  </Label>
+                  <Input
+                    value={facebookPageId}
+                    onChange={(e) => {
+                      const cleanValue = e.target.value.replace(/\D/g, '');
+                      setFacebookPageId(cleanValue);
+                      setConnectionStatus("idle");
+                    }}
+                    placeholder="123456789012345"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    About → Page ID או מהכתובת: facebook.com/[page_id]
+                  </p>
+                </div>
+
+                {/* Instagram Account ID - Optional */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    מזהה אינסטגרם עסקי (Instagram ID) <Badge variant="secondary" className="text-[10px]">אופציונלי</Badge>
+                  </Label>
+                  <Input
+                    value={instagramAccountId}
+                    onChange={(e) => {
+                      const cleanValue = e.target.value.replace(/\D/g, '');
+                      setInstagramAccountId(cleanValue);
+                      setConnectionStatus("idle");
+                    }}
+                    placeholder="17841400000000000"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    עמוד פייסבוק → Settings → Instagram → Business Account ID
+                  </p>
+                </div>
+
+                {/* Help link */}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto text-xs"
+                  onClick={() => window.open("https://developers.facebook.com/docs/marketing-api/overview", "_blank")}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  מדריך יצירת Access Token
+                </Button>
+              </div>
+            )}
+
+            {/* TikTok with access token + advertiser ID */}
+            {selectedPlatform.useFacebookCredentials && selectedPlatform.id === 'tiktok' && (
+              <div className="space-y-4">
+                <Alert className="border-black/50 bg-black/5">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle className="text-sm">חיבור TikTok Ads</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    יש ליצור App ולקבל Access Token מ-TikTok Marketing API
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="space-y-2">
+                  <Label>Advertiser ID:</Label>
+                  <Input
+                    value={credential}
+                    onChange={(e) => {
+                      const cleanValue = e.target.value.replace(/\D/g, '');
+                      setCredential(cleanValue);
+                      setCurrentStep(cleanValue ? 1 : 0);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="123456789012345"
+                    dir="ltr"
+                    className="text-left"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Access Token:</Label>
+                  <Input
+                    type="password"
+                    value={facebookAccessToken}
+                    onChange={(e) => {
+                      setFacebookAccessToken(e.target.value);
+                      setConnectionStatus("idle");
+                      setValidationError("");
+                    }}
+                    placeholder="TikTok Access Token..."
+                    dir="ltr"
+                    className="text-left font-mono text-sm"
+                  />
                 </div>
               </div>
             )}
