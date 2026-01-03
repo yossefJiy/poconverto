@@ -141,12 +141,15 @@ interface UnifiedCampaign {
   cpc?: number;
   start_date?: string;
   end_date?: string;
+  created_at?: string;
   source: 'internal' | 'google_ads' | 'facebook_ads';
   description?: string;
   adSets?: CampaignAdSet[];
   ads?: CampaignAd[];
   assets?: CampaignAsset[];
   audiences?: string[];
+  ad_account_id?: string;
+  account_name?: string;
 }
 
 interface ClientAdsUrls {
@@ -161,8 +164,10 @@ export default function Campaigns() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [showRecentOnly, setShowRecentOnly] = useState(true);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [adAccountFilter, setAdAccountFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<{ startDate: string; endDate: string } | null>(null);
   const [newCampaign, setNewCampaign] = useState({
     name: "",
@@ -254,6 +259,7 @@ export default function Campaigns() {
         cpc: c.clicks ? (c.spent || 0) / c.clicks : 0,
         start_date: c.start_date,
         end_date: c.end_date,
+        created_at: c.created_at,
         description: c.description,
         source: 'internal',
       });
@@ -321,6 +327,8 @@ export default function Campaigns() {
           ctr: c.ctr,
           cpc: c.cpc,
           source: 'facebook_ads',
+          ad_account_id: c.ad_account_id,
+          account_name: c.account_name,
           adSets: campaignAdSets.map((as: any) => ({
             id: as.id,
             name: as.name,
@@ -343,19 +351,62 @@ export default function Campaigns() {
     return campaigns;
   }, [internalCampaigns, googleAdsData, facebookAdsData]);
 
+  // Get unique ad accounts for filter
+  const adAccountOptions = useMemo(() => {
+    const accounts = new Map<string, string>();
+    allCampaigns.forEach(c => {
+      if (c.ad_account_id && c.account_name) {
+        accounts.set(c.ad_account_id, c.account_name);
+      }
+    });
+    return Array.from(accounts.entries()).map(([id, name]) => ({ id, name }));
+  }, [allCampaigns]);
+
   // Filter campaigns
   const filteredCampaigns = useMemo(() => {
     let filtered = allCampaigns;
     
+    // Filter by active status
     if (showActiveOnly) {
       filtered = filtered.filter(c => {
         const statusInfo = statusConfig[c.status];
         return statusInfo?.isActive ?? false;
       });
     }
+
+    // Filter by recent activity (created or spent in last month)
+    if (showRecentOnly) {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      
+      filtered = filtered.filter(c => {
+        // Has spent budget = active in period
+        if (c.spent && c.spent > 0) return true;
+        
+        // Created in last month
+        if (c.created_at) {
+          const createdDate = new Date(c.created_at);
+          if (createdDate >= oneMonthAgo) return true;
+        }
+        
+        // Started in last month
+        if (c.start_date) {
+          const startDate = new Date(c.start_date);
+          if (startDate >= oneMonthAgo) return true;
+        }
+        
+        return false;
+      });
+    }
     
+    // Filter by platform
     if (platformFilter !== "all") {
       filtered = filtered.filter(c => c.platform === platformFilter);
+    }
+
+    // Filter by ad account
+    if (adAccountFilter !== "all") {
+      filtered = filtered.filter(c => c.ad_account_id === adAccountFilter);
     }
     
     // Date filter
@@ -378,7 +429,7 @@ export default function Campaigns() {
     }
     
     return filtered;
-  }, [allCampaigns, showActiveOnly, platformFilter, dateFilter]);
+  }, [allCampaigns, showActiveOnly, showRecentOnly, platformFilter, adAccountFilter, dateFilter]);
 
   const isLoading = isLoadingInternal || isLoadingGoogleAds || isLoadingFacebookAds;
 
@@ -571,7 +622,7 @@ export default function Campaigns() {
           <div className="space-y-6">
             {/* Filters Bar */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Select value={platformFilter} onValueChange={setPlatformFilter}>
                   <SelectTrigger className="w-48 glass">
                     <Filter className="w-4 h-4 ml-2" />
@@ -584,6 +635,23 @@ export default function Campaigns() {
                     <SelectItem value="internal">פנימי ({platformCounts.internal})</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Ad Account Filter */}
+                {adAccountOptions.length > 1 && (
+                  <Select value={adAccountFilter} onValueChange={setAdAccountFilter}>
+                    <SelectTrigger className="w-56 glass">
+                      <SelectValue placeholder="כל חשבונות המודעות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל חשבונות המודעות</SelectItem>
+                      {adAccountOptions.map(acc => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 {/* Date Range Filter */}
                 <div className="flex items-center gap-1">
@@ -621,27 +689,50 @@ export default function Campaigns() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="active-filter"
-                  checked={showActiveOnly}
-                  onCheckedChange={setShowActiveOnly}
-                />
-                <Label htmlFor="active-filter" className="text-sm text-muted-foreground cursor-pointer">
-                  פעילים בלבד
-                </Label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="recent-filter"
+                    checked={showRecentOnly}
+                    onCheckedChange={setShowRecentOnly}
+                  />
+                  <Label htmlFor="recent-filter" className="text-sm text-muted-foreground cursor-pointer">
+                    חודש אחרון
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="active-filter"
+                    checked={showActiveOnly}
+                    onCheckedChange={setShowActiveOnly}
+                  />
+                  <Label htmlFor="active-filter" className="text-sm text-muted-foreground cursor-pointer">
+                    פעילים בלבד
+                  </Label>
+                </div>
               </div>
             </div>
 
             {/* Campaign Stats */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="bg-primary/10">
                 {filteredCampaigns.length} קמפיינים
               </Badge>
+              {showRecentOnly && (
+                <Badge variant="secondary" className="bg-primary/10">
+                  <Calendar className="w-3 h-3 ml-1" />
+                  חודש אחרון
+                </Badge>
+              )}
               {showActiveOnly && (
                 <Badge variant="secondary" className="bg-success/10 text-success">
                   <Play className="w-3 h-3 ml-1" />
                   פעילים בלבד
+                </Badge>
+              )}
+              {adAccountFilter !== "all" && (
+                <Badge variant="secondary" className="bg-[#1877F2]/10 text-[#1877F2]">
+                  {adAccountOptions.find(a => a.id === adAccountFilter)?.name}
                 </Badge>
               )}
             </div>
