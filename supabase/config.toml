@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.insights-chat]
 verify_jwt = false
+
+[functions.facebook-discover-assets]
+verify_jwt = false
