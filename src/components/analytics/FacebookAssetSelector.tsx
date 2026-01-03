@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -89,7 +89,8 @@ interface FacebookAssetSelectorProps {
   onCancel: () => void;
 }
 
-export function FacebookAssetSelector({ onAssetsSelected, onCancel }: FacebookAssetSelectorProps) {
+export const FacebookAssetSelector = forwardRef<HTMLDivElement, FacebookAssetSelectorProps>(
+  function FacebookAssetSelector({ onAssetsSelected, onCancel }, ref) {
   const [accessToken, setAccessToken] = useState("");
   const [discoveredAssets, setDiscoveredAssets] = useState<DiscoveredAssets | null>(null);
   const [selectedAssets, setSelectedAssets] = useState<SelectedAssets>({
@@ -469,4 +470,4 @@ export function FacebookAssetSelector({ onAssetsSelected, onCancel }: FacebookAs
       </div>
     </div>
   );
-}
+});
