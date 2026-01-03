@@ -27,6 +27,7 @@ import Analytics from "./pages/Analytics";
 import GoogleAdsDetail from "./pages/analytics/GoogleAdsDetail";
 import ShopifyDetail from "./pages/analytics/ShopifyDetail";
 import FacebookAdsDetail from "./pages/analytics/FacebookAdsDetail";
+import MetaSummary from "./pages/analytics/MetaSummary";
 import WooCommerceDetail from "./pages/analytics/WooCommerceDetail";
 import GoogleAnalyticsDetail from "./pages/analytics/GoogleAnalyticsDetail";
 import CampaignDetail from "./pages/analytics/CampaignDetail";
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/analytics/google-ads" element={<ProtectedRoute><GoogleAdsDetail /></ProtectedRoute>} />
               <Route path="/analytics/shopify" element={<ProtectedRoute><ShopifyDetail /></ProtectedRoute>} />
               <Route path="/analytics/facebook-ads" element={<ProtectedRoute><FacebookAdsDetail /></ProtectedRoute>} />
+              <Route path="/analytics/meta" element={<ProtectedRoute><MetaSummary /></ProtectedRoute>} />
               <Route path="/analytics/woocommerce" element={<ProtectedRoute><WooCommerceDetail /></ProtectedRoute>} />
               <Route path="/analytics/google-analytics" element={<ProtectedRoute><GoogleAnalyticsDetail /></ProtectedRoute>} />
               <Route path="/campaigns/:campaignId" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />

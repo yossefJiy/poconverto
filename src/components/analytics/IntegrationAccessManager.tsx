@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Clock,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { FacebookAssetSelector } from "./FacebookAssetSelector";
 
 interface Integration {
   id: string;
@@ -84,6 +86,7 @@ export function IntegrationAccessManager({
 }: IntegrationAccessManagerProps) {
   const queryClient = useQueryClient();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFacebookAssetSelector, setShowFacebookAssetSelector] = useState(false);
 
   // Fetch team members who have access to this client
   const { data: teamMembers = [] } = useQuery({
@@ -107,6 +110,34 @@ export function IntegrationAccessManager({
       return data || [];
     },
     enabled: !!clientId && open,
+   });
+
+  const connectFacebookAssetsMutation = useMutation({
+    mutationFn: async ({ assets, accessToken, assetsData }: { assets: any; accessToken: string; assetsData?: any }) => {
+      const { data, error } = await supabase.functions.invoke("connect-integration", {
+        body: {
+          action: "connect_assets",
+          platform: "facebook_ads",
+          client_id: clientId,
+          credentials: { access_token: accessToken },
+          selected_assets: assets,
+          assets_data: assetsData,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "שגיאה בחיבור נכסים");
+      return data;
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["integrations", clientId] });
+      await queryClient.invalidateQueries({ queryKey: ["facebook-ads"], exact: false });
+      toast.success(data?.message || "הנכסים עודכנו בהצלחה");
+      setShowFacebookAssetSelector(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "שגיאה בחיבור הנכסים");
+    },
   });
 
   const disconnectMutation = useMutation({
@@ -243,6 +274,24 @@ export function IntegrationAccessManager({
                         </p>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Facebook: rediscover/connect more assets */}
+                {integration.platform === "facebook_ads" && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => setShowFacebookAssetSelector(true)}
+                      disabled={connectFacebookAssetsMutation.isPending}
+                    >
+                      <RefreshCw className="h-4 w-4 ml-2" />
+                      משוך נכסים מחדש / הוסף חשבון מודעות
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      הפעולה תבקש Access Token חדש ותאפשר לבחור עוד חשבונות מודעות, עמודים, אינסטגרם, פיקסלים וקטלוגים.
+                    </p>
                   </div>
                 )}
               </div>
@@ -389,6 +438,25 @@ export function IntegrationAccessManager({
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Facebook Asset Selector */}
+      <Dialog open={showFacebookAssetSelector} onOpenChange={setShowFacebookAssetSelector}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>בחירת נכסי Meta</DialogTitle>
+            <DialogDescription>
+              בחר את כל חשבונות המודעות והנכסים שברצונך לחבר ללקוח.
+            </DialogDescription>
+          </DialogHeader>
+
+          <FacebookAssetSelector
+            onAssetsSelected={(assets, accessToken, assetsData) =>
+              connectFacebookAssetsMutation.mutate({ assets, accessToken, assetsData })
+            }
+            onCancel={() => setShowFacebookAssetSelector(false)}
+          />
         </DialogContent>
       </Dialog>
 

@@ -71,6 +71,28 @@ function getAccountStatusLabel(status: number): { label: string; color: string }
   return statuses[status] || { label: 'לא ידוע', color: 'gray' };
 }
 
+// Fetch paginated results from Graph API
+async function fetchAllGraphPages<T>(initialUrl: string): Promise<T[]> {
+  const results: T[] = [];
+  let url: string | null = initialUrl;
+  let guard = 0;
+
+  while (url && guard < 25) {
+    const response: Response = await fetch(url as string);
+    const data: any = await response.json();
+
+    if (data?.error) {
+      throw new Error(data.error.message || "שגיאה בשליפת נתונים");
+    }
+
+    results.push(...((data.data as T[]) || []));
+    url = data?.paging?.next || null;
+    guard++;
+  }
+
+  return results;
+}
+
 // Fetch all ad accounts accessible with this token
 async function fetchAdAccounts(accessToken: string): Promise<AdAccount[]> {
   const url = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/me/adaccounts`;
@@ -81,15 +103,9 @@ async function fetchAdAccounts(accessToken: string): Promise<AdAccount[]> {
   });
 
   log.info('Fetching ad accounts...');
-  const response = await fetch(`${url}?${params}`);
-  const data = await response.json();
+  const rows = await fetchAllGraphPages<any>(`${url}?${params.toString()}`);
 
-  if (data.error) {
-    log.error('Facebook API error fetching ad accounts:', data.error);
-    throw new Error(data.error.message || 'שגיאה בשליפת חשבונות מודעות');
-  }
-
-  return (data.data || []).map((account: any) => ({
+  return rows.map((account: any) => ({
     id: account.id,
     account_id: account.account_id,
     name: account.name,
@@ -111,15 +127,8 @@ async function fetchPages(accessToken: string): Promise<FacebookPage[]> {
   });
 
   log.info('Fetching pages...');
-  const response = await fetch(`${url}?${params}`);
-  const data = await response.json();
-
-  if (data.error) {
-    log.error('Facebook API error fetching pages:', data.error);
-    throw new Error(data.error.message || 'שגיאה בשליפת עמודים');
-  }
-
-  return data.data || [];
+  const rows = await fetchAllGraphPages<FacebookPage>(`${url}?${params.toString()}`);
+  return rows || [];
 }
 
 // Fetch user info
@@ -151,15 +160,9 @@ async function fetchPixels(accessToken: string, adAccountId: string): Promise<Pi
       limit: '100',
     });
 
-    const response = await fetch(`${url}?${params}`);
-    const data = await response.json();
+    const rows = await fetchAllGraphPages<any>(`${url}?${params.toString()}`);
 
-    if (data.error) {
-      log.info(`No pixels access for ${adAccountId}: ${data.error.message}`);
-      return [];
-    }
-
-    return (data.data || []).map((pixel: any) => ({
+    return (rows || []).map((pixel: any) => ({
       ...pixel,
       ad_account_id: adAccountId,
     }));
@@ -179,15 +182,9 @@ async function fetchProductCatalogs(accessToken: string, adAccountId: string): P
       limit: '100',
     });
 
-    const response = await fetch(`${url}?${params}`);
-    const data = await response.json();
+    const rows = await fetchAllGraphPages<any>(`${url}?${params.toString()}`);
 
-    if (data.error) {
-      log.info(`No catalogs access for ${adAccountId}: ${data.error.message}`);
-      return [];
-    }
-
-    return (data.data || []).map((catalog: any) => ({
+    return (rows || []).map((catalog: any) => ({
       ...catalog,
       ad_account_id: adAccountId,
     }));
