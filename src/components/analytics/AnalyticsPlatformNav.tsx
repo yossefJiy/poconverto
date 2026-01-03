@@ -18,6 +18,7 @@ const platforms: Platform[] = [
   { key: "shopify", name: "Shopify", path: "/analytics/shopify", icon: <Store className="w-4 h-4" />, bgColor: "bg-[#96BF48]" },
   { key: "google_ads", name: "Google Ads", path: "/analytics/google-ads", icon: <Target className="w-4 h-4" />, bgColor: "bg-[#4285F4]" },
   { key: "facebook_ads", name: "Facebook Ads", path: "/analytics/facebook-ads", icon: <span className="text-xs font-bold">f</span>, bgColor: "bg-[#1877F2]" },
+  { key: "meta", name: "Meta (סיכום)", path: "/analytics/meta", icon: <span className="text-[10px] font-bold">M</span>, bgColor: "bg-primary" },
   { key: "woocommerce", name: "WooCommerce", path: "/analytics/woocommerce", icon: <ShoppingCart className="w-4 h-4" />, bgColor: "bg-[#96588A]" },
 ];
 
@@ -43,7 +44,8 @@ export function AnalyticsPlatformNav() {
   });
 
   const connectedPlatforms = integrations.map(i => i.platform);
-  const availablePlatforms = platforms.filter(p => connectedPlatforms.includes(p.key));
+  const hasFacebook = connectedPlatforms.includes("facebook_ads");
+  const availablePlatforms = platforms.filter(p => connectedPlatforms.includes(p.key) || (p.key === "meta" && hasFacebook));
 
   if (availablePlatforms.length <= 1) return null;
 
