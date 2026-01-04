@@ -112,8 +112,8 @@ export function GlobalAgentFAB() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      {/* Floating Action Button - bottom RIGHT */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col-reverse items-center gap-2">
+      {/* Floating Action Button - bottom LEFT */}
+      <div className="fixed bottom-6 left-6 z-40 flex flex-col-reverse items-center gap-2">
         {/* Module buttons - show when menu is open */}
         <div
           className={cn(
@@ -148,7 +148,7 @@ export function GlobalAgentFAB() {
                     <Icon className="w-5 h-5 text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left" className="max-w-xs">
+                <TooltipContent side="right" className="max-w-xs">
                   <div className="text-right">
                     <p className="font-medium">{config.label}</p>
                     <p className="text-xs text-muted-foreground">
@@ -224,7 +224,7 @@ export function GlobalAgentFAB() {
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="text-right">
+            <TooltipContent side="right" className="text-right">
               <p>{isMenuOpen ? "סגור תפריט" : "סוכני AI"}</p>
               {totalAlerts > 0 && !isMenuOpen && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -236,7 +236,7 @@ export function GlobalAgentFAB() {
 
           {/* Total Alerts Badge */}
           {totalAlerts > 0 && !isMenuOpen && (
-            <Badge className="absolute -top-1 -left-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
+            <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
               {totalAlerts > 99 ? "99+" : totalAlerts}
             </Badge>
           )}
@@ -252,14 +252,14 @@ export function GlobalAgentFAB() {
                     e.stopPropagation();
                     handleOpenAlerts();
                   }}
-                  className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full border-2 border-background"
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-background"
                 >
                   <span className="relative w-full h-full flex items-center justify-center rounded-full bg-warning text-warning-foreground">
                     <Clock className="w-3 h-3" />
                   </span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="text-right">
+              <TooltipContent side="right" className="text-right">
                 <p>{pendingActionsCount} בקשות ממתינות לאישור</p>
                 <p className="text-xs text-muted-foreground">לחץ לפתיחת מסך התראות</p>
               </TooltipContent>
@@ -268,9 +268,9 @@ export function GlobalAgentFAB() {
         </div>
       </div>
 
-      {/* Chat Panel - positioned to the left of the FAB */}
+      {/* Chat Panel - positioned to the right of the FAB */}
       {selectedModule && (
-        <div className="fixed bottom-6 right-24 z-40">
+        <div className="fixed bottom-6 left-24 z-40">
           <ModularAgentChat
             moduleType={selectedModule as keyof typeof moduleAgentConfig}
             isOpen={true}
