@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 import { healthCheckResponse, createLogger } from "../_shared/utils.ts";
 import { SERVICE_VERSIONS } from "../_shared/constants.ts";
@@ -9,6 +10,41 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Track AI usage
+async function trackAIUsage(params: {
+  action: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  promptSummary?: string;
+  clientId?: string;
+  userId?: string;
+}) {
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const estimatedCost = ((params.inputTokens / 1000) * 0.00005) + ((params.outputTokens / 1000) * 0.00015);
+    
+    await supabase.from('ai_query_history').insert({
+      action: params.action,
+      model: params.model,
+      provider: 'lovable',
+      input_tokens: params.inputTokens,
+      output_tokens: params.outputTokens,
+      estimated_cost: estimatedCost,
+      prompt_summary: params.promptSummary?.slice(0, 500),
+      client_id: params.clientId || null,
+      created_by: params.userId || null,
+    });
+    console.log('AI usage tracked:', { action: params.action, estimatedCost });
+  } catch (err) {
+    console.error('Error tracking AI usage:', err);
+  }
+}
 
 interface AIRequest {
   type: 'content' | 'insights' | 'strategy' | 'optimize' | 'analyze' | 'health';
@@ -220,6 +256,20 @@ ${c.name}:
       console.error('[AI Marketing] Error:', response.status, errorText);
       throw new Error('AI service error');
     }
+
+    // Track AI usage (estimate tokens since streaming)
+    const inputTokens = Math.ceil((systemPrompt.length + userPrompt.length) / 4);
+    
+    // For streaming, we estimate based on typical response length
+    trackAIUsage({
+      action: `marketing_${body.type}`,
+      model: 'google/gemini-2.5-flash',
+      inputTokens,
+      outputTokens: 500, // Estimated for streaming
+      promptSummary: userPrompt.slice(0, 500),
+      clientId: ctx.client_name,
+      userId: auth.user.id,
+    });
 
     return new Response(response.body, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
