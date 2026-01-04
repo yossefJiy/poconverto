@@ -53,6 +53,8 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [proposals, setProposals] = useState<ActionProposal[]>([]);
 
+  const aiEnabled = !isLoadingAccess && isEnabled;
+
   // Fetch active agents
   const { data: agents = [] } = useQuery({
     queryKey: ["ai-agents-active", selectedClient?.id],
@@ -61,25 +63,22 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
         .from("ai_agents")
         .select("*")
         .eq("is_active", true);
-      
+
       if (selectedClient) {
         query = query.or(`client_id.eq.${selectedClient.id},client_id.is.null`);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: aiEnabled,
   });
-
-  // Don't render if AI is disabled for campaigns module
-  if (isLoadingAccess) return null;
-  if (!isEnabled) return null;
 
   // Create action mutation
   const createActionMutation = useMutation({
     mutationFn: async (proposal: ActionProposal) => {
-      const marketingAgent = agents.find(a => 
+      const marketingAgent = agents.find(a =>
         a.agent_type === "marketing" || a.capabilities?.includes("analyze_campaigns")
       );
 
@@ -106,6 +105,9 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
     },
     onError: () => toast.error("שגיאה ביצירת הצעת פעולה"),
   });
+
+  // Don't render if AI is disabled for campaigns module
+  if (!aiEnabled) return null;
 
   // Analyze campaigns and generate proposals
   const analyzeCampaigns = async () => {
