@@ -7,7 +7,7 @@ export interface Subtask {
   parent_task_id: string;
   title: string;
   description: string | null;
-  status: "pending" | "in-progress" | "completed";
+  status: string;
   assignee_id: string | null;
   due_date: string | null;
   sort_order: number;
