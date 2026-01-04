@@ -13,7 +13,8 @@ import {
   Trash2, 
   Search,
   Bot,
-  X,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,12 +45,16 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [executedActions, setExecutedActions] = useState<any>(null);
+  const [provider, setProvider] = useState<string>('');
+  const [citations, setCitations] = useState<string[]>([]);
 
   const runAction = async (action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close') => {
     setIsLoading(true);
     setCurrentAction(action);
     setResponse(null);
     setExecutedActions(null);
+    setCitations([]);
+    setProvider('');
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-code-analyzer', {
@@ -67,6 +72,8 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
       if (data.success) {
         setResponse(data.response);
         setExecutedActions(data.executedActions);
+        setProvider(data.provider || '');
+        setCitations(data.citations || []);
         
         if (action === 'auto-close' && data.executedActions?.closedIds?.length > 0) {
           toast.success(`נסגרו ${data.executedActions.closedIds.length} בעיות אוטומטית`);
@@ -196,10 +203,18 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
             ) : response ? (
               <Card className="h-full flex flex-col">
                 <CardHeader className="py-3 flex-shrink-0 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    תוצאות הניתוח
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      תוצאות הניתוח
+                    </CardTitle>
+                    {provider && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        {provider.includes('perplexity') && <Globe className="h-3 w-3" />}
+                        {provider.includes('perplexity') ? 'חיפוש אינטרנט' : provider}
+                      </Badge>
+                    )}
+                  </div>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -214,11 +229,40 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                   </Button>
                 </CardHeader>
                 <CardContent className="flex-1 min-h-0 pt-0">
-                  <ScrollArea className="h-[400px]">
+                  <ScrollArea className="h-[350px]">
                     <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
                       {response}
                     </div>
                   </ScrollArea>
+                  
+                  {/* Citations from Perplexity */}
+                  {citations.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        מקורות ({citations.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {citations.slice(0, 5).map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-muted rounded hover:bg-muted/80 transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            {new URL(url).hostname.replace('www.', '')}
+                          </a>
+                        ))}
+                        {citations.length > 5 && (
+                          <span className="text-xs text-muted-foreground px-2 py-1">
+                            +{citations.length - 5} נוספים
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -230,8 +274,9 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                       ? 'לחץ על אחת הפעולות לניתוח הבעיה'
                       : 'לחץ על אחת הפעולות לסריקת כל הבעיות'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    משתמש ב-Perplexity Sonar Pro לניתוח מתקדם
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Perplexity Sonar Pro עם חיפוש אינטרנט
                   </p>
                 </CardContent>
               </Card>
