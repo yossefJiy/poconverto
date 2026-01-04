@@ -17,7 +17,6 @@ import {
   Share2,
   Megaphone,
   UserPlus,
-  PieChart,
   Crosshair,
   ChevronDown,
   ChevronUp,
@@ -42,11 +41,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -76,6 +70,41 @@ const marketingCategories: { type: MarketingType; label: string; icon: React.Rea
   { type: 'lead_segment', label: 'פילוח לידים', icon: <UserPlus className="w-4 h-4" /> },
   { type: 'pixel_tracking', label: 'פיקסל/מעקב', icon: <Crosshair className="w-4 h-4" /> },
 ];
+
+// Reusable section header component
+function SectionHeader({ 
+  icon, 
+  title, 
+  count, 
+  isOpen, 
+  onToggle,
+  className 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  count: number; 
+  isOpen: boolean; 
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button 
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "flex items-center justify-between w-full cursor-pointer text-right",
+        className
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <h2 className="font-bold">{title}</h2>
+        <Badge variant="secondary">{count}</Badge>
+      </div>
+      {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+    </button>
+  );
+}
 
 export default function Marketing() {
   const { selectedClient } = useClient();
@@ -469,18 +498,16 @@ export default function Marketing() {
         ) : (
           <div className="space-y-6">
             {/* Personas Section */}
-            <Collapsible open={expandedSections.has('personas')} onOpenChange={() => toggleSection('personas')}>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center justify-between cursor-pointer group">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">פרסונות</h2>
-                    <Badge variant="secondary">{personas.length}</Badge>
-                  </div>
-                  {expandedSections.has('personas') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
+            <div className="space-y-4">
+              <SectionHeader
+                icon={<Users className="w-5 h-5 text-primary" />}
+                title="פרסונות"
+                count={personas.length}
+                isOpen={expandedSections.has('personas')}
+                onToggle={() => toggleSection('personas')}
+                className="text-xl"
+              />
+              {expandedSections.has('personas') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {personas.map((persona) => (
                     <div key={persona.id} className="glass rounded-xl overflow-hidden card-shadow group">
@@ -500,22 +527,20 @@ export default function Marketing() {
                   ))}
                   {personas.length === 0 && <p className="text-muted-foreground col-span-full text-center py-4">אין פרסונות עדיין</p>}
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
+            </div>
 
             {/* Goals Section */}
-            <Collapsible open={expandedSections.has('goals')} onOpenChange={() => toggleSection('goals')}>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center justify-between cursor-pointer group">
-                  <div className="flex items-center gap-2">
-                    <Target className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">יעדים</h2>
-                    <Badge variant="secondary">{goals.length}</Badge>
-                  </div>
-                  {expandedSections.has('goals') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
+            <div className="space-y-4">
+              <SectionHeader
+                icon={<Target className="w-5 h-5 text-primary" />}
+                title="יעדים"
+                count={goals.length}
+                isOpen={expandedSections.has('goals')}
+                onToggle={() => toggleSection('goals')}
+                className="text-xl"
+              />
+              {expandedSections.has('goals') && (
                 <div className="glass rounded-xl p-4 space-y-4">
                   {goals.map((goal) => {
                     const current = goal.data.current_value || 0;
@@ -538,24 +563,22 @@ export default function Marketing() {
                   })}
                   {goals.length === 0 && <p className="text-muted-foreground text-center py-4">אין יעדים עדיין</p>}
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
+            </div>
 
             {/* Social Channels & Website */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Social Channels */}
-              <Collapsible open={expandedSections.has('social')} onOpenChange={() => toggleSection('social')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <Share2 className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">ערוצי סושיאל</h2>
-                      <Badge variant="secondary">{socialChannels.length}</Badge>
-                    </div>
-                    {expandedSections.has('social') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<Share2 className="w-5 h-5 text-primary" />}
+                  title="ערוצי סושיאל"
+                  count={socialChannels.length}
+                  isOpen={expandedSections.has('social')}
+                  onToggle={() => toggleSection('social')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('social') && (
                   <div className="glass rounded-xl divide-y divide-border">
                     {socialChannels.map((ch) => (
                       <div key={ch.id} className="p-3 flex items-center justify-between group hover:bg-muted/30">
@@ -573,22 +596,20 @@ export default function Marketing() {
                     ))}
                     {socialChannels.length === 0 && <p className="text-muted-foreground text-center py-4">אין ערוצים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
 
               {/* Website Analysis */}
-              <Collapsible open={expandedSections.has('website')} onOpenChange={() => toggleSection('website')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">ניתוחי אתר</h2>
-                      <Badge variant="secondary">{websiteAnalyses.length}</Badge>
-                    </div>
-                    {expandedSections.has('website') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<Globe className="w-5 h-5 text-primary" />}
+                  title="ניתוחי אתר"
+                  count={websiteAnalyses.length}
+                  isOpen={expandedSections.has('website')}
+                  onToggle={() => toggleSection('website')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('website') && (
                   <div className="glass rounded-xl divide-y divide-border">
                     {websiteAnalyses.map((wa) => (
                       <div key={wa.id} className="p-3 flex items-center justify-between group hover:bg-muted/30">
@@ -601,25 +622,23 @@ export default function Marketing() {
                     ))}
                     {websiteAnalyses.length === 0 && <p className="text-muted-foreground text-center py-4">אין ניתוחים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
             </div>
 
             {/* Campaigns & Leads */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Campaigns */}
-              <Collapsible open={expandedSections.has('campaigns')} onOpenChange={() => toggleSection('campaigns')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <Megaphone className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">מידע קמפיינים</h2>
-                      <Badge variant="secondary">{campaignInfos.length}</Badge>
-                    </div>
-                    {expandedSections.has('campaigns') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<Megaphone className="w-5 h-5 text-primary" />}
+                  title="מידע קמפיינים"
+                  count={campaignInfos.length}
+                  isOpen={expandedSections.has('campaigns')}
+                  onToggle={() => toggleSection('campaigns')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('campaigns') && (
                   <div className="glass rounded-xl divide-y divide-border">
                     {campaignInfos.map((camp) => (
                       <div key={camp.id} className="p-3 flex items-center justify-between group hover:bg-muted/30">
@@ -632,22 +651,20 @@ export default function Marketing() {
                     ))}
                     {campaignInfos.length === 0 && <p className="text-muted-foreground text-center py-4">אין מידע קמפיינים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
 
               {/* Lead Segments */}
-              <Collapsible open={expandedSections.has('leads')} onOpenChange={() => toggleSection('leads')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">פילוחי לידים</h2>
-                      <Badge variant="secondary">{leadSegments.length}</Badge>
-                    </div>
-                    {expandedSections.has('leads') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<UserPlus className="w-5 h-5 text-primary" />}
+                  title="פילוחי לידים"
+                  count={leadSegments.length}
+                  isOpen={expandedSections.has('leads')}
+                  onToggle={() => toggleSection('leads')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('leads') && (
                   <div className="glass rounded-xl divide-y divide-border">
                     {leadSegments.map((seg) => (
                       <div key={seg.id} className="p-3 flex items-center justify-between group hover:bg-muted/30">
@@ -660,25 +677,23 @@ export default function Marketing() {
                     ))}
                     {leadSegments.length === 0 && <p className="text-muted-foreground text-center py-4">אין פילוחים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
             </div>
 
             {/* Pixels & Competitors */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Pixels */}
-              <Collapsible open={expandedSections.has('pixels')} onOpenChange={() => toggleSection('pixels')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <Crosshair className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">פיקסלים ומעקב</h2>
-                      <Badge variant="secondary">{pixelTrackings.length}</Badge>
-                    </div>
-                    {expandedSections.has('pixels') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<Crosshair className="w-5 h-5 text-primary" />}
+                  title="פיקסלים ומעקב"
+                  count={pixelTrackings.length}
+                  isOpen={expandedSections.has('pixels')}
+                  onToggle={() => toggleSection('pixels')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('pixels') && (
                   <div className="glass rounded-xl divide-y divide-border">
                     {pixelTrackings.map((px) => (
                       <div key={px.id} className="p-3 flex items-center justify-between group hover:bg-muted/30">
@@ -691,22 +706,20 @@ export default function Marketing() {
                     ))}
                     {pixelTrackings.length === 0 && <p className="text-muted-foreground text-center py-4">אין פיקסלים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
 
               {/* Competitors */}
-              <Collapsible open={expandedSections.has('competitors')} onOpenChange={() => toggleSection('competitors')}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-primary" />
-                      <h2 className="font-bold">מתחרים</h2>
-                      <Badge variant="secondary">{competitors.length}</Badge>
-                    </div>
-                    {expandedSections.has('competitors') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              <div className="space-y-2">
+                <SectionHeader
+                  icon={<Building2 className="w-5 h-5 text-primary" />}
+                  title="מתחרים"
+                  count={competitors.length}
+                  isOpen={expandedSections.has('competitors')}
+                  onToggle={() => toggleSection('competitors')}
+                  className="glass rounded-xl p-4"
+                />
+                {expandedSections.has('competitors') && (
                   <div className="grid grid-cols-1 gap-3">
                     {competitors.map((c) => (
                       <div key={c.id} className="glass rounded-xl p-4 group">
@@ -723,23 +736,21 @@ export default function Marketing() {
                     ))}
                     {competitors.length === 0 && <p className="text-muted-foreground text-center py-4">אין מתחרים</p>}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
             </div>
 
             {/* Brand Messages */}
-            <Collapsible open={expandedSections.has('messages')} onOpenChange={() => toggleSection('messages')}>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center justify-between cursor-pointer glass rounded-xl p-4">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                    <h2 className="font-bold">מסרי מותג</h2>
-                    <Badge variant="secondary">{brandMessages.length}</Badge>
-                  </div>
-                  {expandedSections.has('messages') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
+            <div className="space-y-2">
+              <SectionHeader
+                icon={<MessageSquare className="w-5 h-5 text-primary" />}
+                title="מסרי מותג"
+                count={brandMessages.length}
+                isOpen={expandedSections.has('messages')}
+                onToggle={() => toggleSection('messages')}
+                className="glass rounded-xl p-4"
+              />
+              {expandedSections.has('messages') && (
                 <div className="glass rounded-xl divide-y divide-border">
                   {brandMessages.map((msg) => (
                     <div key={msg.id} className="p-4 hover:bg-muted/30 group">
@@ -752,8 +763,8 @@ export default function Marketing() {
                   ))}
                   {brandMessages.length === 0 && <p className="text-muted-foreground text-center py-4">אין מסרים</p>}
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              )}
+            </div>
           </div>
         )}
       </div>
