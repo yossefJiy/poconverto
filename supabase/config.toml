@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.ai-usage-report]
 verify_jwt = false
+
+[functions.agent-executor]
+verify_jwt = false

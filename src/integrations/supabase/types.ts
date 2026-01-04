@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_memory: {
+        Row: {
+          agent_id: string | null
+          client_id: string | null
+          content: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          importance: number | null
+          memory_type: string
+          metadata: Json | null
+          source: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          client_id?: string | null
+          content: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          importance?: number | null
+          memory_type: string
+          metadata?: Json | null
+          source?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          client_id?: string | null
+          content?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          importance?: number | null
+          memory_type?: string
+          metadata?: Json | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_memory_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_memory_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agent_actions: {
         Row: {
           action_data: Json | null

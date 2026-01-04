@@ -94,12 +94,13 @@ export function Sidebar() {
 
   const getRoleLabel = (role: string | null) => {
     const labels: Record<string, string> = {
-      admin: "מנהל מערכת",
-      manager: "מנהל",
-      department_head: "ראש מחלקה",
-      team_lead: "ראש צוות",
-      team_member: "חבר צוות",
-      client: "לקוח",
+      super_admin: "סופר אדמין",
+      admin: "אדמין",
+      agency_manager: "מנהל סוכנות",
+      team_manager: "מנהל צוות",
+      employee: "עובד",
+      premium_client: "לקוח פרמיום",
+      basic_client: "לקוח בסיס",
       demo: "משתמש דמו",
     };
     return role ? labels[role] || role : "משתמש";

@@ -46,7 +46,7 @@ import { z } from "zod";
 const emailSchema = z.string().email("אימייל לא תקין");
 const phoneSchema = z.string().regex(/^0\d{9}$/, "מספר טלפון לא תקין (10 ספרות)").optional().or(z.literal(""));
 
-type AppRole = 'admin' | 'manager' | 'department_head' | 'team_lead' | 'team_member' | 'client' | 'demo';
+type AppRole = 'super_admin' | 'admin' | 'agency_manager' | 'team_manager' | 'employee' | 'premium_client' | 'basic_client' | 'demo';
 type NotificationPreference = 'email' | 'sms' | 'both';
 
 interface AuthorizedEmail {
@@ -63,12 +63,13 @@ interface AuthorizedEmail {
 }
 
 const roleLabels: Record<AppRole, string> = {
-  admin: "מנהל מערכת",
-  manager: "מנהל",
-  department_head: "ראש מחלקה",
-  team_lead: "ראש צוות",
-  team_member: "חבר צוות",
-  client: "לקוח",
+  super_admin: "סופר אדמין",
+  admin: "אדמין",
+  agency_manager: "מנהל סוכנות",
+  team_manager: "מנהל צוות",
+  employee: "עובד",
+  premium_client: "לקוח פרמיום",
+  basic_client: "לקוח בסיס",
   demo: "דמו",
 };
 
@@ -86,7 +87,7 @@ export function AuthorizedUsersManager() {
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [newRole, setNewRole] = useState<AppRole>("client");
+  const [newRole, setNewRole] = useState<AppRole>("basic_client");
   const [newNotificationPref, setNewNotificationPref] = useState<NotificationPreference>("email");
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
 
@@ -269,7 +270,7 @@ export function AuthorizedUsersManager() {
     setNewEmail("");
     setNewName("");
     setNewPhone("");
-    setNewRole("client");
+    setNewRole("basic_client");
     setNewNotificationPref("email");
     setErrors({});
   };
