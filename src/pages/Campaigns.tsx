@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { GlobalDateFilter, getDateRangeFromFilter, type DateFilterValue } from "@/components/analytics/GlobalDateFilter";
 import { 
   Play, 
   Pause, 
@@ -170,7 +171,8 @@ export default function Campaigns() {
   const [showRecentOnly, setShowRecentOnly] = useState(true);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [adAccountFilter, setAdAccountFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<{ startDate: string; endDate: string } | null>(null);
+  const [globalDateFilter, setGlobalDateFilter] = useState<DateFilterValue>("mtd");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [newCampaign, setNewCampaign] = useState({
     name: "",
     platform: "internal",
@@ -424,27 +426,26 @@ export default function Campaigns() {
       filtered = filtered.filter(c => c.ad_account_id === adAccountFilter);
     }
     
-    // Date filter
-    if (dateFilter) {
-      const filterStart = new Date(dateFilter.startDate);
-      const filterEnd = new Date(dateFilter.endDate);
-      
-      filtered = filtered.filter(c => {
-        // If campaign has start_date, check if it falls within range
-        if (c.start_date) {
-          const campaignStart = new Date(c.start_date);
-          const campaignEnd = c.end_date ? new Date(c.end_date) : new Date();
-          
-          // Check for date range overlap
-          return campaignStart <= filterEnd && campaignEnd >= filterStart;
-        }
-        // If no dates, include campaign (from external platforms)
-        return true;
-      });
-    }
+    // Date filter using GlobalDateFilter
+    const dateRange = getDateRangeFromFilter(globalDateFilter, customDateRange);
+    const filterStart = new Date(dateRange.startDate);
+    const filterEnd = new Date(dateRange.endDate);
+    
+    filtered = filtered.filter(c => {
+      // If campaign has start_date, check if it falls within range
+      if (c.start_date) {
+        const campaignStart = new Date(c.start_date);
+        const campaignEnd = c.end_date ? new Date(c.end_date) : new Date();
+        
+        // Check for date range overlap
+        return campaignStart <= filterEnd && campaignEnd >= filterStart;
+      }
+      // If no dates, include campaign (from external platforms with activity)
+      return true;
+    });
     
     return filtered;
-  }, [allCampaigns, showActiveOnly, showRecentOnly, platformFilter, adAccountFilter, dateFilter]);
+  }, [allCampaigns, showActiveOnly, showRecentOnly, platformFilter, adAccountFilter, globalDateFilter, customDateRange]);
 
   const isLoading = isLoadingInternal || isLoadingGoogleAds || isLoadingFacebookAds;
 
@@ -668,40 +669,13 @@ export default function Campaigns() {
                   </Select>
                 )}
 
-                {/* Date Range Filter */}
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="date"
-                    placeholder="מתאריך"
-                    className="w-36 glass text-sm"
-                    value={dateFilter?.startDate || ""}
-                    onChange={(e) => setDateFilter(prev => ({
-                      startDate: e.target.value,
-                      endDate: prev?.endDate || e.target.value
-                    }))}
-                  />
-                  <span className="text-muted-foreground text-sm">-</span>
-                  <Input
-                    type="date"
-                    placeholder="עד תאריך"
-                    className="w-36 glass text-sm"
-                    value={dateFilter?.endDate || ""}
-                    onChange={(e) => setDateFilter(prev => ({
-                      startDate: prev?.startDate || e.target.value,
-                      endDate: e.target.value
-                    }))}
-                  />
-                  {dateFilter && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2"
-                      onClick={() => setDateFilter(null)}
-                    >
-                      ✕
-                    </Button>
-                  )}
-                </div>
+                {/* Date Range Filter - GlobalDateFilter */}
+                <GlobalDateFilter
+                  value={globalDateFilter}
+                  onChange={setGlobalDateFilter}
+                  customDateRange={customDateRange}
+                  onCustomDateChange={setCustomDateRange}
+                />
               </div>
 
               <div className="flex items-center gap-4">
