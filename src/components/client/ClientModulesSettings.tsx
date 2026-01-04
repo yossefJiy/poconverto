@@ -26,6 +26,7 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  UserCheck,
 } from "lucide-react";
 import { 
   Select,
@@ -37,6 +38,7 @@ import {
 import { ClientModules } from "@/hooks/useClientModules";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 
 interface ClientModulesSettingsProps {
   clientId: string;
@@ -73,6 +75,14 @@ interface AIModuleSetting {
   allowed_capabilities: string[];
 }
 
+interface TeamAIPermission {
+  id?: string;
+  team_member_id: string;
+  module_name: string;
+  can_use_ai: boolean;
+  max_daily_requests: number;
+}
+
 export function ClientModulesSettings({
   clientId,
   modules: initialModules,
@@ -84,6 +94,8 @@ export function ClientModulesSettings({
   const [hasChanges, setHasChanges] = useState(false);
   const [expandedAIModules, setExpandedAIModules] = useState<Set<string>>(new Set());
   const [aiSettings, setAiSettings] = useState<Record<string, AIModuleSetting>>({});
+  const [teamAIPermissions, setTeamAIPermissions] = useState<Record<string, TeamAIPermission>>({});
+  const [showTeamPermissions, setShowTeamPermissions] = useState(false);
 
   // Fetch AI module settings
   const { data: aiModuleSettings } = useQuery({
@@ -91,6 +103,32 @@ export function ClientModulesSettings({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ai_module_settings')
+        .select('*')
+        .eq('client_id', clientId);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch client team members
+  const { data: clientTeam = [] } = useQuery({
+    queryKey: ['client-team', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_team')
+        .select('*, team:team_member_id(id, name, departments)')
+        .eq('client_id', clientId);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch team AI permissions
+  const { data: existingTeamPermissions = [] } = useQuery({
+    queryKey: ['ai-team-permissions', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_team_permissions')
         .select('*')
         .eq('client_id', clientId);
       if (error) throw error;
@@ -117,6 +155,23 @@ export function ClientModulesSettings({
       setAiSettings(settingsMap);
     }
   }, [aiModuleSettings]);
+
+  useEffect(() => {
+    if (existingTeamPermissions) {
+      const permMap: Record<string, TeamAIPermission> = {};
+      existingTeamPermissions.forEach((perm) => {
+        const key = `${perm.team_member_id}_${perm.module_name}`;
+        permMap[key] = {
+          id: perm.id,
+          team_member_id: perm.team_member_id,
+          module_name: perm.module_name,
+          can_use_ai: perm.can_use_ai ?? true,
+          max_daily_requests: perm.max_daily_requests ?? 50,
+        };
+      });
+      setTeamAIPermissions(permMap);
+    }
+  }, [existingTeamPermissions]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -166,12 +221,36 @@ export function ClientModulesSettings({
             });
         }
       }
+
+      // Save team AI permissions
+      for (const [key, perm] of Object.entries(teamAIPermissions)) {
+        if (perm.id) {
+          await supabase
+            .from("ai_team_permissions")
+            .update({
+              can_use_ai: perm.can_use_ai,
+              max_daily_requests: perm.max_daily_requests,
+            })
+            .eq("id", perm.id);
+        } else {
+          await supabase
+            .from("ai_team_permissions")
+            .insert({
+              client_id: clientId,
+              team_member_id: perm.team_member_id,
+              module_name: perm.module_name,
+              can_use_ai: perm.can_use_ai,
+              max_daily_requests: perm.max_daily_requests,
+            });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-modules"] });
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
       queryClient.invalidateQueries({ queryKey: ["sync-schedule"] });
       queryClient.invalidateQueries({ queryKey: ["ai-module-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["ai-team-permissions"] });
       toast.success("ההגדרות נשמרו בהצלחה");
       setHasChanges(false);
     },
@@ -228,6 +307,36 @@ export function ClientModulesSettings({
       }
       return newSet;
     });
+  };
+
+  const handleTeamPermissionToggle = (teamMemberId: string, moduleName: string, canUse: boolean) => {
+    const key = `${teamMemberId}_${moduleName}`;
+    setTeamAIPermissions(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        team_member_id: teamMemberId,
+        module_name: moduleName,
+        can_use_ai: canUse,
+        max_daily_requests: prev[key]?.max_daily_requests ?? 50,
+      },
+    }));
+    setHasChanges(true);
+  };
+
+  const handleTeamDailyLimitChange = (teamMemberId: string, moduleName: string, limit: number) => {
+    const key = `${teamMemberId}_${moduleName}`;
+    setTeamAIPermissions(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        team_member_id: teamMemberId,
+        module_name: moduleName,
+        can_use_ai: prev[key]?.can_use_ai ?? true,
+        max_daily_requests: limit,
+      },
+    }));
+    setHasChanges(true);
   };
 
   return (
@@ -376,6 +485,82 @@ export function ClientModulesSettings({
             })}
           </div>
         </div>
+
+        {/* Team AI Permissions Section */}
+        {clientTeam.length > 0 && (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setShowTeamPermissions(!showTeamPermissions)}
+              className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4" />
+                הרשאות AI לפי איש צוות
+              </span>
+              {showTeamPermissions ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+
+            {showTeamPermissions && (
+              <div className="space-y-3 p-4 rounded-lg bg-muted/30">
+                {clientTeam.map((ct: any) => {
+                  const team = ct.team;
+                  if (!team) return null;
+
+                  return (
+                    <div key={ct.id} className="space-y-2 p-3 rounded-lg bg-background/50">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                          {team.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <span className="font-medium">{team.name}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {moduleConfig.filter(m => m.hasAI).map(({ key, label }) => {
+                          const permKey = `${team.id}_${key}`;
+                          const perm = teamAIPermissions[permKey];
+                          const canUse = perm?.can_use_ai ?? true;
+
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between p-2 rounded bg-muted/30"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={canUse}
+                                  onCheckedChange={(v) => handleTeamPermissionToggle(team.id, key, v)}
+                                  className="scale-75"
+                                />
+                                <span className="text-sm">{label}</span>
+                              </div>
+                              {canUse && (
+                                <Input
+                                  type="number"
+                                  value={perm?.max_daily_requests ?? 50}
+                                  onChange={(e) => handleTeamDailyLimitChange(team.id, key, parseInt(e.target.value) || 50)}
+                                  className="w-16 h-7 text-xs text-center"
+                                  min={1}
+                                  max={1000}
+                                  title="מגבלה יומית"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
