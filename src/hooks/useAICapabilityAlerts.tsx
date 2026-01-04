@@ -270,12 +270,19 @@ export function useAICapabilityAlerts() {
     setUnreadCount(newAlerts.length);
   }, [pendingActions, deniedUsage, limitAlerts]);
 
+  const pendingActionsCount = pendingActions.length;
+  const deniedTodayCount = deniedUsage.length;
+  const limitWarningsCount = limitAlerts.length;
+  const totalCount = pendingActionsCount + deniedTodayCount + limitWarningsCount;
+
   return {
     alerts,
     unreadCount,
-    pendingActionsCount: pendingActions.length,
-    deniedTodayCount: deniedUsage.length,
-    limitWarningsCount: limitAlerts.length,
+    totalCount,
+    pendingActions,
+    pendingActionsCount,
+    deniedTodayCount,
+    limitWarningsCount,
     markAsRead: (alertId: string) => {
       setAlerts(prev => 
         prev.map(a => a.id === alertId ? { ...a, isRead: true } : a)
