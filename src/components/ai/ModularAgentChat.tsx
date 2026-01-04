@@ -31,6 +31,9 @@ import {
   BookOpen,
   AlertTriangle,
   Bell,
+  Zap,
+  Activity,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -239,6 +243,8 @@ export function ModularAgentChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
+  const [currentAction, setCurrentAction] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Task creation state
@@ -253,6 +259,89 @@ export function ModularAgentChat({
   const [insightsSummary, setInsightsSummary] = useState<string>("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isSavingInsights, setIsSavingInsights] = useState(false);
+
+  // Fetch client-specific agent
+  const { data: clientAgent } = useQuery({
+    queryKey: ["client-agent", selectedClient?.id],
+    queryFn: async () => {
+      if (!selectedClient?.id) return null;
+      const { data } = await supabase
+        .from("ai_agents")
+        .select("*")
+        .eq("client_id", selectedClient.id)
+        .eq("agent_type", "client_specific")
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!selectedClient?.id,
+  });
+
+  // Fetch agent memory for context
+  const { data: agentMemory } = useQuery({
+    queryKey: ["agent-memory", clientAgent?.id],
+    queryFn: async () => {
+      if (!clientAgent?.id) return [];
+      const { data } = await supabase
+        .from("agent_memory")
+        .select("*")
+        .eq("agent_id", clientAgent.id)
+        .order("importance", { ascending: false })
+        .limit(10);
+      return data || [];
+    },
+    enabled: !!clientAgent?.id,
+  });
+
+  // Execute agent action
+  const executeAgentAction = async (action: string, params: Record<string, any>) => {
+    if (!selectedClient?.id) {
+      toast.error("נא לבחור לקוח");
+      return null;
+    }
+
+    setIsExecutingAction(true);
+    setCurrentAction(action);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-executor`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            action,
+            clientId: selectedClient.id,
+            agentId: clientAgent?.id,
+            params,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "שגיאה בביצוע הפעולה");
+      }
+
+      if (result.status === "pending_approval") {
+        toast.info("הפעולה ממתינה לאישור");
+      } else {
+        toast.success(result.result?.summary || "הפעולה בוצעה בהצלחה");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Action error:", error);
+      toast.error(error instanceof Error ? error.message : "שגיאה בביצוע הפעולה");
+      return null;
+    } finally {
+      setIsExecutingAction(false);
+      setCurrentAction(null);
+    }
+  };
 
   // Fetch saved insights for this client and module
   const { data: savedInsights, refetch: refetchInsights } = useQuery({
@@ -951,14 +1040,35 @@ ${allMessages.join("\n").slice(0, 10000)}
         {/* Header */}
         <div className={cn("flex items-center justify-between px-4 py-3 border-b border-border", config.bgColor)}>
           <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-background/50", config.color)}>
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-background/50 relative", config.color)}>
               <ModuleIcon className="w-5 h-5" />
+              {clientAgent && (
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+                  <Activity className="w-2 h-2 text-white" />
+                </div>
+              )}
             </div>
             <div>
-              <h3 className="font-bold text-foreground">סוכן {config.label}</h3>
-              <p className="text-xs text-muted-foreground">
-                {selectedClient?.name || "כללי"} • {conversations.length} שיחות
-              </p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-foreground">סוכן {config.label}</h3>
+                {clientAgent && (
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 gap-0.5">
+                    <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
+                    {(clientAgent.settings as any)?.reputation_score || 0}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{selectedClient?.name || "כללי"}</span>
+                <span>•</span>
+                <span>{conversations.length} שיחות</span>
+                {agentMemory && agentMemory.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-primary">{agentMemory.length} זיכרונות</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -1000,6 +1110,23 @@ ${allMessages.join("\n").slice(0, 10000)}
             </Button>
           </div>
         </div>
+
+        {/* Action Execution Indicator */}
+        {isExecutingAction && (
+          <div className="border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-2">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Zap className="w-5 h-5 text-primary animate-pulse" />
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-primary">מבצע פעולה...</p>
+                <p className="text-xs text-muted-foreground">{currentAction}</p>
+              </div>
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            </div>
+          </div>
+        )}
 
         {/* Insights Summary Panel */}
         {showInsightsSummary && (
