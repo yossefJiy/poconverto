@@ -11,7 +11,7 @@ interface SubtaskListProps {
   className?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: typeof Circle; color: string; label: string }> = {
   pending: { icon: Circle, color: "text-warning", label: "ממתין" },
   "in-progress": { icon: Clock, color: "text-info", label: "בתהליך" },
   completed: { icon: CheckCircle2, color: "text-success", label: "הושלם" },
