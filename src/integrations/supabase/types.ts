@@ -1390,6 +1390,51 @@ export type Database = {
           },
         ]
       }
+      client_templates: {
+        Row: {
+          created_at: string
+          default_settings: Json | null
+          description: string | null
+          icon: string | null
+          id: string
+          industry: string
+          integrations_suggested: string[] | null
+          is_active: boolean | null
+          modules_enabled: Json
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_settings?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          industry: string
+          integrations_suggested?: string[] | null
+          is_active?: boolean | null
+          modules_enabled?: Json
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_settings?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          industry?: string
+          integrations_suggested?: string[] | null
+          is_active?: boolean | null
+          modules_enabled?: Json
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_users: {
         Row: {
           access_level: string

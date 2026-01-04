@@ -60,7 +60,7 @@ export function NotificationHistoryDialog({
         .select(`
           *,
           tasks(title),
-          clients(name)
+          clients:clients!notification_history_client_id_fkey(name)
         `)
         .order('created_at', { ascending: false })
         .limit(100);

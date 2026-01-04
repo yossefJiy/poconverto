@@ -42,6 +42,7 @@ import AgentAlerts from "./pages/AgentAlerts";
 import ClientInsights from "./pages/ClientInsights";
 import Reports from "./pages/Reports";
 import Permissions from "./pages/Permissions";
+import ClientManagement from "./pages/ClientManagement";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/client/:clientId" element={<ClientDashboard />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/clients" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
+              <Route path="/client-management" element={<ProtectedRoute><ClientManagement /></ProtectedRoute>} />
               <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
               <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
               <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
