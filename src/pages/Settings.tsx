@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
+import { useClient } from "@/hooks/useClient";
 import { 
   User, 
   Bell, 
@@ -12,7 +13,10 @@ import {
   Shield,
   Coins,
   Mail,
-  AlertTriangle
+  AlertTriangle,
+  Users,
+  UserCircle,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,12 +25,18 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { AuthorizedUsersManager } from "@/components/admin/AuthorizedUsersManager";
 import { EmailTestingSection } from "@/components/admin/EmailTestingSection";
+import { ClientContactsManager } from "@/components/client/ClientContactsManager";
+import { ClientTeamManager } from "@/components/client/ClientTeamManager";
+import { AICapabilityUsageStats } from "@/components/ai/AICapabilityUsageStats";
 
 const settingsSections = [
   { id: "profile", icon: User, title: "פרופיל", description: "ניהול פרטים אישיים" },
   { id: "notifications", icon: Bell, title: "התראות", description: "הגדרת התראות ועדכונים" },
   { id: "appearance", icon: Palette, title: "מראה", description: "התאמה אישית של הממשק" },
-  { id: "users", icon: Shield, title: "משתמשים", description: "ניהול משתמשים מורשים", adminOnly: true },
+  { id: "users", icon: Shield, title: "משתמשים מורשים", description: "ניהול גישה למערכת", adminOnly: true },
+  { id: "team", icon: Users, title: "צוות עובדים", description: "צוות משויך ללקוח", requiresClient: true },
+  { id: "contacts", icon: UserCircle, title: "אנשי קשר", description: "אנשי קשר של הלקוח", requiresClient: true },
+  { id: "ai-stats", icon: Bot, title: "סטטיסטיקות AI", description: "שימוש ביכולות סוכנים", adminOnly: true },
   { id: "email-testing", icon: Mail, title: "בדיקת מיילים", description: "בדיקת שליחת מיילים", adminOnly: true },
   { id: "credits", icon: Coins, title: "קרדיטים", description: "ניהול קרדיטים לקוחות", adminOnly: true },
   { id: "alerts", icon: AlertTriangle, title: "התראות AI", description: "צפייה בהתראות סוכנים", adminOnly: true },
@@ -35,12 +45,15 @@ const settingsSections = [
 export default function Settings() {
   const { user } = useAuth();
   const { isAdmin } = usePermissions();
+  const { selectedClient } = useClient();
   const [activeSection, setActiveSection] = useState("profile");
   const [saving, setSaving] = useState(false);
 
-  const visibleSections = settingsSections.filter(
-    section => !section.adminOnly || isAdmin
-  );
+  const visibleSections = settingsSections.filter(section => {
+    if (section.adminOnly && !isAdmin) return false;
+    if (section.requiresClient && !selectedClient) return false;
+    return true;
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -163,6 +176,30 @@ export default function Settings() {
 
             {activeSection === "users" && isAdmin && (
               <AuthorizedUsersManager />
+            )}
+
+            {activeSection === "team" && selectedClient && (
+              <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <ClientTeamManager 
+                  clientId={selectedClient.id} 
+                  clientName={selectedClient.name} 
+                />
+              </div>
+            )}
+
+            {activeSection === "contacts" && selectedClient && (
+              <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <ClientContactsManager 
+                  clientId={selectedClient.id} 
+                  clientName={selectedClient.name} 
+                />
+              </div>
+            )}
+
+            {activeSection === "ai-stats" && isAdmin && (
+              <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <AICapabilityUsageStats />
+              </div>
             )}
 
             {activeSection === "email-testing" && isAdmin && (
