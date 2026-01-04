@@ -102,8 +102,9 @@ export function AIUsageDashboard() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchUsageData();
-  }, []);
+  }, [user?.id]);
 
   const fetchUsageData = async () => {
     setIsLoading(true);
@@ -147,6 +148,21 @@ export function AIUsageDashboard() {
         stats[userId].requestCount++;
         stats[userId].totalCost += cost;
         stats[userId].totalTokens += tokens;
+      }
+
+      // Ensure the current user is visible even if there is no usage yet
+      if (user?.id && !stats[user.id]) {
+        const displayName =
+          (user.user_metadata as any)?.full_name || user.email || user.id.slice(0, 8);
+
+        stats[user.id] = {
+          userId: user.id,
+          email: user.email || "",
+          name: displayName,
+          requestCount: 0,
+          totalCost: 0,
+          totalTokens: 0,
+        };
       }
 
       const userIds = Object.keys(stats);
