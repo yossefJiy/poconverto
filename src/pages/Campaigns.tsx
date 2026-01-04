@@ -90,7 +90,9 @@ const platformConfig: Record<string, { color: string; name: string; logo: string
   },
 };
 
-const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string; isActive: boolean }> = {
+const defaultStatusConfig = { icon: null, color: "text-muted-foreground", bg: "bg-muted", label: "לא ידוע", isActive: false };
+
+const statusConfig: Record<string, { icon: typeof Play | null; color: string; bg: string; label: string; isActive: boolean }> = {
   active: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
   ENABLED: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
   ACTIVE: { icon: Play, color: "text-success", bg: "bg-success/10", label: "פעיל", isActive: true },
@@ -369,8 +371,8 @@ export default function Campaigns() {
     // Filter by active status
     if (showActiveOnly) {
       filtered = filtered.filter(c => {
-        const statusInfo = statusConfig[c.status];
-        return statusInfo?.isActive ?? false;
+        const statusInfo = statusConfig[c.status] || defaultStatusConfig;
+        return statusInfo.isActive;
       });
     }
 
@@ -787,7 +789,7 @@ export default function Campaigns() {
             ) : (
               <div className="grid gap-4">
                 {filteredCampaigns.map((campaign, index) => {
-                  const status = statusConfig[campaign.status] || statusConfig.draft;
+                  const status = statusConfig[campaign.status] || defaultStatusConfig;
                   const platform = platformConfig[campaign.platform] || platformConfig.internal;
                   const budgetUsed = campaign.budget && campaign.budget > 0 ? ((campaign.spent || 0) / campaign.budget) * 100 : 0;
                   const StatusIcon = status.icon;
