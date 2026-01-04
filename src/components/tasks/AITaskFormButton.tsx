@@ -56,14 +56,10 @@ const priorityColors = {
 
 export function AITaskFormButton({ title, description, onApplyRecommendation }: AITaskFormButtonProps) {
   const { selectedClient } = useClient();
-  const { isEnabled, isLoading: isLoadingAccess } = useAIModuleAccess('tasks');
+  const { canUseAI, isLoading: isLoadingAccess } = useAIModuleAccess("tasks");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
-
-  // Don't render if AI is disabled for tasks module
-  if (isLoadingAccess) return null;
-  if (!isEnabled) return null;
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["team-active"],
@@ -75,7 +71,13 @@ export function AITaskFormButton({ title, description, onApplyRecommendation }: 
       if (error) throw error;
       return data as TeamMember[];
     },
+    enabled: !isLoadingAccess && canUseAI,
   });
+
+  // Don't render if AI is disabled for tasks module
+  if (isLoadingAccess) return null;
+  if (!canUseAI) return null;
+
 
   const analyzeTask = async () => {
     if (!title.trim()) {
