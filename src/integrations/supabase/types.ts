@@ -125,6 +125,82 @@ export type Database = {
           },
         ]
       }
+      ai_agent_permissions: {
+        Row: {
+          agent_id: string
+          capability_id: string
+          client_id: string | null
+          created_at: string | null
+          current_daily_uses: number | null
+          domain: string | null
+          expires_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_allowed: boolean | null
+          max_daily_uses: number | null
+          notes: string | null
+          requires_approval: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          capability_id: string
+          client_id?: string | null
+          created_at?: string | null
+          current_daily_uses?: number | null
+          domain?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_allowed?: boolean | null
+          max_daily_uses?: number | null
+          notes?: string | null
+          requires_approval?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          capability_id?: string
+          client_id?: string | null
+          created_at?: string | null
+          current_daily_uses?: number | null
+          domain?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_allowed?: boolean | null
+          max_daily_uses?: number | null
+          notes?: string | null
+          requires_approval?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_permissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_permissions_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "ai_capability_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_permissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agents: {
         Row: {
           agent_type: string
@@ -168,6 +244,122 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_capability_definitions: {
+        Row: {
+          category: Database["public"]["Enums"]["ai_capability_category"]
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          is_dangerous: boolean | null
+          metadata: Json | null
+          name: string
+          requires_confirmation: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["ai_capability_category"]
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          is_dangerous?: boolean | null
+          metadata?: Json | null
+          name: string
+          requires_confirmation?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["ai_capability_category"]
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          is_dangerous?: boolean | null
+          metadata?: Json | null
+          name?: string
+          requires_confirmation?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_capability_usage: {
+        Row: {
+          agent_id: string | null
+          approved_by: string | null
+          capability_id: string | null
+          client_id: string | null
+          error_message: string | null
+          executed_at: string | null
+          execution_result: Json | null
+          id: string
+          metadata: Json | null
+          permission_id: string | null
+          was_allowed: boolean
+          was_approved: boolean | null
+        }
+        Insert: {
+          agent_id?: string | null
+          approved_by?: string | null
+          capability_id?: string | null
+          client_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          metadata?: Json | null
+          permission_id?: string | null
+          was_allowed: boolean
+          was_approved?: boolean | null
+        }
+        Update: {
+          agent_id?: string | null
+          approved_by?: string | null
+          capability_id?: string | null
+          client_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          metadata?: Json | null
+          permission_id?: string | null
+          was_allowed?: boolean
+          was_approved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_capability_usage_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_capability_usage_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "ai_capability_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_capability_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_capability_usage_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_permissions"
             referencedColumns: ["id"]
           },
         ]
@@ -2029,6 +2221,15 @@ export type Database = {
       }
     }
     Functions: {
+      agent_has_capability: {
+        Args: {
+          _agent_id: string
+          _capability_name: string
+          _client_id?: string
+          _domain?: string
+        }
+        Returns: boolean
+      }
       cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
       cleanup_expired_trusted_devices: { Args: never; Returns: undefined }
       decrypt_integration_credentials: {
@@ -2075,6 +2276,14 @@ export type Database = {
       }
     }
     Enums: {
+      ai_capability_category:
+        | "system"
+        | "integrations"
+        | "content"
+        | "analytics"
+        | "tasks"
+        | "campaigns"
+        | "ecommerce"
       app_role:
         | "super_admin"
         | "admin"
@@ -2216,6 +2425,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_capability_category: [
+        "system",
+        "integrations",
+        "content",
+        "analytics",
+        "tasks",
+        "campaigns",
+        "ecommerce",
+      ],
       app_role: [
         "super_admin",
         "admin",
