@@ -12,11 +12,14 @@ import {
   FileText,
   MessageSquare,
   Sparkles,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ModularAgentChat, moduleAgentConfig } from "./ModularAgentChat";
 import { useClientModules } from "@/hooks/useClientModules";
+import { useAICapabilityAlerts } from "@/hooks/useAICapabilityAlerts";
 
 const moduleIcons: Record<string, any> = {
   marketing: Target,
@@ -34,6 +37,7 @@ export function GlobalAgentFAB() {
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const { isModuleEnabled } = useClientModules();
+  const { unreadCount, pendingActionsCount } = useAICapabilityAlerts();
 
   // Get enabled modules
   const enabledModules = Object.keys(moduleAgentConfig).filter(key => {
@@ -91,22 +95,40 @@ export function GlobalAgentFAB() {
         </div>
 
         {/* Main FAB */}
-        <Button
-          size="icon"
-          className={cn(
-            "w-14 h-14 rounded-full shadow-elevated transition-all duration-300",
-            isMenuOpen 
-              ? "bg-muted hover:bg-muted/80 rotate-45" 
-              : "bg-gradient-to-r from-primary to-accent hover:shadow-glow"
+        <div className="relative">
+          <Button
+            size="icon"
+            className={cn(
+              "w-14 h-14 rounded-full shadow-elevated transition-all duration-300",
+              isMenuOpen 
+                ? "bg-muted hover:bg-muted/80 rotate-45" 
+                : "bg-gradient-to-r from-primary to-accent hover:shadow-glow",
+              unreadCount > 0 && !isMenuOpen && "animate-pulse"
+            )}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Sparkles className="w-6 h-6" />
+            )}
+          </Button>
+          
+          {/* Alert Badge */}
+          {unreadCount > 0 && !isMenuOpen && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full"
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </Badge>
           )}
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Sparkles className="w-6 h-6" />
+          
+          {/* Pending Actions Indicator */}
+          {pendingActionsCount > 0 && !isMenuOpen && (
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse border-2 border-background" />
           )}
-        </Button>
+        </div>
       </div>
 
       {/* Chat Panel - positioned to the right of the FAB */}

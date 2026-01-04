@@ -53,7 +53,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { AIInsightsChat } from "@/components/ai/AIInsightsChat";
+// AIInsightsChat removed - functionality moved to GlobalAgentFAB
 
 type TimeRange = "7d" | "30d" | "90d" | "12m";
 
@@ -553,12 +553,7 @@ export default function ClientInsights() {
           </>
         )}
 
-        {/* AI Insights Chat Agent */}
-        <AIInsightsChat 
-          performanceData={chartData}
-          campaignsData={[]}
-          insightsData={insights}
-        />
+        {/* AI Agent available via GlobalAgentFAB (bottom-left button) */}
       </div>
     </MainLayout>
   );
