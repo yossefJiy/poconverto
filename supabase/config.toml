@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.ai-code-analyzer]
 verify_jwt = false
+
+[functions.ai-usage-report]
+verify_jwt = false

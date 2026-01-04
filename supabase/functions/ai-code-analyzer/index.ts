@@ -14,16 +14,39 @@ interface AnalysisRequest {
   category?: string;
   context?: string;
   model?: string;
+  userId?: string;
+  clientId?: string;
+}
+
+// Model pricing (per 1M tokens in USD)
+const MODEL_PRICING: Record<string, { input: number; output: number; premium: boolean }> = {
+  'openai/gpt-4o-mini': { input: 0.15, output: 0.60, premium: false },
+  'google/gemini-2.0-flash': { input: 0.075, output: 0.30, premium: false },
+  'google/gemini-2.5-flash': { input: 0.075, output: 0.30, premium: false },
+  'perplexity/sonar-pro': { input: 3.00, output: 15.00, premium: true },
+  'anthropic/claude-sonnet-4': { input: 3.00, output: 15.00, premium: true },
+  'anthropic/claude-3.5-sonnet': { input: 3.00, output: 15.00, premium: true },
+  'openai/gpt-4o': { input: 2.50, output: 10.00, premium: true },
+  'openai/gpt-4-turbo': { input: 10.00, output: 30.00, premium: true },
+};
+
+// Estimate tokens from text (rough: 1 token ≈ 4 chars)
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// Calculate cost in USD
+function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING['openai/gpt-4o-mini'];
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1000000;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Try OpenRouter first, fallback to Lovable AI
     const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
@@ -37,9 +60,156 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, issueId, issueTitle, issueDescription, category, context, model } = await req.json() as AnalysisRequest;
+    const { action, issueId, issueTitle, issueDescription, category, context, model, userId, clientId } = await req.json() as AnalysisRequest;
     
-    const selectedModel = model || 'perplexity/sonar-pro';
+    let selectedModel = model || 'openai/gpt-4o-mini';
+    const modelInfo = MODEL_PRICING[selectedModel] || MODEL_PRICING['openai/gpt-4o-mini'];
+
+    // Check if user can use premium models
+    if (modelInfo.premium && userId) {
+      const { data: userRole } = await supabase.rpc('get_user_role', { _user_id: userId });
+      
+      if (userRole !== 'admin' && userRole !== 'manager') {
+        // Check if user has premium access
+        const { data: limits } = await supabase
+          .from('ai_usage_limits')
+          .select('premium_models_enabled')
+          .or(`target_id.eq.${userId},target_id.is.null`)
+          .order('limit_type', { ascending: true })
+          .limit(1);
+        
+        if (!limits?.[0]?.premium_models_enabled) {
+          console.log(`User ${userId} tried to use premium model ${selectedModel}, downgrading to gpt-4o-mini`);
+          selectedModel = 'openai/gpt-4o-mini';
+        }
+      }
+    }
+
+    // Check usage limits
+    if (userId) {
+      const today = new Date().toISOString().split('T')[0];
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      
+      // Get user's limits
+      const { data: limits } = await supabase
+        .from('ai_usage_limits')
+        .select('*')
+        .or(`and(limit_type.eq.user,target_id.eq.${userId}),limit_type.eq.global`)
+        .order('limit_type', { ascending: true })
+        .limit(1);
+      
+      const userLimits = limits?.[0] || {
+        daily_requests_limit: 50,
+        daily_cost_limit: 5.00,
+        monthly_requests_limit: 500,
+        monthly_cost_limit: 50.00,
+        max_input_tokens: 4000,
+      };
+
+      // Get today's usage
+      const { data: todayUsage } = await supabase
+        .from('ai_query_history')
+        .select('estimated_cost')
+        .eq('created_by', userId)
+        .gte('created_at', today);
+
+      const dailyCost = todayUsage?.reduce((sum, r) => sum + Number(r.estimated_cost || 0), 0) || 0;
+      const dailyCount = todayUsage?.length || 0;
+
+      // Get monthly usage
+      const { data: monthUsage } = await supabase
+        .from('ai_query_history')
+        .select('estimated_cost')
+        .eq('created_by', userId)
+        .gte('created_at', monthStart);
+
+      const monthlyCost = monthUsage?.reduce((sum, r) => sum + Number(r.estimated_cost || 0), 0) || 0;
+      const monthlyCount = monthUsage?.length || 0;
+
+      // Check limits
+      if (dailyCount >= userLimits.daily_requests_limit) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'הגעת למגבלת הבקשות היומית', limitType: 'daily_requests' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (dailyCost >= userLimits.daily_cost_limit) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'הגעת למגבלת העלות היומית', limitType: 'daily_cost' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (monthlyCount >= userLimits.monthly_requests_limit) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'הגעת למגבלת הבקשות החודשית', limitType: 'monthly_requests' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (monthlyCost >= userLimits.monthly_cost_limit) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'הגעת למגבלת העלות החודשית', limitType: 'monthly_cost' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Send alerts at 80% and 90%
+      const dailyPercent = (dailyCost / userLimits.daily_cost_limit) * 100;
+      const monthlyPercent = (monthlyCost / userLimits.monthly_cost_limit) * 100;
+
+      // Check if we need to send 80% alert
+      for (const { percent, type, periodType, currentUsage, limitValue } of [
+        { percent: dailyPercent, type: dailyCost, periodType: 'daily', currentUsage: dailyCost, limitValue: userLimits.daily_cost_limit },
+        { percent: monthlyPercent, type: monthlyCost, periodType: 'monthly', currentUsage: monthlyCost, limitValue: userLimits.monthly_cost_limit },
+      ]) {
+        if (percent >= 80 && percent < 90) {
+          // Check if alert already sent today
+          const { data: existingAlert } = await supabase
+            .from('ai_usage_alerts')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('alert_type', '80_percent')
+            .eq('period_type', periodType)
+            .gte('created_at', today)
+            .limit(1);
+
+          if (!existingAlert?.length) {
+            await supabase.from('ai_usage_alerts').insert({
+              user_id: userId,
+              client_id: clientId || null,
+              alert_type: '80_percent',
+              period_type: periodType,
+              threshold_percent: 80,
+              current_usage: currentUsage,
+              limit_value: limitValue,
+            });
+          }
+        } else if (percent >= 90) {
+          const { data: existingAlert } = await supabase
+            .from('ai_usage_alerts')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('alert_type', '90_percent')
+            .eq('period_type', periodType)
+            .gte('created_at', today)
+            .limit(1);
+
+          if (!existingAlert?.length) {
+            await supabase.from('ai_usage_alerts').insert({
+              user_id: userId,
+              client_id: clientId || null,
+              alert_type: '90_percent',
+              period_type: periodType,
+              threshold_percent: 90,
+              current_usage: currentUsage,
+              limit_value: limitValue,
+            });
+          }
+        }
+      }
+    }
 
     console.log(`AI Code Analyzer: Action=${action}, IssueId=${issueId}, Model=${selectedModel}, Provider=${useOpenRouter ? 'OpenRouter' : 'Lovable AI'}`);
 
@@ -90,7 +260,6 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
         break;
 
       case 'scan-duplicates':
-        // Get all open issues
         const { data: openIssues, error: fetchError } = await supabase
           .from('code_health_issues')
           .select('id, title, description, category, severity')
@@ -126,7 +295,6 @@ ${openIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} (
         break;
 
       case 'auto-close':
-        // Get all open issues and check if they're still relevant
         const { data: allIssues, error: issuesError } = await supabase
           .from('code_health_issues')
           .select('*')
@@ -173,12 +341,15 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         throw new Error(`Unknown action: ${action}`);
     }
 
+    // Estimate input tokens
+    const fullPrompt = systemPrompt + userPrompt;
+    const inputTokens = estimateTokens(fullPrompt);
+
     let aiResponse = '';
     let citations: string[] = [];
     let provider = '';
 
     if (useOpenRouter) {
-      // Use OpenRouter with selected model
       console.log(`Calling OpenRouter with model: ${selectedModel}...`);
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -202,7 +373,6 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         const errorText = await response.text();
         console.error('OpenRouter error:', response.status, errorText);
         
-        // Fallback to Lovable AI if OpenRouter fails
         if (LOVABLE_API_KEY) {
           console.log('OpenRouter failed, falling back to Lovable AI...');
           const fallbackResponse = await callLovableAI(LOVABLE_API_KEY, systemPrompt, userPrompt);
@@ -215,7 +385,6 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         const data = await response.json();
         aiResponse = data.choices?.[0]?.message?.content || 'לא התקבלה תשובה מה-AI';
         
-        // Citations available from Perplexity models
         if (selectedModel.includes('perplexity')) {
           citations = data.citations || [];
         }
@@ -225,20 +394,22 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         console.log(`OpenRouter response received, model: ${selectedModel}, citations: ${citations.length}`);
       }
     } else {
-      // Use Lovable AI as primary
       console.log('Calling Lovable AI Gateway...');
       const lovableResponse = await callLovableAI(LOVABLE_API_KEY!, systemPrompt, userPrompt);
       aiResponse = lovableResponse.content;
       provider = 'lovable';
     }
 
-    console.log('AI Response received, length:', aiResponse.length);
+    // Estimate output tokens
+    const outputTokens = estimateTokens(aiResponse);
+    const estimatedCost = calculateCost(selectedModel, inputTokens, outputTokens);
+
+    console.log(`AI Response received, length: ${aiResponse.length}, cost: $${estimatedCost.toFixed(6)}`);
 
     // Parse and execute actions if needed
     let executedActions: any = null;
 
     if (action === 'scan-duplicates' || action === 'auto-close') {
-      // Try to extract JSON from response (including from code blocks)
       const jsonCodeBlockMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
       const jsonMatch = jsonCodeBlockMatch ? jsonCodeBlockMatch[1] : aiResponse.match(/\{[\s\S]*\}/)?.[0];
       
@@ -247,7 +418,6 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
           const actionData = JSON.parse(jsonMatch);
           
           if (action === 'auto-close' && actionData.autoClose && Array.isArray(actionData.autoClose)) {
-            // Auto-close issues
             const closedIds: string[] = [];
             for (const item of actionData.autoClose) {
               if (item.id) {
@@ -277,6 +447,26 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
       }
     }
 
+    // Save to history
+    if (userId) {
+      await supabase.from('ai_query_history').insert({
+        action,
+        model: selectedModel,
+        issue_id: issueId || null,
+        issue_title: issueTitle || null,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        estimated_cost: estimatedCost,
+        prompt_summary: userPrompt.slice(0, 500),
+        response: aiResponse,
+        citations: citations,
+        provider,
+        executed_actions: executedActions || {},
+        created_by: userId,
+        client_id: clientId || null,
+      });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -285,6 +475,11 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         executedActions,
         provider,
         citations,
+        usage: {
+          inputTokens,
+          outputTokens,
+          estimatedCost,
+        },
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -306,7 +501,6 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
   }
 });
 
-// Helper function for Lovable AI calls
 async function callLovableAI(apiKey: string, systemPrompt: string, userPrompt: string) {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
