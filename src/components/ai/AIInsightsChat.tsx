@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 import { 
   Bot, 
   Send, 
@@ -28,6 +29,7 @@ import {
   ShoppingCart,
   ListTodo,
   CheckCircle2,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,6 +160,7 @@ const modelIcons: Record<string, any> = {
 export function AIInsightsChat({ performanceData = [], campaignsData = [], insightsData = [], isGlobal = false }: AIInsightsChatProps) {
   const { selectedClient } = useClient();
   const { user } = useAuth();
+  const { isEnabled, canUseAI } = useAIModuleAccess('analytics');
   const queryClient = useQueryClient();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -538,6 +541,19 @@ ${JSON.stringify(context.campaigns.slice(0, 10), null, 2)}
       setIsCreatingTask(false);
     }
   };
+
+  // If AI is disabled, show locked state
+  if (!isEnabled || !canUseAI) {
+    return (
+      <button
+        onClick={() => toast.info("יכולות AI אינן מופעלות")}
+        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full bg-muted shadow-lg flex items-center justify-center cursor-not-allowed opacity-70"
+        title="AI לא זמין"
+      >
+        <Lock className="w-6 h-6 text-muted-foreground" />
+      </button>
+    );
+  }
 
   if (!isOpen) {
     return (

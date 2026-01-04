@@ -6,7 +6,8 @@ import {
   Target,
   AlertCircle,
   CheckCircle,
-  ArrowUpRight
+  ArrowUpRight,
+  Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useAIMarketing } from "@/hooks/useAIMarketing";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 import { cn } from "@/lib/utils";
 
 interface AIInsightsDialogProps {
@@ -32,10 +34,16 @@ interface AIInsightsDialogProps {
 export function AIInsightsDialog({ context }: AIInsightsDialogProps) {
   const [open, setOpen] = useState(false);
   const { isLoading, response, generateInsights } = useAIMarketing();
+  const { isEnabled, canUseAI } = useAIModuleAccess('analytics');
 
   const handleGenerate = async () => {
     await generateInsights(context);
   };
+
+  // Don't render trigger if AI is disabled
+  if (!isEnabled || !canUseAI) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
