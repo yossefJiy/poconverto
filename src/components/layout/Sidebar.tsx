@@ -22,6 +22,7 @@ import {
   Bot,
   TrendingUp,
   FileText,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -68,6 +69,7 @@ const settingsItems = [
   { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
+  { icon: Shield, label: "הרשאות", path: "/permissions", adminOnly: true },
   { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
   { icon: HeartPulse, label: "בריאות קוד", path: "/code-health", adminOnly: true },
   { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },

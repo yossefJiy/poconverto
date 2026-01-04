@@ -41,7 +41,7 @@ import AIAgents from "./pages/AIAgents";
 import AgentAlerts from "./pages/AgentAlerts";
 import ClientInsights from "./pages/ClientInsights";
 import Reports from "./pages/Reports";
-
+import Permissions from "./pages/Permissions";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +87,7 @@ const App = () => (
               <Route path="/status" element={<ProtectedRoute><StatusPage /></ProtectedRoute>} />
               <Route path="/code-health" element={<ProtectedRoute><CodeHealth /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
