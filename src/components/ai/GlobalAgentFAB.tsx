@@ -10,7 +10,6 @@ import {
   TrendingUp,
   Lightbulb,
   FileText,
-  Sparkles,
   AlertCircle,
   Clock,
 } from "lucide-react";
@@ -26,47 +25,40 @@ import { cn } from "@/lib/utils";
 import { ModularAgentChat, moduleAgentConfig } from "./ModularAgentChat";
 import { useClientModules } from "@/hooks/useClientModules";
 import { useAICapabilityAlerts } from "@/hooks/useAICapabilityAlerts";
+import logoIcon from "@/assets/logo-icon.svg";
 
-// Unique icons for each module with better visual distinction (semantic tokens only)
-const moduleIconsEnhanced: Record<string, { icon: any; gradient: string; description: string }> = {
+// Clean, minimal icon config for each module
+const moduleIconsEnhanced: Record<string, { icon: any; description: string }> = {
   marketing: {
     icon: Target,
-    gradient: "from-primary to-accent",
     description: "ניתוח קמפיינים, קופי שיווקי, אסטרטגיה",
   },
   analytics: {
     icon: BarChart3,
-    gradient: "from-success to-primary",
     description: "סיכום ביצועים, מגמות, השוואות",
   },
   ecommerce: {
     icon: ShoppingCart,
-    gradient: "from-warning to-jiy-gold",
     description: "מכירות, מלאי, המרות",
   },
   tasks: {
     icon: ListTodo,
-    gradient: "from-accent to-info",
     description: "תיעדוף, תכנון, משימות חדשות",
   },
   team: {
     icon: Users,
-    gradient: "from-info to-success",
     description: "עומס צוות, חלוקת עבודה",
   },
   campaigns: {
     icon: TrendingUp,
-    gradient: "from-jiy-gold to-primary",
     description: "סטטוס קמפיינים, אופטימיזציה",
   },
   insights: {
     icon: Lightbulb,
-    gradient: "from-warning to-accent",
     description: "תובנות AI, הזדמנויות, המלצות",
   },
   reports: {
     icon: FileText,
-    gradient: "from-muted to-secondary",
     description: "דוחות, סיכומים, הצגות",
   },
 };
@@ -120,8 +112,8 @@ export function GlobalAgentFAB() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      {/* Floating Action Button - bottom LEFT */}
-      <div className="fixed bottom-6 left-6 z-40 flex flex-col-reverse items-center gap-3">
+      {/* Floating Action Button - bottom RIGHT */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col-reverse items-center gap-2">
         {/* Module buttons - show when menu is open */}
         <div
           className={cn(
@@ -140,26 +132,25 @@ export function GlobalAgentFAB() {
               <Tooltip key={module}>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="icon"
                     className={cn(
-                      "w-12 h-12 rounded-full shadow-lg transition-all duration-200",
-                      "bg-gradient-to-br hover:scale-110 border-0",
-                      enhanced?.gradient || "from-muted to-secondary",
+                      "w-11 h-11 rounded-full shadow-md transition-all duration-200",
+                      "bg-card hover:bg-accent hover:scale-105 border border-border/50",
                     )}
                     style={{
-                      transitionDelay: `${idx * 50}ms`,
+                      transitionDelay: `${idx * 40}ms`,
                       opacity: isMenuOpen ? 1 : 0,
                       transform: isMenuOpen ? "scale(1)" : "scale(0.8)",
                     }}
                     onClick={() => handleSelectModule(module)}
                   >
-                    <Icon className="w-5 h-5 text-primary-foreground" />
+                    <Icon className="w-5 h-5 text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs">
+                <TooltipContent side="left" className="max-w-xs">
                   <div className="text-right">
-                    <p className="font-semibold">{config.label}</p>
+                    <p className="font-medium">{config.label}</p>
                     <p className="text-xs text-muted-foreground">
                       {enhanced?.description || "סוכן AI"}
                     </p>
@@ -172,7 +163,7 @@ export function GlobalAgentFAB() {
 
         {/* Alerts summary when menu is open */}
         {isMenuOpen && totalAlerts > 0 && (
-          <div className="bg-card rounded-lg shadow-lg p-3 border mb-2 text-right w-48">
+          <div className="bg-card rounded-lg shadow-lg p-3 border mb-2 text-right w-44">
             <div className="flex items-center justify-between gap-2 text-sm">
               <div className="flex items-center gap-2">
                 {pendingActionsCount > 0 && (
@@ -200,26 +191,41 @@ export function GlobalAgentFAB() {
           </div>
         )}
 
-        {/* Main FAB */}
+        {/* Main FAB - Converto Logo + AI indicator */}
         <div className="relative">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
                 className={cn(
-                  "w-14 h-14 rounded-full shadow-elevated transition-all duration-300",
+                  "w-14 h-14 rounded-full shadow-lg transition-all duration-300 overflow-hidden",
+                  "border-2 border-primary/20",
                   isMenuOpen
                     ? "bg-muted hover:bg-muted/80 rotate-45"
-                    : "bg-gradient-to-r from-primary to-accent hover:shadow-glow",
+                    : "bg-gradient-to-br from-[#0a1628] to-[#1a2d4a] hover:shadow-xl hover:scale-105",
                   totalAlerts > 0 && !isMenuOpen && shouldPulse && "animate-pulse"
                 )}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
-                {isMenuOpen ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
+                {isMenuOpen ? (
+                  <X className="w-6 h-6 text-foreground" />
+                ) : (
+                  <div className="relative flex items-center justify-center">
+                    <img 
+                      src={logoIcon} 
+                      alt="AI" 
+                      className="w-8 h-8 object-contain"
+                    />
+                    {/* AI sparkle indicator */}
+                    <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-[8px] text-primary-foreground font-bold">AI</span>
+                    </div>
+                  </div>
+                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="text-right">
-              <p>{isMenuOpen ? "סגור תפריט" : "פתח סוכני AI"}</p>
+            <TooltipContent side="left" className="text-right">
+              <p>{isMenuOpen ? "סגור תפריט" : "סוכני AI"}</p>
               {totalAlerts > 0 && !isMenuOpen && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {totalAlerts} התראות ממתינות
@@ -230,12 +236,12 @@ export function GlobalAgentFAB() {
 
           {/* Total Alerts Badge */}
           {totalAlerts > 0 && !isMenuOpen && (
-            <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
+            <Badge className="absolute -top-1 -left-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
               {totalAlerts > 99 ? "99+" : totalAlerts}
             </Badge>
           )}
 
-          {/* Pending Actions Indicator - clickable to navigate */}
+          {/* Pending Actions Indicator */}
           {pendingActionsCount > 0 && !isMenuOpen && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -246,14 +252,14 @@ export function GlobalAgentFAB() {
                     e.stopPropagation();
                     handleOpenAlerts();
                   }}
-                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-background"
+                  className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full border-2 border-background"
                 >
                   <span className="relative w-full h-full flex items-center justify-center rounded-full bg-warning text-warning-foreground">
                     <Clock className="w-3 h-3" />
                   </span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="text-right">
+              <TooltipContent side="left" className="text-right">
                 <p>{pendingActionsCount} בקשות ממתינות לאישור</p>
                 <p className="text-xs text-muted-foreground">לחץ לפתיחת מסך התראות</p>
               </TooltipContent>
@@ -262,9 +268,9 @@ export function GlobalAgentFAB() {
         </div>
       </div>
 
-      {/* Chat Panel - positioned to the right of the FAB */}
+      {/* Chat Panel - positioned to the left of the FAB */}
       {selectedModule && (
-        <div className="fixed bottom-6 left-24 z-40">
+        <div className="fixed bottom-6 right-24 z-40">
           <ModularAgentChat
             moduleType={selectedModule as keyof typeof moduleAgentConfig}
             isOpen={true}
@@ -285,4 +291,3 @@ export function GlobalAgentFAB() {
     </TooltipProvider>
   );
 }
-
