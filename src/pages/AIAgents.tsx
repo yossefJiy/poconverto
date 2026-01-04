@@ -34,6 +34,8 @@ import {
   Sparkles,
   ExternalLink,
   Bell,
+  Key,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,9 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { ModularAgentChat, moduleAgentConfig } from "@/components/ai/ModularAgentChat";
+import { WidgetManager } from "@/components/widget/WidgetManager";
+import { AgencyAgentDashboard } from "@/components/ai/AgencyAgentDashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AIAgent {
   id: string;
@@ -342,13 +347,29 @@ export default function AIAgents() {
         <PageHeader 
           title="סוכני AI"
           description="סוכני AI חכמים לכל מודול ולקוח - בחר סוכן והתחל לעבוד"
-          actions={
-            <Button onClick={() => openDialog()}>
-              <Plus className="w-4 h-4 ml-2" />
-              סוכן מותאם אישית
-            </Button>
-          }
         />
+
+        <Tabs defaultValue="agents" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="agents" className="flex items-center gap-2">
+              <Bot className="w-4 h-4" />
+              סוכנים
+            </TabsTrigger>
+            <TabsTrigger value="agency" className="flex items-center gap-2">
+              <Network className="w-4 h-4" />
+              סוכן-על
+            </TabsTrigger>
+            <TabsTrigger value="widgets" className="flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              Widgets & API
+            </TabsTrigger>
+            <TabsTrigger value="create" className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              צור סוכן
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="agents" className="space-y-6">
 
         {/* Module Agents Quick Access */}
         <div className="glass rounded-xl p-6">
@@ -557,9 +578,33 @@ export default function AIAgents() {
             })}
           </div>
         )}
-      </div>
+          </TabsContent>
 
-      {/* Create/Edit Dialog */}
+          <TabsContent value="agency">
+            <AgencyAgentDashboard />
+          </TabsContent>
+
+          <TabsContent value="widgets">
+            <WidgetManager />
+          </TabsContent>
+
+          <TabsContent value="create">
+            <div className="glass rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Plus className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold">צור סוכן מותאם אישית</h2>
+              </div>
+              <p className="text-muted-foreground mb-4">
+                הגדר סוכן AI עם יכולות ספציפיות לצרכים שלך
+              </p>
+              <Button onClick={() => openDialog()}>
+                <Plus className="w-4 h-4 ml-2" />
+                התחל ביצירה
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
