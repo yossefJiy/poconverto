@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { checkAIModulePermission, incrementAIUsage } from "../_shared/ai-permissions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,6 +67,32 @@ serve(async (req) => {
       teamMembers?: any[];
       type?: AnalyzerType;
     };
+
+    // Extract user ID from authorization header
+    const authHeader = req.headers.get('authorization');
+    let userId: string | undefined;
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.sub;
+      } catch {}
+    }
+
+    // Determine module name based on type
+    const moduleName = type === 'analyze_campaigns' ? 'campaigns' : 'tasks';
+    const clientId = context?.clientId || null;
+
+    // Check AI module permission
+    const permissionCheck = await checkAIModulePermission(clientId, moduleName, userId);
+    if (!permissionCheck.allowed) {
+      return new Response(JSON.stringify({ 
+        error: permissionCheck.reason || 'AI is not available for this module' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let systemPrompt = "";
     let userPrompt = prompt || "";
@@ -215,15 +242,9 @@ ${JSON.stringify(context?.campaigns || [], null, 2)}
     const inputTokens = Math.ceil((systemPrompt.length + userPrompt.length) / 4);
     const outputTokens = Math.ceil(generatedText.length / 4);
     
-    // Extract user ID from authorization header
-    const authHeader = req.headers.get('authorization');
-    let userId: string | undefined;
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        userId = payload.sub;
-      } catch {}
+    // Increment daily usage counter
+    if (userId) {
+      await incrementAIUsage(userId, moduleName);
     }
     
     await trackAIUsage({

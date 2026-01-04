@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 import { toast } from "sonner";
 import { 
   Bot, 
-  TrendingUp, 
-  TrendingDown, 
   AlertTriangle,
   Zap,
   DollarSign,
@@ -49,6 +48,7 @@ interface AgentCampaignAnalyzerProps {
 
 export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampaignAnalyzerProps) {
   const { selectedClient } = useClient();
+  const { isEnabled, isLoading: isLoadingAccess } = useAIModuleAccess('campaigns');
   const queryClient = useQueryClient();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [proposals, setProposals] = useState<ActionProposal[]>([]);
@@ -71,6 +71,10 @@ export function AgentCampaignAnalyzer({ campaigns, onActionCreated }: AgentCampa
       return data;
     },
   });
+
+  // Don't render if AI is disabled for campaigns module
+  if (isLoadingAccess) return null;
+  if (!isEnabled) return null;
 
   // Create action mutation
   const createActionMutation = useMutation({

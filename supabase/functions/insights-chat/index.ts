@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { checkAIModulePermission, incrementAIUsage } from "../_shared/ai-permissions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -157,6 +158,17 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
+    // Check AI module permission for insights
+    const permissionCheck = await checkAIModulePermission(clientId, 'insights', userId);
+    if (!permissionCheck.allowed) {
+      return new Response(JSON.stringify({ 
+        error: permissionCheck.reason || 'AI is not available for insights' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Determine which model to use
     let selectedModelKey = modelKey || suggestModel(userMessage, hasOpenRouter);
     let selectedModel = AI_MODELS[selectedModelKey];
@@ -173,6 +185,7 @@ serve(async (req) => {
       conversationId,
       selectedModel: selectedModelKey,
       modelId: selectedModel.id,
+      dailyUsageRemaining: permissionCheck.dailyUsageRemaining,
     });
 
     let apiEndpoint: string;
@@ -405,6 +418,11 @@ ${isSearchModel ? `
 
         // Track AI usage in ai_query_history
         try {
+          // Increment daily usage counter
+          if (userId) {
+            await incrementAIUsage(userId, 'insights');
+          }
+
           const costs: Record<string, { input: number; output: number }> = {
             'google/gemini-2.5-flash': { input: 0.00005, output: 0.00015 },
             'google/gemini-2.5-pro': { input: 0.0007, output: 0.0021 },
