@@ -696,6 +696,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormNotificationEmailAddress(task?.notification_email_address || "");
     setSelectedReminders([]);
     setShowReminderPreview(false);
+    setExpandedSections(new Set(task?.id ? ["title", "subtasks"] : ["title"]));
     setEditDialogOpen(true);
   };
 
@@ -719,6 +720,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setSelectedReminders([]);
     setShowReminderPreview(false);
     setPendingAttachments([]);
+    setExpandedSections(new Set(["title"]));
   };
 
   const handleSave = () => {
@@ -1647,18 +1649,22 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               </div>
             </CollapsibleField>
 
-            {/* Subtasks - Only show for existing tasks */}
-            {selectedTask && (
-              <CollapsibleField
-                label="תתי-משימות"
-                icon={<ListTree className="w-4 h-4" />}
-                isExpanded={expandedSections.has('subtasks')}
-                onToggle={() => toggleSection('subtasks')}
-                hasValue={false}
-              >
+            {/* Subtasks */}
+            <CollapsibleField
+              label="תתי-משימות"
+              icon={<ListTree className="w-4 h-4" />}
+              isExpanded={expandedSections.has('subtasks')}
+              onToggle={() => toggleSection('subtasks')}
+              hasValue={false}
+            >
+              {selectedTask ? (
                 <SubtaskList parentTaskId={selectedTask.id} />
-              </CollapsibleField>
-            )}
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  שמור את המשימה כדי להוסיף תתי-משימות.
+                </div>
+              )}
+            </CollapsibleField>
 
             {/* Attachments - Show for both new and existing tasks */}
             <CollapsibleField
