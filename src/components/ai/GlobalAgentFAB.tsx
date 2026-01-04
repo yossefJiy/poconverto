@@ -68,7 +68,6 @@ export function GlobalAgentFAB() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
-  const [shouldPulse, setShouldPulse] = useState(true);
 
   const { isModuleEnabled } = useClientModules();
   const {
@@ -77,15 +76,6 @@ export function GlobalAgentFAB() {
     limitWarningsCount,
     totalCount,
   } = useAICapabilityAlerts();
-
-  // Stop pulsing after 30 seconds
-  useEffect(() => {
-    if (totalCount > 0) {
-      setShouldPulse(true);
-      const timer = setTimeout(() => setShouldPulse(false), 30000);
-      return () => clearTimeout(timer);
-    }
-  }, [totalCount]);
 
   // Get enabled modules
   const enabledModules = Object.keys(moduleAgentConfig).filter((key) => {
@@ -104,7 +94,6 @@ export function GlobalAgentFAB() {
   };
 
   const handleOpenAlerts = () => {
-    setShouldPulse(false);
     navigate("/agent-alerts");
   };
 
@@ -113,7 +102,63 @@ export function GlobalAgentFAB() {
   return (
     <TooltipProvider delayDuration={300}>
       {/* Floating Action Button - bottom LEFT */}
-      <div className="fixed bottom-6 left-6 z-40 flex flex-col-reverse items-center gap-2">
+      <div className="fixed bottom-4 left-4 z-40 flex flex-col-reverse items-center gap-2">
+        {/* Main FAB - Converto Logo + AI indicator - always at bottom */}
+        <div className="relative">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                className={cn(
+                  "w-14 h-14 rounded-full shadow-lg transition-all duration-300 overflow-hidden",
+                  "border-2 border-primary/20",
+                  "bg-gradient-to-br from-[#0a1628] to-[#1a2d4a] hover:shadow-xl hover:scale-105"
+                )}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <div className="relative flex items-center justify-center">
+                  <img 
+                    src={logoIcon} 
+                    alt="AI" 
+                    className="w-8 h-8 object-contain"
+                  />
+                  {/* AI indicator badge */}
+                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                    <span className="text-[7px] text-primary-foreground font-bold">AI</span>
+                  </div>
+                </div>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-right">
+              <p>סוכני AI</p>
+              {totalAlerts > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totalAlerts} התראות ממתינות
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Total Alerts Badge */}
+          {totalAlerts > 0 && !isMenuOpen && (
+            <Badge className="absolute -top-1 -left-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
+              {totalAlerts > 99 ? "99+" : totalAlerts}
+            </Badge>
+          )}
+        </div>
+
+        {/* Close button - show at top when menu is open */}
+        {isMenuOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-10 h-10 rounded-full shadow-md bg-card hover:bg-accent"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        )}
+
         {/* Module buttons - show when menu is open */}
         <div
           className={cn(
@@ -163,9 +208,9 @@ export function GlobalAgentFAB() {
 
         {/* Alerts summary when menu is open */}
         {isMenuOpen && totalAlerts > 0 && (
-          <div className="bg-card rounded-lg shadow-lg p-3 border mb-2 text-right w-44">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <div className="flex items-center gap-2">
+          <div className="bg-card rounded-lg shadow-lg p-3 border text-right w-44">
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center gap-3">
                 {pendingActionsCount > 0 && (
                   <div className="flex items-center gap-1 text-warning">
                     <Clock className="w-4 h-4" />
@@ -182,90 +227,14 @@ export function GlobalAgentFAB() {
               <Button
                 type="button"
                 variant="link"
-                className="h-auto p-0 text-xs"
+                className="h-auto p-0 text-xs justify-end"
                 onClick={handleOpenAlerts}
               >
-                פירוט
+                פירוט →
               </Button>
             </div>
           </div>
         )}
-
-        {/* Main FAB - Converto Logo + AI indicator */}
-        <div className="relative">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                className={cn(
-                  "w-14 h-14 rounded-full shadow-lg transition-all duration-300 overflow-hidden",
-                  "border-2 border-primary/20",
-                  isMenuOpen
-                    ? "bg-muted hover:bg-muted/80 rotate-45"
-                    : "bg-gradient-to-br from-[#0a1628] to-[#1a2d4a] hover:shadow-xl hover:scale-105",
-                  totalAlerts > 0 && !isMenuOpen && shouldPulse && "animate-pulse"
-                )}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                {isMenuOpen ? (
-                  <X className="w-6 h-6 text-foreground" />
-                ) : (
-                  <div className="relative flex items-center justify-center">
-                    <img 
-                      src={logoIcon} 
-                      alt="AI" 
-                      className="w-8 h-8 object-contain"
-                    />
-                    {/* AI sparkle indicator */}
-                    <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-[8px] text-primary-foreground font-bold">AI</span>
-                    </div>
-                  </div>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-right">
-              <p>{isMenuOpen ? "סגור תפריט" : "סוכני AI"}</p>
-              {totalAlerts > 0 && !isMenuOpen && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {totalAlerts} התראות ממתינות
-                </p>
-              )}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Total Alerts Badge */}
-          {totalAlerts > 0 && !isMenuOpen && (
-            <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-warning text-warning-foreground">
-              {totalAlerts > 99 ? "99+" : totalAlerts}
-            </Badge>
-          )}
-
-          {/* Pending Actions Indicator */}
-          {pendingActionsCount > 0 && !isMenuOpen && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`${pendingActionsCount} בקשות AI ממתינות לאישור`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenAlerts();
-                  }}
-                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-background"
-                >
-                  <span className="relative w-full h-full flex items-center justify-center rounded-full bg-warning text-warning-foreground">
-                    <Clock className="w-3 h-3" />
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-right">
-                <p>{pendingActionsCount} בקשות ממתינות לאישור</p>
-                <p className="text-xs text-muted-foreground">לחץ לפתיחת מסך התראות</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
       </div>
 
       {/* Chat Panel - positioned to the right of the FAB */}
