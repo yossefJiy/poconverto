@@ -22,9 +22,14 @@ serve(async (req) => {
   }
 
   try {
+    // Try OpenRouter first, fallback to Lovable AI
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    
+    const useOpenRouter = !!OPENROUTER_API_KEY;
+    
+    if (!OPENROUTER_API_KEY && !LOVABLE_API_KEY) {
+      throw new Error('No AI API key configured (OPENROUTER_API_KEY or LOVABLE_API_KEY required)');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -33,12 +38,13 @@ serve(async (req) => {
 
     const { action, issueId, issueTitle, issueDescription, category, context } = await req.json() as AnalysisRequest;
 
-    console.log(`AI Code Analyzer: Action=${action}, IssueId=${issueId}`);
+    console.log(`AI Code Analyzer: Action=${action}, IssueId=${issueId}, Provider=${useOpenRouter ? 'OpenRouter/Perplexity' : 'Lovable AI'}`);
 
     let systemPrompt = `אתה מומחה לבריאות קוד ואבטחה. אתה מנתח בעיות קוד ומספק פתרונות מפורטים בעברית.
 תמיד תן תשובות מעשיות עם קוד לדוגמה כשרלוונטי.
 פורמט התשובה שלך צריך להיות ברור ומסודר עם כותרות.
-השתמש בפורמט Markdown לתשובות.`;
+השתמש בפורמט Markdown לתשובות.
+אם יש לך מקורות רלוונטיים מהאינטרנט, הוסף אותם בסוף התשובה.`;
 
     let userPrompt = '';
 
@@ -56,13 +62,16 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
 1. ניתוח מעמיק של הבעיה
 2. השלכות אפשריות אם לא תטופל
 3. פתרון מומלץ עם קוד לדוגמה
-4. צעדים למניעה בעתיד`;
+4. צעדים למניעה בעתיד
+
+חפש מידע עדכני באינטרנט על best practices לפתרון בעיות כאלה.`;
         break;
 
       case 'suggest-fix':
         systemPrompt = `אתה מומחה לתיקון באגים וקוד React/TypeScript.
 תן קוד מלא ומפורט שניתן להעתיק ולהשתמש בו ישירות.
-השתמש בפורמט Markdown עם בלוקי קוד מסומנים כראוי.`;
+השתמש בפורמט Markdown עם בלוקי קוד מסומנים כראוי.
+חפש באינטרנט פתרונות עדכניים ו-best practices.`;
         
         userPrompt = `תן לי פתרון קוד מלא לבעיה הבאה:
 
@@ -94,6 +103,7 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
               response: 'אין בעיות פתוחות לסריקה.',
               action,
               executedActions: null,
+              provider: useOpenRouter ? 'openrouter' : 'lovable',
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -129,6 +139,7 @@ ${openIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} (
               response: 'אין בעיות פתוחות לבדיקה.',
               action,
               executedActions: null,
+              provider: useOpenRouter ? 'openrouter' : 'lovable',
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -159,41 +170,59 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         throw new Error(`Unknown action: ${action}`);
     }
 
-    console.log('Calling Lovable AI Gateway...');
+    let aiResponse = '';
+    let citations: string[] = [];
+    let provider = '';
 
-    // Call Lovable AI Gateway
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 4000,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Lovable AI Gateway error:', response.status, errorText);
+    if (useOpenRouter) {
+      // Use OpenRouter with Perplexity for web search
+      console.log('Calling OpenRouter with Perplexity...');
       
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      }
-      if (response.status === 402) {
-        throw new Error('Payment required. Please add credits to your workspace.');
-      }
-      throw new Error(`AI Gateway error: ${response.status}`);
-    }
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://jiy.app',
+          'X-Title': 'JIY Code Health Analyzer',
+        },
+        body: JSON.stringify({
+          model: 'perplexity/sonar-pro',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+        }),
+      });
 
-    const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || 'לא התקבלה תשובה מה-AI';
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenRouter error:', response.status, errorText);
+        
+        // Fallback to Lovable AI if OpenRouter fails
+        if (LOVABLE_API_KEY) {
+          console.log('OpenRouter failed, falling back to Lovable AI...');
+          const fallbackResponse = await callLovableAI(LOVABLE_API_KEY, systemPrompt, userPrompt);
+          aiResponse = fallbackResponse.content;
+          provider = 'lovable (fallback)';
+        } else {
+          throw new Error(`OpenRouter error: ${response.status} - ${errorText}`);
+        }
+      } else {
+        const data = await response.json();
+        aiResponse = data.choices?.[0]?.message?.content || 'לא התקבלה תשובה מה-AI';
+        citations = data.citations || [];
+        provider = 'openrouter/perplexity';
+        
+        console.log(`OpenRouter response received, citations: ${citations.length}`);
+      }
+    } else {
+      // Use Lovable AI as primary
+      console.log('Calling Lovable AI Gateway...');
+      const lovableResponse = await callLovableAI(LOVABLE_API_KEY!, systemPrompt, userPrompt);
+      aiResponse = lovableResponse.content;
+      provider = 'lovable';
+    }
 
     console.log('AI Response received, length:', aiResponse.length);
 
@@ -246,6 +275,8 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         response: aiResponse,
         action,
         executedActions,
+        provider,
+        citations,
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -266,3 +297,39 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
     );
   }
 });
+
+// Helper function for Lovable AI calls
+async function callLovableAI(apiKey: string, systemPrompt: string, userPrompt: string) {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    }
+    if (response.status === 402) {
+      throw new Error('Payment required. Please add credits to your workspace.');
+    }
+    throw new Error(`AI Gateway error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return {
+    content: data.choices?.[0]?.message?.content || 'לא התקבלה תשובה מה-AI',
+  };
+}
