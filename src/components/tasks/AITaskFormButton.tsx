@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 import { toast } from "sonner";
 import { 
   Sparkles, 
@@ -55,9 +56,14 @@ const priorityColors = {
 
 export function AITaskFormButton({ title, description, onApplyRecommendation }: AITaskFormButtonProps) {
   const { selectedClient } = useClient();
+  const { isEnabled, isLoading: isLoadingAccess } = useAIModuleAccess('tasks');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
+
+  // Don't render if AI is disabled for tasks module
+  if (isLoadingAccess) return null;
+  if (!isEnabled) return null;
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["team-active"],

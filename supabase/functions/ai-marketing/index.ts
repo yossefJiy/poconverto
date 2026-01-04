@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 import { healthCheckResponse, createLogger } from "../_shared/utils.ts";
 import { SERVICE_VERSIONS } from "../_shared/constants.ts";
+import { checkAIModulePermission, incrementAIUsage } from "../_shared/ai-permissions.ts";
 
 const log = createLogger('AI Marketing');
 
@@ -131,6 +132,20 @@ serve(async (req) => {
     }
     console.log('[AI Marketing] Authenticated user:', auth.user.id);
 
+    const ctx = body.context || {};
+
+    // Check AI module permission
+    const clientId = (ctx as any).client_id || null;
+    const permissionCheck = await checkAIModulePermission(clientId, 'marketing', auth.user.id);
+    if (!permissionCheck.allowed) {
+      return new Response(JSON.stringify({ 
+        error: permissionCheck.reason || 'AI is not available for this module' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -141,7 +156,6 @@ serve(async (req) => {
     const systemPrompt = systemPrompts[body.type] || systemPrompts.content;
     
     let userPrompt = '';
-    const ctx = body.context || {};
 
     switch (body.type) {
       case 'content':
@@ -260,6 +274,9 @@ ${c.name}:
     // Track AI usage (estimate tokens since streaming)
     const inputTokens = Math.ceil((systemPrompt.length + userPrompt.length) / 4);
     
+    // Increment daily usage counter
+    await incrementAIUsage(auth.user.id, 'marketing');
+    
     // For streaming, we estimate based on typical response length
     trackAIUsage({
       action: `marketing_${body.type}`,
@@ -267,7 +284,7 @@ ${c.name}:
       inputTokens,
       outputTokens: 500, // Estimated for streaming
       promptSummary: userPrompt.slice(0, 500),
-      clientId: ctx.client_name,
+      clientId: clientId || undefined,
       userId: auth.user.id,
     });
 
