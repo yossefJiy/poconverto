@@ -410,6 +410,53 @@ export type Database = {
           },
         ]
       }
+      ai_module_settings: {
+        Row: {
+          allowed_capabilities: string[] | null
+          allowed_for_users: string[] | null
+          client_id: string | null
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          module_name: string
+          restricted_for_users: string[] | null
+          settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_capabilities?: string[] | null
+          allowed_for_users?: string[] | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_name: string
+          restricted_for_users?: string[] | null
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_capabilities?: string[] | null
+          allowed_for_users?: string[] | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_name?: string
+          restricted_for_users?: string[] | null
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_module_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_query_history: {
         Row: {
           action: string
@@ -478,6 +525,63 @@ export type Database = {
             columns: ["issue_id"]
             isOneToOne: false
             referencedRelation: "code_health_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_team_permissions: {
+        Row: {
+          can_approve_actions: boolean | null
+          can_use_ai: boolean | null
+          client_id: string | null
+          created_at: string | null
+          current_daily_requests: number | null
+          id: string
+          last_reset_at: string | null
+          max_daily_requests: number | null
+          module_name: string
+          team_member_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          can_approve_actions?: boolean | null
+          can_use_ai?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          current_daily_requests?: number | null
+          id?: string
+          last_reset_at?: string | null
+          max_daily_requests?: number | null
+          module_name: string
+          team_member_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          can_approve_actions?: boolean | null
+          can_use_ai?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          current_daily_requests?: number | null
+          id?: string
+          last_reset_at?: string | null
+          max_daily_requests?: number | null
+          module_name?: string
+          team_member_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_team_permissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_team_permissions_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
             referencedColumns: ["id"]
           },
         ]
@@ -2066,6 +2170,66 @@ export type Database = {
           {
             foreignKeyName: "task_shares_task_id_fkey"
             columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_subtasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          parent_task_id: string
+          sort_order: number | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          parent_task_id: string
+          sort_order?: number | null
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          parent_task_id?: string
+          sort_order?: number | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_subtasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_subtasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]

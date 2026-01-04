@@ -1,28 +1,20 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Bell,
   AlertTriangle,
-  Target,
-  BarChart3,
-  ShoppingCart,
-  ListTodo,
-  Users,
-  TrendingUp,
-  Lightbulb,
-  FileText,
   CheckCircle2,
   Clock,
-  Trash2,
-  Eye,
-  Filter,
   RefreshCw,
   Loader2,
   AlertCircle,
+  Ban,
+  Check,
   X,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,161 +23,172 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { toast } from "sonner";
 import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-
-// Alert types configuration
-const alertModuleConfig: Record<string, { icon: any; label: string; color: string; bgColor: string }> = {
-  marketing: { icon: Target, label: "שיווק", color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  analytics: { icon: BarChart3, label: "אנליטיקס", color: "text-green-500", bgColor: "bg-green-500/10" },
-  ecommerce: { icon: ShoppingCart, label: "איקומרס", color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  tasks: { icon: ListTodo, label: "משימות", color: "text-purple-500", bgColor: "bg-purple-500/10" },
-  campaigns: { icon: TrendingUp, label: "קמפיינים", color: "text-pink-500", bgColor: "bg-pink-500/10" },
-  team: { icon: Users, label: "צוות", color: "text-cyan-500", bgColor: "bg-cyan-500/10" },
-  insights: { icon: Lightbulb, label: "תובנות", color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-  reports: { icon: FileText, label: "דוחות", color: "text-amber-500", bgColor: "bg-amber-500/10" },
-};
-
-interface AgentAlert {
-  id: string;
-  conversation_id: string;
-  role: string;
-  content: string;
-  created_at: string;
-  metadata: {
-    moduleType?: string;
-    clientId?: string;
-    isAlert?: boolean;
-  } | null;
-  conversation?: {
-    agent_type: string;
-    client_id: string | null;
-    title: string | null;
-    client?: {
-      name: string;
-    };
-  };
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAICapabilityAlerts, AICapabilityAlert } from "@/hooks/useAICapabilityAlerts";
 
 export default function AgentAlerts() {
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
-  const [filterModule, setFilterModule] = useState<string>("all");
-  const [selectedAlert, setSelectedAlert] = useState<AgentAlert | null>(null);
+  const [activeTab, setActiveTab] = useState("pending");
+  const [selectedAction, setSelectedAction] = useState<any>(null);
 
-  // Fetch all alerts (messages containing alert keywords)
-  const { data: alerts = [], isLoading, refetch } = useQuery({
-    queryKey: ["agent-alerts", selectedClient?.id],
-    queryFn: async () => {
-      let query = supabase
-        .from("chat_messages")
-        .select(`
-          id,
-          conversation_id,
-          role,
-          content,
-          created_at,
-          metadata,
-          conversation:chat_conversations!inner(
-            agent_type,
-            client_id,
-            title,
-            client:clients(name)
-          )
-        `)
-        .eq("role", "assistant")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      
-      if (selectedClient) {
-        query = query.eq("conversation.client_id", selectedClient.id);
-      }
-      
-      const { data, error } = await query;
+  // Use the centralized alerts hook
+  const {
+    alerts,
+    pendingActions,
+    pendingActionsCount,
+    deniedTodayCount,
+    limitWarningsCount,
+    totalCount,
+  } = useAICapabilityAlerts();
+
+  // Approve action mutation
+  const approveMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      const { error } = await supabase
+        .from("ai_agent_actions")
+        .update({ 
+          status: "approved", 
+          approved_at: new Date().toISOString(),
+        })
+        .eq("id", actionId);
       if (error) throw error;
-      
-      // Filter for alert messages
-      const alertMessages = (data || []).filter((msg: any) => {
-        const content = msg.content || "";
-        return content.includes("🚨") || 
-               content.includes("התראה:") || 
-               content.includes("חריגה") ||
-               content.includes("אזהרה") ||
-               content.includes("⚠️");
-      });
-      
-      return alertMessages as AgentAlert[];
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-pending-actions"] });
+      toast.success("הפעולה אושרה");
+      setSelectedAction(null);
+    },
+    onError: () => toast.error("שגיאה באישור הפעולה"),
   });
 
-  // Get module type from agent_type
-  const getModuleFromAgentType = (agentType: string) => {
-    return agentType?.replace("module_", "") || "insights";
+  // Reject action mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      const { error } = await supabase
+        .from("ai_agent_actions")
+        .update({ status: "rejected" })
+        .eq("id", actionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-pending-actions"] });
+      toast.success("הפעולה נדחתה");
+      setSelectedAction(null);
+    },
+    onError: () => toast.error("שגיאה בדחיית הפעולה"),
+  });
+
+  // Filter alerts by type for each tab
+  const pendingAlerts = alerts.filter(a => a.type === "approval_needed");
+  const deniedAlerts = alerts.filter(a => a.type === "denied_action");
+  const limitAlerts = alerts.filter(a => a.type === "daily_limit");
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["ai-pending-actions"] });
+    queryClient.invalidateQueries({ queryKey: ["ai-denied-usage"] });
+    queryClient.invalidateQueries({ queryKey: ["ai-limit-alerts"] });
+    toast.success("הנתונים רועננו");
   };
 
-  // Filter alerts
-  const filteredAlerts = alerts.filter(alert => {
-    if (filterModule === "all") return true;
-    const module = getModuleFromAgentType(alert.conversation?.agent_type || "");
-    return module === filterModule;
-  });
+  const renderAlertCard = (alert: AICapabilityAlert) => {
+    const typeConfig = {
+      approval_needed: { icon: Clock, color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning" },
+      denied_action: { icon: Ban, color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive" },
+      daily_limit: { icon: AlertCircle, color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning" },
+      dangerous_action: { icon: AlertTriangle, color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive" },
+    };
 
-  // Group alerts by date
-  const groupedAlerts: Record<string, AgentAlert[]> = {};
-  filteredAlerts.forEach(alert => {
-    const date = format(new Date(alert.created_at), "yyyy-MM-dd");
-    if (!groupedAlerts[date]) {
-      groupedAlerts[date] = [];
-    }
-    groupedAlerts[date].push(alert);
-  });
+    const config = typeConfig[alert.type] || typeConfig.approval_needed;
+    const Icon = config.icon;
 
-  // Get alert summary text
-  const getAlertSummary = (content: string) => {
-    const lines = content.split("\n").filter(l => l.trim());
-    const firstAlertLine = lines.find(l => 
-      l.includes("🚨") || l.includes("התראה") || l.includes("חריגה") || l.includes("⚠️")
+    // Find the original action for pending alerts
+    const originalAction = alert.type === "approval_needed" 
+      ? pendingActions.find((a: any) => `pending-${a.id}` === alert.id)
+      : null;
+
+    return (
+      <div
+        key={alert.id}
+        className={cn(
+          "glass rounded-xl p-4 border-r-4 transition-colors",
+          config.borderColor,
+          alert.type === "approval_needed" && "cursor-pointer hover:bg-muted/50"
+        )}
+        onClick={() => alert.type === "approval_needed" && originalAction && setSelectedAction(originalAction)}
+      >
+        <div className="flex items-start gap-4">
+          <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", config.bgColor)}>
+            <Icon className={cn("w-5 h-5", config.color)} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h4 className="font-medium">{alert.title}</h4>
+              {alert.agentName && (
+                <Badge variant="secondary">{alert.agentName}</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{alert.message}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {format(new Date(alert.createdAt), "d בMMMM, HH:mm", { locale: he })}
+            </p>
+          </div>
+          {alert.type === "approval_needed" && originalAction && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-success border-success/50 hover:bg-success/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  approveMutation.mutate(originalAction.id);
+                }}
+                disabled={approveMutation.isPending}
+              >
+                <Check className="w-4 h-4 ml-1" />
+                אשר
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  rejectMutation.mutate(originalAction.id);
+                }}
+                disabled={rejectMutation.isPending}
+              >
+                <X className="w-4 h-4 ml-1" />
+                דחה
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
     );
-    return firstAlertLine?.slice(0, 150) || lines[0]?.slice(0, 150) || "התראה מסוכן AI";
   };
-
-  // Stats
-  const todayAlerts = alerts.filter(a => 
-    format(new Date(a.created_at), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-  ).length;
-
-  const moduleStats = Object.entries(alertModuleConfig).map(([key, config]) => ({
-    key,
-    ...config,
-    count: alerts.filter(a => getModuleFromAgentType(a.conversation?.agent_type || "") === key).length,
-  })).filter(m => m.count > 0);
 
   return (
     <MainLayout>
       <div className="p-4 md:p-8 space-y-6" dir="rtl">
         <PageHeader 
           title="מרכז התראות AI"
-          description="כל ההתראות והחריגות שזוהו על ידי סוכני AI"
+          description="ניהול בקשות ממתינות, פעולות שנחסמו והתראות מכסה"
           actions={
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => refetch()}
-              disabled={isLoading}
+              onClick={handleRefresh}
             >
-              <RefreshCw className={cn("w-4 h-4 ml-2", isLoading && "animate-spin")} />
+              <RefreshCw className="w-4 h-4 ml-2" />
               רענן
             </Button>
           }
@@ -195,197 +198,207 @@ export default function AgentAlerts() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="glass rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{alerts.length}</p>
-                <p className="text-sm text-muted-foreground">סה״כ התראות</p>
+                <p className="text-2xl font-bold">{pendingActionsCount}</p>
+                <p className="text-sm text-muted-foreground">ממתינות לאישור</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <Ban className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{deniedTodayCount}</p>
+                <p className="text-sm text-muted-foreground">נחסמו היום</p>
               </div>
             </div>
           </div>
           <div className="glass rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                <Bell className="w-5 h-5 text-warning" />
+                <AlertCircle className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{todayAlerts}</p>
-                <p className="text-sm text-muted-foreground">התראות היום</p>
+                <p className="text-2xl font-bold">{limitWarningsCount}</p>
+                <p className="text-sm text-muted-foreground">אזהרות מכסה</p>
               </div>
             </div>
           </div>
-          <div className="glass rounded-xl p-4 col-span-2">
-            <p className="text-sm font-medium mb-2">לפי מודול</p>
-            <div className="flex flex-wrap gap-2">
-              {moduleStats.length > 0 ? moduleStats.map(stat => {
-                const Icon = stat.icon;
-                return (
-                  <Badge 
-                    key={stat.key} 
-                    variant="secondary" 
-                    className={cn("gap-1", stat.bgColor)}
-                  >
-                    <Icon className={cn("w-3 h-3", stat.color)} />
-                    {stat.label}: {stat.count}
-                  </Badge>
-                );
-              }) : (
-                <span className="text-sm text-muted-foreground">אין התראות</span>
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalCount}</p>
+                <p className="text-sm text-muted-foreground">סה״כ התראות</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="pending" className="gap-2">
+              <Clock className="w-4 h-4" />
+              ממתינות
+              {pendingActionsCount > 0 && (
+                <Badge className="bg-warning text-warning-foreground h-5 min-w-5">
+                  {pendingActionsCount}
+                </Badge>
               )}
-            </div>
-          </div>
-        </div>
+            </TabsTrigger>
+            <TabsTrigger value="denied" className="gap-2">
+              <Ban className="w-4 h-4" />
+              נחסמו
+              {deniedTodayCount > 0 && (
+                <Badge className="bg-destructive text-destructive-foreground h-5 min-w-5">
+                  {deniedTodayCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="limits" className="gap-2">
+              <AlertCircle className="w-4 h-4" />
+              מכסות
+              {limitWarningsCount > 0 && (
+                <Badge className="bg-warning text-warning-foreground h-5 min-w-5">
+                  {limitWarningsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="all" className="gap-2">
+              <Bell className="w-4 h-4" />
+              הכל
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Filter */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">סינון:</span>
-          </div>
-          <Select value={filterModule} onValueChange={setFilterModule}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">כל המודולים</SelectItem>
-              {Object.entries(alertModuleConfig).map(([key, config]) => (
-                <SelectItem key={key} value={key}>
-                  <div className="flex items-center gap-2">
-                    <config.icon className={cn("w-4 h-4", config.color)} />
-                    {config.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Alerts List */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : filteredAlerts.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center">
-            <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
-            <h3 className="text-lg font-semibold mb-2">אין התראות</h3>
-            <p className="text-muted-foreground">
-              סוכני AI לא זיהו חריגות או התראות
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedAlerts).map(([date, dateAlerts]) => (
-              <div key={date} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    {format(new Date(date), "EEEE, d בMMMM yyyy", { locale: he })}
-                  </h3>
-                  <Badge variant="secondary">{dateAlerts.length}</Badge>
-                </div>
-                
-                <div className="space-y-2">
-                  {dateAlerts.map(alert => {
-                    const moduleType = getModuleFromAgentType(alert.conversation?.agent_type || "");
-                    const moduleConfig = alertModuleConfig[moduleType] || alertModuleConfig.insights;
-                    const ModuleIcon = moduleConfig.icon;
-                    
-                    return (
-                      <div 
-                        key={alert.id} 
-                        className={cn(
-                          "glass rounded-xl p-4 border-r-4 cursor-pointer hover:bg-muted/50 transition-colors",
-                          "border-warning"
-                        )}
-                        onClick={() => setSelectedAlert(alert)}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className={cn(
-                            "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                            moduleConfig.bgColor
-                          )}>
-                            <ModuleIcon className={cn("w-5 h-5", moduleConfig.color)} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="gap-1 text-warning border-warning/30">
-                                <AlertTriangle className="w-3 h-3" />
-                                התראה
-                              </Badge>
-                              <Badge variant="secondary" className={moduleConfig.bgColor}>
-                                {moduleConfig.label}
-                              </Badge>
-                              {alert.conversation?.client && (
-                                <Badge variant="outline">
-                                  {(alert.conversation.client as any)?.name}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm line-clamp-2">
-                              {getAlertSummary(alert.content)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {format(new Date(alert.created_at), "HH:mm", { locale: he })}
-                            </p>
-                          </div>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+          <TabsContent value="pending" className="mt-6">
+            {pendingAlerts.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
+                <h3 className="text-lg font-semibold mb-2">אין בקשות ממתינות</h3>
+                <p className="text-muted-foreground">כל הפעולות אושרו או נדחו</p>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-3">
+                {pendingAlerts.map(renderAlertCard)}
+              </div>
+            )}
+          </TabsContent>
 
-        {/* Alert Detail Dialog */}
-        <Dialog open={!!selectedAlert} onOpenChange={() => setSelectedAlert(null)}>
-          <DialogContent className="max-w-2xl" dir="rtl">
+          <TabsContent value="denied" className="mt-6">
+            {deniedAlerts.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
+                <h3 className="text-lg font-semibold mb-2">אין פעולות שנחסמו</h3>
+                <p className="text-muted-foreground">כל הפעולות עברו בהצלחה</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {deniedAlerts.map(renderAlertCard)}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="limits" className="mt-6">
+            {limitAlerts.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
+                <h3 className="text-lg font-semibold mb-2">אין אזהרות מכסה</h3>
+                <p className="text-muted-foreground">כל הסוכנים בטווח השימוש התקין</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {limitAlerts.map(renderAlertCard)}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="all" className="mt-6">
+            {alerts.length === 0 ? (
+              <div className="glass rounded-xl p-12 text-center">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
+                <h3 className="text-lg font-semibold mb-2">אין התראות</h3>
+                <p className="text-muted-foreground">המערכת פועלת כרגיל</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {alerts.map(renderAlertCard)}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Action Detail Dialog */}
+        <Dialog open={!!selectedAction} onOpenChange={() => setSelectedAction(null)}>
+          <DialogContent className="max-w-lg" dir="rtl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-warning" />
-                פרטי התראה
+                <Shield className="w-5 h-5 text-warning" />
+                פרטי בקשה לאישור
               </DialogTitle>
             </DialogHeader>
-            {selectedAlert && (
+            {selectedAction && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(() => {
-                    const moduleType = getModuleFromAgentType(selectedAlert.conversation?.agent_type || "");
-                    const moduleConfig = alertModuleConfig[moduleType] || alertModuleConfig.insights;
-                    return (
-                      <Badge className={cn("gap-1", moduleConfig.bgColor)}>
-                        <moduleConfig.icon className={cn("w-3 h-3", moduleConfig.color)} />
-                        {moduleConfig.label}
-                      </Badge>
-                    );
-                  })()}
-                  <Badge variant="outline">
-                    {format(new Date(selectedAlert.created_at), "d בMMMM yyyy, HH:mm", { locale: he })}
-                  </Badge>
-                  {selectedAlert.conversation?.client && (
-                    <Badge variant="secondary">
-                      לקוח: {(selectedAlert.conversation.client as any)?.name}
-                    </Badge>
-                  )}
-                </div>
-                
-                <ScrollArea className="h-[400px] rounded-lg border p-4 bg-muted/30">
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap" dir="rtl">
-                    {selectedAlert.content}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">סוג פעולה:</span>
+                    <Badge variant="secondary">{selectedAction.action_type}</Badge>
                   </div>
-                </ScrollArea>
-                
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setSelectedAlert(null)}>
-                    סגור
-                  </Button>
+                  {selectedAction.agent?.name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">סוכן:</span>
+                      <span className="font-medium">{selectedAction.agent.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">תאריך:</span>
+                    <span>{format(new Date(selectedAction.created_at), "d בMMMM yyyy, HH:mm", { locale: he })}</span>
+                  </div>
                 </div>
+
+                {selectedAction.action_data && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">פרטי הפעולה:</p>
+                    <ScrollArea className="h-[200px] rounded-lg border p-3 bg-muted/30">
+                      <pre className="text-xs whitespace-pre-wrap" dir="ltr">
+                        {JSON.stringify(selectedAction.action_data, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedAction(null)}
+                  >
+                    ביטול
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                    onClick={() => rejectMutation.mutate(selectedAction.id)}
+                    disabled={rejectMutation.isPending}
+                  >
+                    <X className="w-4 h-4 ml-1" />
+                    דחה
+                  </Button>
+                  <Button
+                    className="bg-success text-success-foreground hover:bg-success/90"
+                    onClick={() => approveMutation.mutate(selectedAction.id)}
+                    disabled={approveMutation.isPending}
+                  >
+                    <Check className="w-4 h-4 ml-1" />
+                    אשר פעולה
+                  </Button>
+                </DialogFooter>
               </div>
             )}
           </DialogContent>

@@ -89,6 +89,7 @@ import { NewTaskAttachments, PendingAttachment } from "@/components/tasks/NewTas
 import { NotificationHistoryDialog } from "@/components/tasks/NotificationHistoryDialog";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
 import { AITaskFormButton } from "@/components/tasks/AITaskFormButton";
+import { SubtaskList } from "@/components/tasks/SubtaskList";
 
 interface Task {
   id: string;
@@ -1645,6 +1646,19 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                 )}
               </div>
             </CollapsibleField>
+
+            {/* Subtasks - Only show for existing tasks */}
+            {selectedTask && (
+              <CollapsibleField
+                label="תתי-משימות"
+                icon={<ListTree className="w-4 h-4" />}
+                isExpanded={expandedSections.has('subtasks')}
+                onToggle={() => toggleSection('subtasks')}
+                hasValue={false}
+              >
+                <SubtaskList parentTaskId={selectedTask.id} />
+              </CollapsibleField>
+            )}
 
             {/* Attachments - Show for both new and existing tasks */}
             <CollapsibleField
