@@ -95,6 +95,7 @@ export function AIUsageDashboard() {
     const checkRole = async () => {
       if (!user?.id) return;
       const { data } = await supabase.rpc('get_user_role', { _user_id: user.id });
+      console.log('User role check:', { userId: user.id, role: data });
       setIsAdmin(data === 'admin');
     };
     checkRole();

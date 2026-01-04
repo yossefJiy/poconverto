@@ -364,6 +364,10 @@ ${isSearchModel ? `
       }
     }
 
+    // Track AI usage
+    const inputTokens = Math.ceil((systemPrompt.length + userMessage.length) / 4);
+    let outputTokens = 0;
+
     // Create a transform stream to capture the full response
     let fullResponse = '';
     const transformStream = new TransformStream({
@@ -383,6 +387,9 @@ ${isSearchModel ? `
         }
       },
       async flush() {
+        outputTokens = Math.ceil(fullResponse.length / 4);
+        
+        // Save assistant message
         if (conversationId && userId && supabase && fullResponse) {
           try {
             await supabase.from('chat_messages').insert({
@@ -394,6 +401,35 @@ ${isSearchModel ? `
           } catch (saveError) {
             console.error('Error saving assistant message:', saveError);
           }
+        }
+
+        // Track AI usage in ai_query_history
+        try {
+          const costs: Record<string, { input: number; output: number }> = {
+            'google/gemini-2.5-flash': { input: 0.00005, output: 0.00015 },
+            'google/gemini-2.5-pro': { input: 0.0007, output: 0.0021 },
+            'anthropic/claude-3.5-sonnet': { input: 0.003, output: 0.015 },
+            'openai/gpt-4o': { input: 0.0025, output: 0.01 },
+            'perplexity/sonar-pro': { input: 0.003, output: 0.015 },
+          };
+          const modelCosts = costs[selectedModel.id] || { input: 0.0001, output: 0.0003 };
+          const estimatedCost = ((inputTokens / 1000) * modelCosts.input) + ((outputTokens / 1000) * modelCosts.output);
+
+          await supabase.from('ai_query_history').insert({
+            action: 'insights_chat',
+            model: selectedModel.id,
+            provider: selectedModel.provider,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            estimated_cost: estimatedCost,
+            prompt_summary: userMessage.slice(0, 500),
+            response: fullResponse.slice(0, 2000),
+            client_id: clientId || null,
+            created_by: userId || null,
+          });
+          console.log('AI usage tracked:', { model: selectedModel.id, inputTokens, outputTokens, estimatedCost });
+        } catch (trackError) {
+          console.error('Error tracking AI usage:', trackError);
         }
       }
     });

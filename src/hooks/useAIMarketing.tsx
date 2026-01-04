@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { trackAIUsage } from '@/hooks/useAIUsageTracking';
+import { useAuth } from '@/hooks/useAuth';
+import { useClient } from '@/hooks/useClient';
 
 interface AIContext {
   client_name?: string;
@@ -16,6 +19,8 @@ interface AIContext {
 type AIType = 'content' | 'insights' | 'strategy' | 'optimize' | 'analyze';
 
 export function useAIMarketing() {
+  const { user } = useAuth();
+  const { selectedClient } = useClient();
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +96,23 @@ export function useAIMarketing() {
         }
       }
 
+      // Track AI usage
+      if (fullResponse) {
+        const inputTokens = Math.ceil((input?.length || 0) / 4 + JSON.stringify(context).length / 4);
+        const outputTokens = Math.ceil(fullResponse.length / 4);
+        
+        trackAIUsage({
+          action: `marketing_${type}`,
+          model: 'google/gemini-2.5-flash',
+          inputTokens,
+          outputTokens,
+          promptSummary: input?.slice(0, 500) || `${type} request`,
+          response: fullResponse.slice(0, 2000),
+          clientId: selectedClient?.id,
+          userId: user?.id,
+        });
+      }
+
       return fullResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'שגיאה לא ידועה';
@@ -100,7 +122,7 @@ export function useAIMarketing() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id, selectedClient?.id]);
 
   const generateContent = (context: AIContext, input?: string) => 
     generate('content', context, input);

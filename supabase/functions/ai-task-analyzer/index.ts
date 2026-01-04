@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,6 +7,43 @@ const corsHeaders = {
 };
 
 type AnalyzerType = "analyze" | "analyze_task" | "suggest_tasks" | "analyze_data" | "analyze_campaigns";
+
+// Track AI usage
+async function trackAIUsage(params: {
+  action: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  promptSummary?: string;
+  response?: string;
+  clientId?: string;
+  userId?: string;
+}) {
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const estimatedCost = ((params.inputTokens / 1000) * 0.00005) + ((params.outputTokens / 1000) * 0.00015);
+    
+    await supabase.from('ai_query_history').insert({
+      action: params.action,
+      model: params.model,
+      provider: 'lovable',
+      input_tokens: params.inputTokens,
+      output_tokens: params.outputTokens,
+      estimated_cost: estimatedCost,
+      prompt_summary: params.promptSummary?.slice(0, 500),
+      response: params.response?.slice(0, 2000),
+      client_id: params.clientId || null,
+      created_by: params.userId || null,
+    });
+    console.log('AI usage tracked:', { action: params.action, estimatedCost });
+  } catch (err) {
+    console.error('Error tracking AI usage:', err);
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -172,6 +210,32 @@ ${JSON.stringify(context?.campaigns || [], null, 2)}
         console.log("Could not parse JSON from response");
       }
     }
+
+    // Track AI usage
+    const inputTokens = Math.ceil((systemPrompt.length + userPrompt.length) / 4);
+    const outputTokens = Math.ceil(generatedText.length / 4);
+    
+    // Extract user ID from authorization header
+    const authHeader = req.headers.get('authorization');
+    let userId: string | undefined;
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.sub;
+      } catch {}
+    }
+    
+    await trackAIUsage({
+      action: `task_analyzer_${type}`,
+      model: 'google/gemini-2.5-flash',
+      inputTokens,
+      outputTokens,
+      promptSummary: userPrompt.slice(0, 500),
+      response: generatedText.slice(0, 2000),
+      clientId: context?.clientId,
+      userId,
+    });
 
     return new Response(
       JSON.stringify({
