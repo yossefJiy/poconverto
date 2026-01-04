@@ -30,6 +30,7 @@ interface ActionRequest {
   agentId?: string;
   params: Record<string, any>;
   skipApproval?: boolean;
+  domain?: string;
 }
 
 serve(async (req) => {
@@ -61,7 +62,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, clientId, agentId, params, skipApproval } = await req.json() as ActionRequest;
+    const { action, clientId, agentId, params, skipApproval, domain } = await req.json() as ActionRequest;
 
     console.log(`Agent action requested: ${action} for client ${clientId} by user ${user.id}`);
 
@@ -100,6 +101,111 @@ serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check agent capability using the database function
+    if (agentId) {
+      const capabilityName = action.replace(/_/g, '_');
+      
+      const { data: hasCapability, error: capabilityError } = await supabase.rpc(
+        'agent_has_capability',
+        {
+          _agent_id: agentId,
+          _capability_name: capabilityName,
+          _client_id: clientId || null,
+          _domain: domain || null,
+        }
+      );
+
+      if (capabilityError) {
+        console.error("Error checking capability:", capabilityError);
+      }
+
+      // Get capability definition for logging
+      const { data: capabilityDef } = await supabase
+        .from("ai_capability_definitions")
+        .select("id, is_dangerous, requires_confirmation")
+        .eq("name", capabilityName)
+        .single();
+
+      // Log capability usage regardless of result
+      if (capabilityDef) {
+        await supabase.from("ai_capability_usage").insert({
+          agent_id: agentId,
+          capability_id: capabilityDef.id,
+          client_id: clientId || null,
+          was_allowed: hasCapability === true,
+          was_approved: skipApproval ? true : null,
+          metadata: {
+            action,
+            params: Object.keys(params),
+            domain,
+            user_id: user.id,
+          },
+          error_message: hasCapability === false ? "Agent lacks required capability permission" : null,
+        });
+
+        // Update daily usage counter if allowed
+        if (hasCapability === true) {
+          // Get current permission to update counter
+          const { data: currentPerm } = await supabase
+            .from("ai_agent_permissions")
+            .select("current_daily_uses")
+            .eq("agent_id", agentId)
+            .eq("capability_id", capabilityDef.id)
+            .single();
+
+          const newCount = (currentPerm?.current_daily_uses || 0) + 1;
+
+          await supabase
+            .from("ai_agent_permissions")
+            .update({ current_daily_uses: newCount })
+            .eq("agent_id", agentId)
+            .eq("capability_id", capabilityDef.id);
+        }
+      }
+
+      if (hasCapability === false) {
+        console.log(`Agent ${agentId} lacks capability: ${capabilityName}`);
+        return new Response(JSON.stringify({
+          error: "Capability denied",
+          message: `לסוכן אין הרשאה לבצע פעולה זו: ${action}`,
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check if dangerous action requires confirmation
+      if (capabilityDef?.is_dangerous || capabilityDef?.requires_confirmation) {
+        if (!skipApproval && REQUIRES_APPROVAL.includes(action)) {
+          // Create pending action for approval
+          const { data: pendingAction, error: insertError } = await supabase
+            .from("ai_agent_actions")
+            .insert({
+              agent_id: agentId,
+              client_id: clientId,
+              action_type: action,
+              action_data: params,
+              status: "pending",
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("Failed to create pending action:", insertError);
+            throw insertError;
+          }
+
+          return new Response(JSON.stringify({
+            status: "pending_approval",
+            actionId: pendingAction.id,
+            message: "פעולה רגישה - נדרש אישור לפני ביצוע"
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     // Check if action requires approval
@@ -186,13 +292,25 @@ serve(async (req) => {
       });
 
       // Update agent stats
+      const { data: agentData } = await supabase
+        .from("ai_agents")
+        .select("settings")
+        .eq("id", agentId)
+        .single();
+      
+      const currentSettings = agentData?.settings || {};
+      const currentInteractions = typeof currentSettings === 'object' && currentSettings !== null 
+        ? (currentSettings as any).total_interactions || 0 
+        : 0;
+
       await supabase.from("ai_agents")
         .update({
-          settings: supabase.rpc("jsonb_set", {
-            target: "settings",
-            path: "{total_interactions}",
-            new_value: "settings->>'total_interactions'::int + 1"
-          })
+          settings: {
+            ...currentSettings,
+            total_interactions: currentInteractions + 1,
+            last_action: action,
+            last_action_at: new Date().toISOString(),
+          }
         })
         .eq("id", agentId);
     }

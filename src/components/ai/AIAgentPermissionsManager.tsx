@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { AICapabilityUsageStats } from "./AICapabilityUsageStats";
 import {
   Bot,
   Shield,
@@ -476,7 +477,7 @@ export function AIAgentPermissionsManager() {
   return (
     <div className="space-y-6">
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="capabilities" className="gap-2">
             <Shield className="w-4 h-4" />
             יכולות ({capabilities.length})
@@ -488,6 +489,10 @@ export function AIAgentPermissionsManager() {
           <TabsTrigger value="matrix" className="gap-2">
             <Target className="w-4 h-4" />
             מטריקס
+          </TabsTrigger>
+          <TabsTrigger value="usage" className="gap-2">
+            <BarChart3 className="w-4 h-4" />
+            שימוש
           </TabsTrigger>
         </TabsList>
 
@@ -836,6 +841,11 @@ export function AIAgentPermissionsManager() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Usage Tab */}
+        <TabsContent value="usage" className="space-y-4">
+          <AICapabilityUsageStats />
         </TabsContent>
       </Tabs>
 
