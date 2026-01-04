@@ -40,6 +40,7 @@ import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
 import { useSecurityIssues } from "@/hooks/useSecurityIssues";
 import { AICodeAgent } from "@/components/code-health/AICodeAgent";
+import { AIUsageDashboard } from "@/components/ai/AIUsageDashboard";
 
 interface CodeHealthIssue {
   id: string;
@@ -438,7 +439,7 @@ export default function CodeHealth() {
 
         {/* Tabs */}
         <Tabs defaultValue="open" dir="rtl">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="open">
               פתוחות ({openIssues.length})
             </TabsTrigger>
@@ -454,6 +455,10 @@ export default function CodeHealth() {
             </TabsTrigger>
             <TabsTrigger value="history">
               היסטוריית דוחות
+            </TabsTrigger>
+            <TabsTrigger value="ai-usage" className="flex items-center gap-1">
+              <Bot className="h-3 w-3" />
+              שימוש AI
             </TabsTrigger>
           </TabsList>
           
@@ -607,6 +612,11 @@ export default function CodeHealth() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* AI Usage Tab */}
+          <TabsContent value="ai-usage" className="mt-4">
+            <AIUsageDashboard />
           </TabsContent>
         </Tabs>
       </div>
