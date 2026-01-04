@@ -15,6 +15,7 @@ import {
   Bot,
   Globe,
   ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,6 +25,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CodeHealthIssue {
   id: string;
@@ -38,6 +46,20 @@ interface AICodeAgentProps {
   onActionComplete?: () => void;
 }
 
+interface Citation {
+  url: string;
+  title?: string;
+  favicon?: string;
+}
+
+const AI_MODELS = [
+  { id: 'perplexity/sonar-pro', name: 'Perplexity Sonar Pro', icon: '🔍', description: 'חיפוש אינטרנט + AI' },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', icon: '🧠', description: 'ניתוח עמוק' },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', icon: '🎯', description: 'מאוזן ומהיר' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', icon: '⚡', description: 'OpenAI מתקדם' },
+  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', icon: '🚀', description: 'מהיר וחזק' },
+];
+
 export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +68,8 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [copied, setCopied] = useState(false);
   const [executedActions, setExecutedActions] = useState<any>(null);
   const [provider, setProvider] = useState<string>('');
-  const [citations, setCitations] = useState<string[]>([]);
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [selectedModel, setSelectedModel] = useState('perplexity/sonar-pro');
 
   const runAction = async (action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close') => {
     setIsLoading(true);
@@ -64,6 +87,7 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
           issueTitle: issue?.title,
           issueDescription: issue?.description,
           category: issue?.category,
+          model: selectedModel,
         }
       });
 
@@ -139,51 +163,75 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
         </DialogHeader>
 
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            {issue ? (
-              <>
-                <Button
-                  size="sm"
-                  variant={currentAction === 'analyze' ? 'default' : 'outline'}
-                  onClick={() => runAction('analyze')}
-                  disabled={isLoading}
-                >
-                  <Search className="h-4 w-4 mr-1" />
-                  נתח בעיה
-                </Button>
-                <Button
-                  size="sm"
-                  variant={currentAction === 'suggest-fix' ? 'default' : 'outline'}
-                  onClick={() => runAction('suggest-fix')}
-                  disabled={isLoading}
-                >
-                  <Wrench className="h-4 w-4 mr-1" />
-                  הצע פתרון קוד
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  variant={currentAction === 'scan-duplicates' ? 'default' : 'outline'}
-                  onClick={() => runAction('scan-duplicates')}
-                  disabled={isLoading}
-                >
-                  <Search className="h-4 w-4 mr-1" />
-                  סרוק כפילויות
-                </Button>
-                <Button
-                  size="sm"
-                  variant={currentAction === 'auto-close' ? 'default' : 'outline'}
-                  onClick={() => runAction('auto-close')}
-                  disabled={isLoading}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  סגור לא-רלוונטיות
-                </Button>
-              </>
-            )}
+          {/* Model Selector & Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue>
+                  {AI_MODELS.find(m => m.id === selectedModel)?.icon}{' '}
+                  {AI_MODELS.find(m => m.id === selectedModel)?.name}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {AI_MODELS.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{model.icon}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-xs text-muted-foreground">{model.description}</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex flex-wrap gap-2">
+              {issue ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant={currentAction === 'analyze' ? 'default' : 'outline'}
+                    onClick={() => runAction('analyze')}
+                    disabled={isLoading}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    נתח בעיה
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={currentAction === 'suggest-fix' ? 'default' : 'outline'}
+                    onClick={() => runAction('suggest-fix')}
+                    disabled={isLoading}
+                  >
+                    <Wrench className="h-4 w-4 mr-1" />
+                    הצע פתרון קוד
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant={currentAction === 'scan-duplicates' ? 'default' : 'outline'}
+                    onClick={() => runAction('scan-duplicates')}
+                    disabled={isLoading}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    סרוק כפילויות
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={currentAction === 'auto-close' ? 'default' : 'outline'}
+                    onClick={() => runAction('auto-close')}
+                    disabled={isLoading}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    סגור לא-רלוונטיות
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Response Area */}
@@ -235,32 +283,56 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                     </div>
                   </ScrollArea>
                   
-                  {/* Citations from Perplexity */}
+                  {/* Citations Cards */}
                   {citations.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
-                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                         <Globe className="h-3 w-3" />
                         מקורות ({citations.length})
                       </p>
-                      <div className="flex flex-wrap gap-1">
-                        {citations.slice(0, 5).map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-muted rounded hover:bg-muted/80 transition-colors"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            {new URL(url).hostname.replace('www.', '')}
-                          </a>
-                        ))}
-                        {citations.length > 5 && (
-                          <span className="text-xs text-muted-foreground px-2 py-1">
-                            +{citations.length - 5} נוספים
-                          </span>
-                        )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {citations.slice(0, 6).map((citation, idx) => {
+                          const url = typeof citation === 'string' ? citation : citation.url;
+                          const hostname = new URL(url).hostname.replace('www.', '');
+                          const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+                          const title = typeof citation === 'object' && citation.title 
+                            ? citation.title 
+                            : hostname;
+                          
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-3 p-2.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
+                            >
+                              <img 
+                                src={faviconUrl} 
+                                alt=""
+                                className="w-5 h-5 rounded flex-shrink-0 mt-0.5"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23888"><circle cx="12" cy="12" r="10"/></svg>';
+                                }}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                  {title}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {hostname}
+                                </p>
+                              </div>
+                              <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                            </a>
+                          );
+                        })}
                       </div>
+                      {citations.length > 6 && (
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                          +{citations.length - 6} מקורות נוספים
+                        </p>
+                      )}
                     </div>
                   )}
                 </CardContent>

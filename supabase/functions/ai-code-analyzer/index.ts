@@ -13,6 +13,7 @@ interface AnalysisRequest {
   issueDescription?: string;
   category?: string;
   context?: string;
+  model?: string;
 }
 
 serve(async (req) => {
@@ -36,9 +37,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, issueId, issueTitle, issueDescription, category, context } = await req.json() as AnalysisRequest;
+    const { action, issueId, issueTitle, issueDescription, category, context, model } = await req.json() as AnalysisRequest;
+    
+    const selectedModel = model || 'perplexity/sonar-pro';
 
-    console.log(`AI Code Analyzer: Action=${action}, IssueId=${issueId}, Provider=${useOpenRouter ? 'OpenRouter/Perplexity' : 'Lovable AI'}`);
+    console.log(`AI Code Analyzer: Action=${action}, IssueId=${issueId}, Model=${selectedModel}, Provider=${useOpenRouter ? 'OpenRouter' : 'Lovable AI'}`);
 
     let systemPrompt = `אתה מומחה לבריאות קוד ואבטחה. אתה מנתח בעיות קוד ומספק פתרונות מפורטים בעברית.
 תמיד תן תשובות מעשיות עם קוד לדוגמה כשרלוונטי.
@@ -175,8 +178,8 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
     let provider = '';
 
     if (useOpenRouter) {
-      // Use OpenRouter with Perplexity for web search
-      console.log('Calling OpenRouter with Perplexity...');
+      // Use OpenRouter with selected model
+      console.log(`Calling OpenRouter with model: ${selectedModel}...`);
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -187,7 +190,7 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
           'X-Title': 'JIY Code Health Analyzer',
         },
         body: JSON.stringify({
-          model: 'perplexity/sonar-pro',
+          model: selectedModel,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
@@ -211,10 +214,15 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
       } else {
         const data = await response.json();
         aiResponse = data.choices?.[0]?.message?.content || 'לא התקבלה תשובה מה-AI';
-        citations = data.citations || [];
-        provider = 'openrouter/perplexity';
         
-        console.log(`OpenRouter response received, citations: ${citations.length}`);
+        // Citations available from Perplexity models
+        if (selectedModel.includes('perplexity')) {
+          citations = data.citations || [];
+        }
+        
+        provider = `openrouter/${selectedModel.split('/')[0]}`;
+        
+        console.log(`OpenRouter response received, model: ${selectedModel}, citations: ${citations.length}`);
       }
     } else {
       // Use Lovable AI as primary
