@@ -24,6 +24,7 @@ import {
   Lock,
   Sparkles,
   ExternalLink,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
 import { useSecurityIssues } from "@/hooks/useSecurityIssues";
+import { AICodeAgent } from "@/components/code-health/AICodeAgent";
 
 interface CodeHealthIssue {
   id: string;
@@ -287,9 +289,18 @@ export default function CodeHealth() {
               </div>
             </div>
             {showActions && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {!issue.resolved_at && !issue.ignored_at ? (
                   <>
+                    <AICodeAgent 
+                      issue={{
+                        id: issue.id,
+                        category: issue.category,
+                        severity: issue.severity,
+                        title: issue.title,
+                        description: issue.description,
+                      }}
+                    />
                     <Button
                       size="sm"
                       variant="outline"
@@ -406,8 +417,11 @@ export default function CodeHealth() {
           </Card>
         </div>
 
-        {/* Action Button */}
-        <div className="flex justify-end gap-2">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2 flex-wrap">
+          <AICodeAgent onActionComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["code-health-issues"] });
+          }} />
           <Button variant="outline" onClick={() => refetchSecurity()} disabled={securityLoading}>
             <Shield className="h-4 w-4 mr-2" />
             סרוק אבטחה
