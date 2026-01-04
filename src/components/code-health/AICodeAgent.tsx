@@ -125,7 +125,7 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
     const checkRole = async () => {
       if (!user?.id) return;
       const { data } = await supabase.rpc('get_user_role', { _user_id: user.id });
-      setIsAdmin(data === 'admin' || data === 'manager');
+      setIsAdmin(data === 'admin' || data === 'super_admin' || data === 'agency_manager');
     };
     checkRole();
   }, [user?.id]);

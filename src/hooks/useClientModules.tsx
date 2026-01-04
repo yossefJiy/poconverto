@@ -79,7 +79,7 @@ export function useClientModules() {
     return modules[moduleName] ?? true;
   };
 
-  const isAdmin = role === "admin" || role === "manager";
+  const isAdmin = role === "admin" || role === "super_admin" || role === "agency_manager";
 
   return {
     modules,

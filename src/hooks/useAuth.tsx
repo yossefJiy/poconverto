@@ -2,7 +2,8 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-type AppRole = 'admin' | 'manager' | 'department_head' | 'team_lead' | 'team_member' | 'client' | 'demo';
+// Updated role hierarchy with new roles
+type AppRole = 'super_admin' | 'admin' | 'agency_manager' | 'team_manager' | 'employee' | 'premium_client' | 'basic_client' | 'demo';
 
 interface AuthContextType {
   user: User | null;
@@ -182,28 +183,74 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper hook to check permissions
+// Updated role hierarchy (from highest to lowest)
+const ROLE_HIERARCHY: AppRole[] = [
+  'super_admin',
+  'admin', 
+  'agency_manager',
+  'team_manager',
+  'employee',
+  'premium_client',
+  'basic_client',
+  'demo'
+];
+
+// Role labels in Hebrew
+export const ROLE_LABELS: Record<AppRole, string> = {
+  super_admin: 'סופר אדמין',
+  admin: 'אדמין',
+  agency_manager: 'מנהל סוכנות',
+  team_manager: 'מנהל צוות',
+  employee: 'עובד',
+  premium_client: 'לקוח פרמיום',
+  basic_client: 'לקוח בסיס',
+  demo: 'דמו',
+};
+
+// Helper hook to check permissions with new role hierarchy
 export const usePermissions = () => {
   const { role } = useAuth();
   
-  const roleHierarchy: AppRole[] = ['admin', 'manager', 'department_head', 'team_lead', 'team_member', 'client', 'demo'];
-  
   const hasRoleLevel = (minRole: AppRole): boolean => {
     if (!role) return false;
-    const userRoleIndex = roleHierarchy.indexOf(role);
-    const minRoleIndex = roleHierarchy.indexOf(minRole);
-    return userRoleIndex <= minRoleIndex;
+    const userRoleIndex = ROLE_HIERARCHY.indexOf(role);
+    const minRoleIndex = ROLE_HIERARCHY.indexOf(minRole);
+    return userRoleIndex !== -1 && minRoleIndex !== -1 && userRoleIndex <= minRoleIndex;
   };
 
   return {
-    isAdmin: role === 'admin',
-    isManager: hasRoleLevel('manager'),
-    isDepartmentHead: hasRoleLevel('department_head'),
-    isTeamLead: hasRoleLevel('team_lead'),
-    isTeamMember: hasRoleLevel('team_member'),
-    isClient: role === 'client',
+    // Super admin - full access
+    isSuperAdmin: role === 'super_admin',
+    
+    // Admin level access
+    isAdmin: hasRoleLevel('admin'),
+    
+    // Agency level access
+    isAgencyManager: hasRoleLevel('agency_manager'),
+    
+    // Team level access
+    isTeamManager: hasRoleLevel('team_manager'),
+    
+    // Employee level access
+    isEmployee: hasRoleLevel('employee'),
+    
+    // Client types
+    isPremiumClient: role === 'premium_client',
+    isBasicClient: role === 'basic_client',
+    isClient: role === 'premium_client' || role === 'basic_client',
+    
+    // Demo
     isDemo: role === 'demo',
+    
+    // Check if user has at least a specific role level
     hasRoleLevel,
+    
+    // Current role
     role,
+    
+    // Role label
+    roleLabel: role ? ROLE_LABELS[role] : null,
   };
 };
+
+export type { AppRole };
