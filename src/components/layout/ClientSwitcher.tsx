@@ -1,4 +1,5 @@
-import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown, Search } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,16 +13,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
-
 interface ClientSwitcherProps {
   collapsed?: boolean;
 }
 
 export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
   const { selectedClient, setSelectedClient, clients, isLoading } = useClient();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Check if selected client is the master account (JIY)
   const { data: masterClient } = useQuery({
@@ -35,6 +37,28 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
       return data;
     },
   });
+
+  const isClientMasterAccount = (client: { id: string; name?: string }) => {
+    return client.id === masterClient?.id || 
+           client.name?.toLowerCase().includes("jiy") ||
+           client.name?.includes("סוכנות");
+  };
+
+  // Sort clients: master account always first, then filter by search
+  const sortedAndFilteredClients = useMemo(() => {
+    const filtered = clients.filter(client => 
+      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    return [...filtered].sort((a, b) => {
+      const aIsMaster = isClientMasterAccount(a);
+      const bIsMaster = isClientMasterAccount(b);
+      if (aIsMaster && !bIsMaster) return -1;
+      if (!aIsMaster && bIsMaster) return 1;
+      return a.name.localeCompare(b.name, 'he');
+    });
+  }, [clients, searchQuery, masterClient]);
 
   const isJiySelected = selectedClient?.id === masterClient?.id ||
                         selectedClient?.name?.toLowerCase().includes("jiy") ||
@@ -111,39 +135,58 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
             </Button>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {clients.map((client) => {
-            const isClientMaster = client.id === masterClient?.id || 
-                                   client.name?.toLowerCase().includes("jiy") ||
-                                   client.name?.includes("סוכנות");
-            return (
-              <DropdownMenuItem
-                key={client.id}
-                onClick={() => setSelectedClient(client)}
-                className={cn(
-                  "flex items-center gap-3 cursor-pointer",
-                  isClientMaster && "bg-[hsl(var(--jiy-gold))]/10"
-                )}
-              >
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
-                  isClientMaster 
-                    ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
-                    : "bg-primary/10 text-primary"
-                )}>
-                  {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{client.name}</p>
-                  {client.industry && (
-                    <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+          {/* Search Input */}
+          <div className="px-2 py-2">
+            <div className="relative">
+              <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש לקוח..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pr-8 h-8 text-sm"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <DropdownMenuSeparator />
+          <div className="max-h-64 overflow-y-auto">
+            {sortedAndFilteredClients.map((client) => {
+              const isClientMaster = isClientMasterAccount(client);
+              return (
+                <DropdownMenuItem
+                  key={client.id}
+                  onClick={() => setSelectedClient(client)}
+                  className={cn(
+                    "flex items-center gap-3 cursor-pointer",
+                    isClientMaster && "bg-[hsl(var(--jiy-gold))]/10"
                   )}
-                </div>
-                {selectedClient?.id === client.id && (
-                  <Check className="w-4 h-4 text-[hsl(var(--jiy-gold))] shrink-0" />
-                )}
-              </DropdownMenuItem>
-            );
-          })}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+                    isClientMaster 
+                      ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
+                      : "bg-primary/10 text-primary"
+                  )}>
+                    {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{client.name}</p>
+                    {client.industry && (
+                      <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+                    )}
+                  </div>
+                  {selectedClient?.id === client.id && (
+                    <Check className="w-4 h-4 text-[hsl(var(--jiy-gold))] shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+            {sortedAndFilteredClients.length === 0 && searchQuery && (
+              <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+                לא נמצאו לקוחות
+              </div>
+            )}
+          </div>
           <DropdownMenuSeparator />
           <div className="p-1">
             <CreateClientDialog 
@@ -216,44 +259,63 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {/* Search Input */}
+        <div className="px-2 py-2">
+          <div className="relative">
+            <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="חיפוש לקוח..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-8 h-8 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+        <DropdownMenuSeparator />
         {clients.length === 0 ? (
           <div className="px-2 py-4 text-sm text-center text-muted-foreground">
             אין לקוחות עדיין
           </div>
         ) : (
-          clients.map((client) => {
-            const isClientMaster = client.id === masterClient?.id || 
-                                   client.name?.toLowerCase().includes("jiy") ||
-                                   client.name?.includes("סוכנות");
-            return (
-              <DropdownMenuItem
-                key={client.id}
-                onClick={() => setSelectedClient(client)}
-                className={cn(
-                  "flex items-center gap-3 cursor-pointer",
-                  isClientMaster && "bg-[hsl(var(--jiy-gold))]/5"
-                )}
-              >
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
-                  isClientMaster 
-                    ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
-                    : "bg-primary/10 text-primary"
-                )}>
-                  {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{client.name}</p>
-                  {client.industry && (
-                    <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+          <div className="max-h-64 overflow-y-auto">
+            {sortedAndFilteredClients.map((client) => {
+              const isClientMaster = isClientMasterAccount(client);
+              return (
+                <DropdownMenuItem
+                  key={client.id}
+                  onClick={() => setSelectedClient(client)}
+                  className={cn(
+                    "flex items-center gap-3 cursor-pointer",
+                    isClientMaster && "bg-[hsl(var(--jiy-gold))]/5"
                   )}
-                </div>
-                {selectedClient?.id === client.id && (
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                )}
-              </DropdownMenuItem>
-            );
-          })
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+                    isClientMaster 
+                      ? "bg-gradient-to-br from-[hsl(var(--jiy-gold))] to-[hsl(var(--jiy-gold-light))] text-black" 
+                      : "bg-primary/10 text-primary"
+                  )}>
+                    {isClientMaster ? <Crown className="w-4 h-4" /> : client.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{client.name}</p>
+                    {client.industry && (
+                      <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+                    )}
+                  </div>
+                  {selectedClient?.id === client.id && (
+                    <Check className="w-4 h-4 text-primary shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+            {sortedAndFilteredClients.length === 0 && searchQuery && (
+              <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+                לא נמצאו לקוחות
+              </div>
+            )}
+          </div>
         )}
         <DropdownMenuSeparator />
         <div className="p-1">
