@@ -49,8 +49,8 @@ export function CampaignAssets({ adSets = [], ads = [], assets = [], audiences =
   
   if (!hasContent) return null;
 
-  const getAssetIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+  const getAssetIcon = (type?: string) => {
+    switch ((type || '').toLowerCase()) {
       case 'image':
       case 'square_marketing_image':
       case 'marketing_image':
