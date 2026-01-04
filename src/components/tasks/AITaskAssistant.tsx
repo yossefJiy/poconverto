@@ -6,8 +6,10 @@ import {
   User,
   Clock,
   Flag,
-  Lightbulb
+  Lightbulb,
+  Lock
 } from "lucide-react";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -63,6 +65,32 @@ export function AITaskAssistant({
 }: AITaskAssistantProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<AISuggestions | null>(null);
+  const { isEnabled, canUseAI, isLoading: permissionLoading } = useAIModuleAccess('tasks');
+
+  // If AI is disabled for this module, show a disabled state
+  if (!isEnabled || !canUseAI) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-muted-foreground" />
+              AI לא זמין
+            </DialogTitle>
+            <DialogDescription>
+              יכולות AI אינן מופעלות עבור מודול המשימות
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-center py-8">
+            <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="text-muted-foreground">
+              פנה למנהל המערכת להפעלת יכולות AI
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const analyzeTasks = async () => {
     if (!taskTitle.trim()) {

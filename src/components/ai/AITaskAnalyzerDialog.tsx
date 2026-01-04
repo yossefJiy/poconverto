@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, User, Clock, Flag, Tag } from "lucide-react";
 import { toast } from "sonner";
+import { useAIModuleAccess } from "@/hooks/useAIModuleAccess";
 
 interface AITaskAnalyzerDialogProps {
   taskTitle?: string;
@@ -38,6 +39,12 @@ export function AITaskAnalyzerDialog({
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<any>(null);
+  const { isEnabled, canUseAI } = useAIModuleAccess('tasks');
+
+  // Don't render trigger if AI is disabled
+  if (!isEnabled || !canUseAI) {
+    return null;
+  }
 
   // Fetch team members
   const { data: teamMembers = [] } = useQuery({
