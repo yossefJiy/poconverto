@@ -88,7 +88,6 @@ import { TaskAttachmentsBadge } from "@/components/tasks/TaskAttachmentsBadge";
 import { NewTaskAttachments, PendingAttachment } from "@/components/tasks/NewTaskAttachments";
 import { NotificationHistoryDialog } from "@/components/tasks/NotificationHistoryDialog";
 import { IntegrationsDialog } from "@/components/analytics/IntegrationsDialog";
-import { AITaskFormButton } from "@/components/tasks/AITaskFormButton";
 import { AITaskAssignmentButton } from "@/components/tasks/AITaskAssignmentButton";
 import { SubtaskList } from "@/components/tasks/SubtaskList";
 import { TaskSubtaskProgress } from "@/components/tasks/TaskSubtaskProgress";
@@ -1282,27 +1281,16 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
             <DialogTitle className="text-center flex-1 font-semibold">
               {selectedTask ? "עריכת משימה" : "משימה חדשה"}
             </DialogTitle>
-            <div className="flex items-center gap-1">
-              <AITaskAssignmentButton
-                title={formTitle}
-                description={formDescription}
-                onApply={(rec) => {
-                  if (rec.department) setFormDepartment(rec.department);
-                  if (rec.category) setFormCategory(rec.category);
-                  if (rec.assignee_name) setFormAssignee(rec.assignee_name);
-                  if (rec.priority) setFormPriority(rec.priority);
-                }}
-              />
-              <AITaskFormButton
-                title={formTitle}
-                description={formDescription}
-                onApplyRecommendation={(rec) => {
-                  if (rec.assignee) setFormAssignee(rec.assignee);
-                  if (rec.priority) setFormPriority(rec.priority);
-                  if (rec.category) setFormCategory(rec.category);
-                }}
-              />
-            </div>
+            <AITaskAssignmentButton
+              title={formTitle}
+              description={formDescription}
+              onApply={(rec) => {
+                if (rec.department) setFormDepartment(rec.department);
+                if (rec.category) setFormCategory(rec.category);
+                if (rec.assignee_name) setFormAssignee(rec.assignee_name);
+                if (rec.priority) setFormPriority(rec.priority);
+              }}
+            />
           </div>
 
           <div className="p-4 space-y-2">
