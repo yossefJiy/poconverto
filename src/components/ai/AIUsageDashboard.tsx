@@ -16,6 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
   Bot,
   DollarSign,
   Users,
@@ -25,6 +34,8 @@ import {
   Search,
   Loader2,
   AlertTriangle,
+  Settings,
+  Save,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -51,6 +62,17 @@ interface UserStats {
   totalTokens: number;
 }
 
+interface UserLimit {
+  id?: string;
+  user_id: string;
+  name: string;
+  daily_requests_limit: number;
+  daily_cost_limit: number;
+  monthly_requests_limit: number;
+  monthly_cost_limit: number;
+  premium_models_enabled: boolean;
+}
+
 export function AIUsageDashboard() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +86,19 @@ export function AIUsageDashboard() {
     activeUsers: 0,
     monthlyBudget: 100,
   });
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserLimit | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkRole = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase.rpc('get_user_role', { _user_id: user.id });
+      setIsAdmin(data === 'admin');
+    };
+    checkRole();
+  }, [user?.id]);
 
   useEffect(() => {
     fetchUsageData();
@@ -73,10 +108,8 @@ export function AIUsageDashboard() {
     setIsLoading(true);
     
     try {
-      // Get this month's start
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-      // Fetch usage history
       const { data: usage, error: usageError } = await supabase
         .from('ai_query_history')
         .select('*')
@@ -88,7 +121,6 @@ export function AIUsageDashboard() {
 
       setUsageData(usage || []);
 
-      // Calculate stats
       const stats: Record<string, UserStats> = {};
       let totalCost = 0;
       let totalTokens = 0;
@@ -116,7 +148,6 @@ export function AIUsageDashboard() {
         stats[userId].totalTokens += tokens;
       }
 
-      // Get user profiles
       const userIds = Object.keys(stats);
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
@@ -132,7 +163,6 @@ export function AIUsageDashboard() {
         }
       }
 
-      // Get global limits
       const { data: limits } = await supabase
         .from('ai_usage_limits')
         .select('monthly_cost_limit')
@@ -153,6 +183,87 @@ export function AIUsageDashboard() {
       toast.error('שגיאה בטעינת נתוני שימוש');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const openEditDialog = async (userId: string, userName: string) => {
+    // Fetch existing limits for this user
+    const { data: existingLimit } = await supabase
+      .from('ai_usage_limits')
+      .select('*')
+      .eq('limit_type', 'user')
+      .eq('target_id', userId)
+      .single();
+
+    if (existingLimit) {
+      setEditingUser({
+        id: existingLimit.id,
+        user_id: userId,
+        name: userName,
+        daily_requests_limit: existingLimit.daily_requests_limit,
+        daily_cost_limit: existingLimit.daily_cost_limit,
+        monthly_requests_limit: existingLimit.monthly_requests_limit,
+        monthly_cost_limit: existingLimit.monthly_cost_limit,
+        premium_models_enabled: existingLimit.premium_models_enabled,
+      });
+    } else {
+      // Use default values
+      setEditingUser({
+        user_id: userId,
+        name: userName,
+        daily_requests_limit: 50,
+        daily_cost_limit: 5,
+        monthly_requests_limit: 500,
+        monthly_cost_limit: 50,
+        premium_models_enabled: false,
+      });
+    }
+  };
+
+  const saveUserLimits = async () => {
+    if (!editingUser) return;
+    setIsSaving(true);
+
+    try {
+      if (editingUser.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('ai_usage_limits')
+          .update({
+            daily_requests_limit: editingUser.daily_requests_limit,
+            daily_cost_limit: editingUser.daily_cost_limit,
+            monthly_requests_limit: editingUser.monthly_requests_limit,
+            monthly_cost_limit: editingUser.monthly_cost_limit,
+            premium_models_enabled: editingUser.premium_models_enabled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingUser.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new
+        const { error } = await supabase
+          .from('ai_usage_limits')
+          .insert({
+            limit_type: 'user',
+            target_id: editingUser.user_id,
+            daily_requests_limit: editingUser.daily_requests_limit,
+            daily_cost_limit: editingUser.daily_cost_limit,
+            monthly_requests_limit: editingUser.monthly_requests_limit,
+            monthly_cost_limit: editingUser.monthly_cost_limit,
+            premium_models_enabled: editingUser.premium_models_enabled,
+          });
+
+        if (error) throw error;
+      }
+
+      toast.success('המכסות עודכנו בהצלחה');
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Error saving limits:', error);
+      toast.error('שגיאה בשמירת המכסות');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -290,6 +401,7 @@ export function AIUsageDashboard() {
           <CardTitle className="text-sm flex items-center gap-2">
             <Users className="h-4 w-4" />
             שימוש לפי משתמש
+            {isAdmin && <Badge variant="outline" className="mr-2">מנהל</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -300,6 +412,7 @@ export function AIUsageDashboard() {
                 <TableHead className="text-center">בקשות</TableHead>
                 <TableHead className="text-center">Tokens</TableHead>
                 <TableHead className="text-left">עלות</TableHead>
+                {isAdmin && <TableHead className="text-center">פעולות</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -309,6 +422,17 @@ export function AIUsageDashboard() {
                   <TableCell className="text-center">{stat.requestCount}</TableCell>
                   <TableCell className="text-center">{stat.totalTokens.toLocaleString()}</TableCell>
                   <TableCell className="text-left">${stat.totalCost.toFixed(2)}</TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openEditDialog(stat.userId, stat.name)}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -376,6 +500,98 @@ export function AIUsageDashboard() {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* Edit Limits Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>עריכת מכסות - {editingUser?.name}</DialogTitle>
+          </DialogHeader>
+          
+          {editingUser && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>בקשות יומיות</Label>
+                  <Input
+                    type="number"
+                    value={editingUser.daily_requests_limit}
+                    onChange={(e) => setEditingUser({
+                      ...editingUser,
+                      daily_requests_limit: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>עלות יומית ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingUser.daily_cost_limit}
+                    onChange={(e) => setEditingUser({
+                      ...editingUser,
+                      daily_cost_limit: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>בקשות חודשיות</Label>
+                  <Input
+                    type="number"
+                    value={editingUser.monthly_requests_limit}
+                    onChange={(e) => setEditingUser({
+                      ...editingUser,
+                      monthly_requests_limit: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>עלות חודשית ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingUser.monthly_cost_limit}
+                    onChange={(e) => setEditingUser({
+                      ...editingUser,
+                      monthly_cost_limit: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <Label>גישה למודלים יקרים</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Claude, Perplexity, GPT-4o
+                  </p>
+                </div>
+                <Switch
+                  checked={editingUser.premium_models_enabled}
+                  onCheckedChange={(checked) => setEditingUser({
+                    ...editingUser,
+                    premium_models_enabled: checked
+                  })}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)}>
+              ביטול
+            </Button>
+            <Button onClick={saveUserLimits} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Save className="h-4 w-4 mr-1" />
+              )}
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
