@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 const WARNING_BEFORE_TIMEOUT = 60 * 1000; // 1 minute warning
 
 interface UseSessionTimeoutReturn {
