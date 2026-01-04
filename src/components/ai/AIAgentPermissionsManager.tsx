@@ -242,7 +242,7 @@ export function AIAgentPermissionsManager() {
           *,
           capability:ai_capability_definitions(*),
           agent:ai_agents(id, name, agent_type),
-          client:clients(id, name)
+          client:clients!ai_agent_permissions_client_id_fkey(id, name)
         `)
         .order("created_at", { ascending: false });
       if (error) throw error;

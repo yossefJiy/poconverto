@@ -25,6 +25,9 @@ export interface DefaultModules {
   team: boolean;
 }
 
+// Alias for backward compatibility
+export type ClientModules = DefaultModules;
+
 export const defaultModulesConfig: DefaultModules = {
   dashboard: true,
   analytics: true,

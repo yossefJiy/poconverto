@@ -159,7 +159,7 @@ export default function Dashboard() {
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, clients(name, is_master_account)")
+        .select("*, clients:clients!tasks_client_id_fkey(name, is_master_account)")
         .neq("status", "completed")
         .order("due_date", { ascending: true })
         .limit(50);
@@ -204,7 +204,7 @@ export default function Dashboard() {
     queryFn: async () => {
       let query = supabase
         .from("campaigns")
-        .select("*, clients(name)")
+        .select("*, clients:clients!campaigns_client_id_fkey(name)")
         .order("created_at", { ascending: false })
         .limit(10);
       if (selectedClient && !isMasterAccount) {
