@@ -22,9 +22,9 @@ serve(async (req) => {
   }
 
   try {
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -37,7 +37,8 @@ serve(async (req) => {
 
     let systemPrompt = `אתה מומחה לבריאות קוד ואבטחה. אתה מנתח בעיות קוד ומספק פתרונות מפורטים בעברית.
 תמיד תן תשובות מעשיות עם קוד לדוגמה כשרלוונטי.
-פורמט התשובה שלך צריך להיות ברור ומסודר.`;
+פורמט התשובה שלך צריך להיות ברור ומסודר עם כותרות.
+השתמש בפורמט Markdown לתשובות.`;
 
     let userPrompt = '';
 
@@ -59,8 +60,9 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
         break;
 
       case 'suggest-fix':
-        systemPrompt = `אתה מומחה לתיקון באגים וקוד. חפש בידע שלך מידע עדכני על הפתרון הטוב ביותר.
-תן קוד מלא ומפורט שניתן להעתיק ולהשתמש בו ישירות.`;
+        systemPrompt = `אתה מומחה לתיקון באגים וקוד React/TypeScript.
+תן קוד מלא ומפורט שניתן להעתיק ולהשתמש בו ישירות.
+השתמש בפורמט Markdown עם בלוקי קוד מסומנים כראוי.`;
         
         userPrompt = `תן לי פתרון קוד מלא לבעיה הבאה:
 
@@ -69,9 +71,9 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
 **תיאור:** ${issueDescription || 'לא צוין'}
 
 אנא ספק:
-1. הקוד המלא לתיקון
+1. הקוד המלא לתיקון (ב-TypeScript/React)
 2. הסבר קצר על מה הקוד עושה
-3. היכן לשים את הקוד
+3. היכן לשים את הקוד (שם הקובץ והמיקום)
 4. בדיקות שצריך לעשות לאחר התיקון`;
         break;
 
@@ -85,14 +87,29 @@ ${context ? `**הקשר נוסף:** ${context}` : ''}
 
         if (fetchError) throw fetchError;
 
+        if (!openIssues || openIssues.length === 0) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              response: 'אין בעיות פתוחות לסריקה.',
+              action,
+              executedActions: null,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         userPrompt = `נתח את רשימת הבעיות הבאות וזהה כפילויות או בעיות דומות:
 
-${openIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${issue.category}): ${issue.description || 'ללא תיאור'}`).join('\n')}
+${openIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} (${issue.category}): ${issue.description || 'ללא תיאור'}`).join('\n')}
 
 אנא ספק:
 1. רשימת קבוצות של בעיות כפולות או דומות (עם ה-IDs שלהן)
 2. המלצה איזו בעיה לשמור ואיזו לסגור
-3. פורמט JSON של הבעיות לסגירה: {"duplicates": [{"keepId": "...", "closeIds": ["...", "..."]}]}`;
+3. בסוף התשובה, הוסף JSON בפורמט הבא (חובה!):
+\`\`\`json
+{"duplicates": [{"keepId": "id-to-keep", "closeIds": ["id-to-close-1", "id-to-close-2"]}]}
+\`\`\``;
         break;
 
       case 'auto-close':
@@ -105,33 +122,54 @@ ${openIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${i
 
         if (issuesError) throw issuesError;
 
+        if (!allIssues || allIssues.length === 0) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              response: 'אין בעיות פתוחות לבדיקה.',
+              action,
+              executedActions: null,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         userPrompt = `בדוק את רשימת הבעיות הבאות וזהה בעיות שכבר לא רלוונטיות או שנפתרו מעצמן:
 
-${allIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${issue.severity}) - נוצר: ${issue.detected_at}
-   תיאור: ${issue.description || 'ללא'}
-   פרטים: ${JSON.stringify(issue.details || {})}`).join('\n\n')}
+${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} (${issue.severity})
+   - נוצר: ${issue.detected_at}
+   - תיאור: ${issue.description || 'ללא'}
+   - קטגוריה: ${issue.category}`).join('\n\n')}
+
+בדוק אם:
+- הבעיה ישנה מאוד (יותר מ-30 יום) וכנראה כבר טופלה
+- הבעיה מסוג info ולא קריטית
+- הבעיה כבר לא רלוונטית לפי התיאור
 
 אנא ספק:
 1. רשימת בעיות שניתן לסגור אוטומטית (עם ה-IDs)
 2. סיבה לסגירה לכל בעיה
-3. פורמט JSON: {"autoClose": [{"id": "...", "reason": "..."}]}`;
+3. בסוף התשובה, הוסף JSON בפורמט הבא (חובה!):
+\`\`\`json
+{"autoClose": [{"id": "issue-id", "reason": "סיבה לסגירה"}]}
+\`\`\``;
         break;
 
       default:
         throw new Error(`Unknown action: ${action}`);
     }
 
-    // Call Perplexity via OpenRouter
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    console.log('Calling Lovable AI Gateway...');
+
+    // Call Lovable AI Gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://jiy.lovable.app',
-        'X-Title': 'JIY Code Health Analyzer',
       },
       body: JSON.stringify({
-        model: 'perplexity/sonar-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -143,8 +181,15 @@ ${allIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${is
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenRouter API error:', response.status, errorText);
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      console.error('Lovable AI Gateway error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+      if (response.status === 402) {
+        throw new Error('Payment required. Please add credits to your workspace.');
+      }
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -156,36 +201,41 @@ ${allIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${is
     let executedActions: any = null;
 
     if (action === 'scan-duplicates' || action === 'auto-close') {
-      // Try to extract JSON from response
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      // Try to extract JSON from response (including from code blocks)
+      const jsonCodeBlockMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+      const jsonMatch = jsonCodeBlockMatch ? jsonCodeBlockMatch[1] : aiResponse.match(/\{[\s\S]*\}/)?.[0];
+      
       if (jsonMatch) {
         try {
-          const actionData = JSON.parse(jsonMatch[0]);
+          const actionData = JSON.parse(jsonMatch);
           
-          if (action === 'auto-close' && actionData.autoClose) {
+          if (action === 'auto-close' && actionData.autoClose && Array.isArray(actionData.autoClose)) {
             // Auto-close issues
             const closedIds: string[] = [];
             for (const item of actionData.autoClose) {
-              const { error: closeError } = await supabase
-                .from('code_health_issues')
-                .update({
-                  resolved_at: new Date().toISOString(),
-                  resolved_by: 'ai-agent',
-                })
-                .eq('id', item.id);
-              
-              if (!closeError) {
-                closedIds.push(item.id);
+              if (item.id) {
+                const { error: closeError } = await supabase
+                  .from('code_health_issues')
+                  .update({
+                    resolved_at: new Date().toISOString(),
+                    resolved_by: 'ai-agent',
+                  })
+                  .eq('id', item.id);
+                
+                if (!closeError) {
+                  closedIds.push(item.id);
+                  console.log(`Closed issue: ${item.id} - ${item.reason}`);
+                }
               }
             }
             executedActions = { closedIds, total: actionData.autoClose.length };
           }
           
-          if (action === 'scan-duplicates' && actionData.duplicates) {
-            executedActions = { duplicates: actionData.duplicates };
+          if (action === 'scan-duplicates' && actionData.duplicates && Array.isArray(actionData.duplicates)) {
+            executedActions = { duplicates: actionData.duplicates, found: actionData.duplicates.length };
           }
         } catch (parseError) {
-          console.log('Could not parse JSON from response, returning text only');
+          console.log('Could not parse JSON from response:', parseError);
         }
       }
     }
@@ -196,7 +246,6 @@ ${allIssues?.map((issue, idx) => `${idx + 1}. [${issue.id}] ${issue.title} (${is
         response: aiResponse,
         action,
         executedActions,
-        citations: data.citations || [],
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
