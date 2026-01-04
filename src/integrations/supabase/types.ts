@@ -118,6 +118,179 @@ export type Database = {
           },
         ]
       }
+      ai_query_history: {
+        Row: {
+          action: string
+          citations: Json | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          estimated_cost: number | null
+          executed_actions: Json | null
+          id: string
+          input_tokens: number | null
+          issue_id: string | null
+          issue_title: string | null
+          model: string
+          output_tokens: number | null
+          prompt_summary: string | null
+          provider: string | null
+          response: string | null
+        }
+        Insert: {
+          action: string
+          citations?: Json | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_cost?: number | null
+          executed_actions?: Json | null
+          id?: string
+          input_tokens?: number | null
+          issue_id?: string | null
+          issue_title?: string | null
+          model: string
+          output_tokens?: number | null
+          prompt_summary?: string | null
+          provider?: string | null
+          response?: string | null
+        }
+        Update: {
+          action?: string
+          citations?: Json | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_cost?: number | null
+          executed_actions?: Json | null
+          id?: string
+          input_tokens?: number | null
+          issue_id?: string | null
+          issue_title?: string | null
+          model?: string
+          output_tokens?: number | null
+          prompt_summary?: string | null
+          provider?: string | null
+          response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_query_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_query_history_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "code_health_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_alerts: {
+        Row: {
+          alert_type: string
+          client_id: string | null
+          created_at: string
+          current_usage: number | null
+          id: string
+          is_read: boolean | null
+          limit_value: number | null
+          period_type: string
+          sent_via: string | null
+          threshold_percent: number | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          client_id?: string | null
+          created_at?: string
+          current_usage?: number | null
+          id?: string
+          is_read?: boolean | null
+          limit_value?: number | null
+          period_type: string
+          sent_via?: string | null
+          threshold_percent?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          client_id?: string | null
+          created_at?: string
+          current_usage?: number | null
+          id?: string
+          is_read?: boolean | null
+          limit_value?: number | null
+          period_type?: string
+          sent_via?: string | null
+          threshold_percent?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_alerts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_limits: {
+        Row: {
+          allowed_models: string[] | null
+          created_at: string
+          daily_cost_limit: number | null
+          daily_requests_limit: number | null
+          default_model: string | null
+          id: string
+          limit_type: string
+          max_input_tokens: number | null
+          max_output_tokens: number | null
+          monthly_cost_limit: number | null
+          monthly_requests_limit: number | null
+          premium_models_enabled: boolean | null
+          target_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_models?: string[] | null
+          created_at?: string
+          daily_cost_limit?: number | null
+          daily_requests_limit?: number | null
+          default_model?: string | null
+          id?: string
+          limit_type: string
+          max_input_tokens?: number | null
+          max_output_tokens?: number | null
+          monthly_cost_limit?: number | null
+          monthly_requests_limit?: number | null
+          premium_models_enabled?: boolean | null
+          target_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_models?: string[] | null
+          created_at?: string
+          daily_cost_limit?: number | null
+          daily_requests_limit?: number | null
+          default_model?: string | null
+          id?: string
+          limit_type?: string
+          max_input_tokens?: number | null
+          max_output_tokens?: number | null
+          monthly_cost_limit?: number | null
+          monthly_requests_limit?: number | null
+          premium_models_enabled?: boolean | null
+          target_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analytics_snapshots: {
         Row: {
           client_id: string
