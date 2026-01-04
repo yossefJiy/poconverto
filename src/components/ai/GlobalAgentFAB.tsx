@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   X,
   Target,
@@ -15,13 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -78,19 +72,28 @@ const moduleIconsEnhanced: Record<string, { icon: any; gradient: string; descrip
 };
 
 export function GlobalAgentFAB() {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
-  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [shouldPulse, setShouldPulse] = useState(true);
 
   const { isModuleEnabled } = useClientModules();
   const {
-    pendingActions,
     pendingActionsCount,
     deniedTodayCount,
     limitWarningsCount,
     totalCount,
   } = useAICapabilityAlerts();
+
+  // Stop pulsing after 30 seconds
+  useEffect(() => {
+    if (totalCount > 0) {
+      setShouldPulse(true);
+      const timer = setTimeout(() => setShouldPulse(false), 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [totalCount]);
 
   // Get enabled modules
   const enabledModules = Object.keys(moduleAgentConfig).filter((key) => {
@@ -108,9 +111,12 @@ export function GlobalAgentFAB() {
     setIsChatExpanded(false);
   };
 
-  const totalAlerts = totalCount;
+  const handleOpenAlerts = () => {
+    setShouldPulse(false);
+    navigate("/agent-alerts");
+  };
 
-  const pendingPreview = useMemo(() => pendingActions.slice(0, 3), [pendingActions]);
+  const totalAlerts = totalCount;
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -164,76 +170,33 @@ export function GlobalAgentFAB() {
           })}
         </div>
 
-        {/* Alerts indicator when menu is open */}
+        {/* Alerts summary when menu is open */}
         {isMenuOpen && totalAlerts > 0 && (
-          <div className="bg-card rounded-lg shadow-lg p-3 border mb-2 text-right w-64">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 text-sm">
+          <div className="bg-card rounded-lg shadow-lg p-3 border mb-2 text-right w-48">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <div className="flex items-center gap-2">
                 {pendingActionsCount > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-warning">
-                        <Clock className="w-4 h-4" />
-                        <span>{pendingActionsCount}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>בקשות ממתינות לאישור</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-1 text-warning">
+                    <Clock className="w-4 h-4" />
+                    <span>{pendingActionsCount}</span>
+                  </div>
                 )}
-
                 {deniedTodayCount > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-destructive">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>{deniedTodayCount}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>פעולות שנחסמו היום</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {limitWarningsCount > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-warning">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>{limitWarningsCount}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>מתקרבים להגבלת שימוש יומית</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-1 text-destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{deniedTodayCount}</span>
+                  </div>
                 )}
               </div>
-
               <Button
                 type="button"
                 variant="link"
                 className="h-auto p-0 text-xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAlertsOpen(true);
-                }}
+                onClick={handleOpenAlerts}
               >
                 פירוט
               </Button>
             </div>
-
-            {pendingPreview.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {pendingPreview.map((a: any) => (
-                  <p key={a.id} className="text-xs text-muted-foreground truncate">
-                    {a.action_data?.title || a.action_data?.campaign_name || a.action_type}
-                  </p>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -248,9 +211,7 @@ export function GlobalAgentFAB() {
                   isMenuOpen
                     ? "bg-muted hover:bg-muted/80 rotate-45"
                     : "bg-gradient-to-r from-primary to-accent hover:shadow-glow",
-                  totalAlerts > 0 &&
-                    !isMenuOpen &&
-                    "animate-pulse-glow glow ring-2 ring-warning/40",
+                  totalAlerts > 0 && !isMenuOpen && shouldPulse && "animate-pulse"
                 )}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
@@ -260,12 +221,9 @@ export function GlobalAgentFAB() {
             <TooltipContent side="right" className="text-right">
               <p>{isMenuOpen ? "סגור תפריט" : "פתח סוכני AI"}</p>
               {totalAlerts > 0 && !isMenuOpen && (
-                <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
-                  <p>ממתינות: {pendingActionsCount}</p>
-                  <p>נחסמו היום: {deniedTodayCount}</p>
-                  <p>אזהרות מכסה: {limitWarningsCount}</p>
-                  <p className="pt-1">לחץ על הנקודה כדי לראות פירוט</p>
-                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totalAlerts} התראות ממתינות
+                </p>
               )}
             </TooltipContent>
           </Tooltip>
@@ -277,7 +235,7 @@ export function GlobalAgentFAB() {
             </Badge>
           )}
 
-          {/* Pending Actions Indicator */}
+          {/* Pending Actions Indicator - clickable to navigate */}
           {pendingActionsCount > 0 && !isMenuOpen && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -286,14 +244,10 @@ export function GlobalAgentFAB() {
                   aria-label={`${pendingActionsCount} בקשות AI ממתינות לאישור`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setAlertsOpen(true);
+                    handleOpenAlerts();
                   }}
                   className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-background"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 rounded-full bg-warning/60 animate-ping"
-                  />
                   <span className="relative w-full h-full flex items-center justify-center rounded-full bg-warning text-warning-foreground">
                     <Clock className="w-3 h-3" />
                   </span>
@@ -301,75 +255,12 @@ export function GlobalAgentFAB() {
               </TooltipTrigger>
               <TooltipContent side="right" className="text-right">
                 <p>{pendingActionsCount} בקשות ממתינות לאישור</p>
-                <p className="text-xs text-muted-foreground">לחץ לפירוט</p>
+                <p className="text-xs text-muted-foreground">לחץ לפתיחת מסך התראות</p>
               </TooltipContent>
             </Tooltip>
           )}
         </div>
       </div>
-
-      {/* Alerts / Pending approvals dialog */}
-      <Dialog open={alertsOpen} onOpenChange={setAlertsOpen}>
-        <DialogContent dir="rtl" className="text-right">
-          <DialogHeader className="text-right sm:text-right">
-            <DialogTitle>התראות ובקשות AI</DialogTitle>
-            <DialogDescription>
-              כרגע יש {pendingActionsCount} בקשות ממתינות לאישור, {deniedTodayCount} פעולות שנחסמו היום,
-              ו-{limitWarningsCount} אזהרות מכסה.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-warning" />
-                <p className="font-medium">ממתינות לאישור</p>
-              </div>
-              <Badge className="bg-warning text-warning-foreground">
-                {pendingActionsCount}
-              </Badge>
-            </div>
-
-            {pendingActionsCount === 0 ? (
-              <p className="text-sm text-muted-foreground">אין בקשות ממתינות כרגע.</p>
-            ) : (
-              <div className="space-y-2">
-                {pendingActions.slice(0, 10).map((action: any) => {
-                  const title =
-                    action.action_data?.title ||
-                    action.action_data?.campaign_name ||
-                    `פעולה ממתינה: ${action.action_type}`;
-                  const details = action.action_data?.suggested_change || action.action_data?.description;
-
-                  return (
-                    <div key={action.id} className="rounded-lg border p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium leading-snug">{title}</p>
-                          {details && (
-                            <p className="mt-1 text-sm text-muted-foreground leading-snug">
-                              {details}
-                            </p>
-                          )}
-                        </div>
-                        <Badge className="bg-warning text-warning-foreground">ממתין</Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {pendingActionsCount > 10 && (
-                  <p className="text-xs text-muted-foreground">מוצגות 10 האחרונות.</p>
-                )}
-
-                <Button asChild variant="link" className="p-0 h-auto">
-                  <a href="/agent-alerts">פתח מסך התראות</a>
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Chat Panel - positioned to the right of the FAB */}
       {selectedModule && (
