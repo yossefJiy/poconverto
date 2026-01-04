@@ -14,38 +14,63 @@ import {
   Smartphone,
   Globe,
   Users,
+  Sparkles,
+  Bot,
+  TrendingUp,
+  MousePointer2,
+  Layers,
+  CheckCircle2,
+  MessageSquare,
+  Share2,
+  Timer,
+  FileText,
 } from "lucide-react";
 
 const features = [
   {
     icon: Palette,
     title: "עיצוב מותאם אישית",
-    description: "עיצוב ייחודי שמתאים למותג שלכם ולקהל היעד",
+    description: "עיצוב ייחודי שמותאם למותג ולקהל היעד שלכם",
+  },
+  {
+    icon: MousePointer2,
+    title: "אופטימיזציה להמרות",
+    description: "מבנה, צבעים ו-CTA שמביאים תוצאות מוכחות",
   },
   {
     icon: Smartphone,
-    title: "מותאם למובייל",
-    description: "כל דף נחיתה מגיב לכל מכשיר - מנייד ועד דסקטופ",
+    title: "Mobile First",
+    description: "70% מהתנועה מנייד - כל דף מושלם במובייל",
   },
   {
     icon: Zap,
-    title: "זמני טעינה מהירים",
-    description: "אופטימיזציה לביצועים מרביים ו-Core Web Vitals",
+    title: "ביצועים מהירים",
+    description: "Core Web Vitals מושלמים, טעינה מהירה",
   },
   {
     icon: BarChart3,
     title: "A/B Testing מובנה",
-    description: "בדקו גרסאות שונות וגלו מה עובד הכי טוב",
+    description: "בדיקות אוטומטיות לגילוי מה עובד הכי טוב",
   },
   {
     icon: Globe,
-    title: "SEO מובנה",
+    title: "SEO מתקדם",
     description: "אופטימיזציה למנועי חיפוש מהיום הראשון",
   },
   {
     icon: Users,
-    title: "אינטגרציה עם CRM",
-    description: "חיבור ישיר למערכות ה-CRM שלכם",
+    title: "אינטגרציה לCRM",
+    description: "חיבור ישיר למערכות הCRM שלכם",
+  },
+  {
+    icon: Bot,
+    title: "תובנות AI",
+    description: "ניתוח התנהגות גולשים והמלצות לשיפור",
+  },
+  {
+    icon: Share2,
+    title: "חיבור לפרסום",
+    description: "Pixel מובנה למטא, גוגל וטיקטוק",
   },
 ];
 
@@ -53,6 +78,30 @@ const stats = [
   { value: "300%", label: "שיפור בהמרות בממוצע" },
   { value: "2.5 שניות", label: "זמן טעינה ממוצע" },
   { value: "500+", label: "דפי נחיתה נבנו" },
+  { value: "15%+", label: "שיעור המרה ממוצע" },
+];
+
+const useCases = [
+  {
+    title: "השקת מוצר",
+    description: "דף נחיתה ממוקד שמייצר buzz ומכירות",
+    icon: Sparkles,
+  },
+  {
+    title: "קמפיינים ממומנים",
+    description: "דפים ממירים לתנועה מפייסבוק, גוגל וטיקטוק",
+    icon: Target,
+  },
+  {
+    title: "איסוף לידים",
+    description: "טפסים חכמים שממירים מבקרים ללידים חמים",
+    icon: Users,
+  },
+  {
+    title: "וובינרים ואירועים",
+    description: "דפי הרשמה עם countdown וFOMO",
+    icon: Timer,
+  },
 ];
 
 export default function ProductLandingPages() {
@@ -68,6 +117,11 @@ export default function ProductLandingPages() {
         
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-6">
+              <TrendingUp className="h-4 w-4" />
+              <span>300% שיפור בהמרות</span>
+            </div>
+
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20">
               <Target className="h-8 w-8 text-primary-foreground" />
             </div>
@@ -75,12 +129,12 @@ export default function ProductLandingPages() {
             <h1 className="text-3xl md:text-5xl font-bold mb-5">
               דפי נחיתה{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                ממירים
+                שממירים
               </span>
             </h1>
             
-            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-              תנועה הופכת ללידים. דפי נחיתה מעוצבים ומותאמים לקהל שלכם, עם אופטימיזציה להמרות מקסימליות.
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              דפי נחיתה מעוצבים ומותאמים לקהל שלכם, עם אופטימיזציה להמרות מקסימליות, A/B Testing מובנה, וחיבור ישיר למערכות הפרסום.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -92,7 +146,7 @@ export default function ProductLandingPages() {
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link to={authHref}>
-                  {user ? "לדשבורד" : "התחברו לדשבורד"}
+                  {user ? "לדשבורד" : "ראו דוגמאות"}
                 </Link>
               </Button>
             </div>
@@ -103,7 +157,7 @@ export default function ProductLandingPages() {
       {/* Stats */}
       <section className="py-14 bg-muted/20">
         <div className="container mx-auto px-4">
-          <StaggerContainer className="grid md:grid-cols-3 gap-6 text-center">
+          <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {stats.map((stat, index) => (
               <StaggerItem key={index}>
                 <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-1">
@@ -116,12 +170,43 @@ export default function ProductLandingPages() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Use Cases */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <AnimatedSection className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">
-              למה דפי הנחיתה שלנו{" "}
+              מתי צריך{" "}
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                דף נחיתה?
+              </span>
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              כל קמפיין צריך דף ממיר שמותאם למטרה
+            </p>
+          </AnimatedSection>
+
+          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-4xl mx-auto">
+            {useCases.map((useCase, index) => (
+              <StaggerItem key={index}>
+                <Card className="p-5 h-full bg-card/50 backdrop-blur border-border/50 hover:border-primary/30 transition-all text-center group">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
+                    <useCase.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-2">{useCase.title}</h3>
+                  <p className="text-muted-foreground text-sm">{useCase.description}</p>
+                </Card>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-20 bg-muted/20">
+        <div className="container mx-auto px-4">
+          <AnimatedSection className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+              למה הדפים שלנו{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 עובדים?
               </span>
@@ -131,7 +216,7 @@ export default function ProductLandingPages() {
             </p>
           </AnimatedSection>
 
-          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {features.map((feature, index) => (
               <StaggerItem key={index}>
                 <Card className="p-5 h-full bg-card/50 backdrop-blur border-border/50 hover:border-primary/30 transition-all group">
@@ -147,6 +232,62 @@ export default function ProductLandingPages() {
         </div>
       </section>
 
+      {/* What's Included */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-10 items-center max-w-5xl mx-auto">
+            <AnimatedSection direction="right">
+              <h2 className="text-2xl md:text-3xl font-bold mb-5">
+                מה כלול{" "}
+                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  בכל דף?
+                </span>
+              </h2>
+              <div className="space-y-3">
+                {[
+                  "עיצוב מותאם אישית למותג שלכם",
+                  "פיתוח מגיב (Responsive) מושלם",
+                  "אופטימיזציה למהירות ו-Core Web Vitals",
+                  "SEO בסיסי ותגיות מטא",
+                  "התקנת Pixels (מטא, גוגל, טיקטוק)",
+                  "אינטגרציה עם הCRM שלכם",
+                  "A/B Testing מובנה",
+                  "דוחות ביצועים שבועיים",
+                  "תמיכה ותחזוקה שוטפת",
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="text-sm">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </AnimatedSection>
+            
+            <AnimatedSection direction="left">
+              <Card className="p-8 bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4">
+                    <TrendingUp className="h-8 w-8 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">15%+</h3>
+                  <p className="text-muted-foreground text-sm mb-6">
+                    שיעור המרה ממוצע בדפי הנחיתה שלנו (הממוצע בשוק: 2-3%)
+                  </p>
+                  <Button asChild className="w-full bg-gradient-to-r from-primary to-accent">
+                    <a href="#contact">
+                      קבלו הצעת מחיר
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </Card>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
       {/* Process */}
       <section className="py-20 bg-muted/20">
         <div className="container mx-auto px-4">
@@ -156,10 +297,11 @@ export default function ProductLandingPages() {
 
           <StaggerContainer className="max-w-2xl mx-auto space-y-6">
             {[
-              { step: 1, title: "שיחת אפיון", desc: "נבין את העסק, הקהל והמטרות שלכם" },
-              { step: 2, title: "עיצוב ופיתוח", desc: "ניצור דף נחיתה מותאם אישית" },
-              { step: 3, title: "בדיקות ואופטימיזציה", desc: "נוודא שהכל עובד ומביא תוצאות" },
-              { step: 4, title: "השקה ומעקב", desc: "נעלה לאוויר ונמשיך לשפר" },
+              { step: 1, title: "שיחת אפיון", desc: "נבין את העסק, הקהל, המטרות והקמפיין" },
+              { step: 2, title: "מחקר מתחרים", desc: "ננתח מה עובד בתחום שלכם" },
+              { step: 3, title: "עיצוב", desc: "ניצור עיצוב מותאם עם דגש על המרות" },
+              { step: 4, title: "פיתוח", desc: "נבנה את הדף עם כל הפיקסלים והאינטגרציות" },
+              { step: 5, title: "השקה ואופטימיזציה", desc: "נעלה לאוויר ונמשיך לשפר עם A/B Testing" },
             ].map((item) => (
               <StaggerItem key={item.step}>
                 <div className="flex items-start gap-4">
