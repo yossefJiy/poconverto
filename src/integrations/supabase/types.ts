@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      agency_agents: {
+        Row: {
+          agent_type: string
+          capabilities: string[] | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_type?: string
+          capabilities?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_type?: string
+          capabilities?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       agent_memory: {
         Row: {
           agent_id: string | null
@@ -203,6 +239,7 @@ export type Database = {
       }
       ai_agents: {
         Row: {
+          agency_agent_id: string | null
           agent_type: string
           capabilities: string[] | null
           client_id: string | null
@@ -215,6 +252,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agency_agent_id?: string | null
           agent_type?: string
           capabilities?: string[] | null
           client_id?: string | null
@@ -227,6 +265,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agency_agent_id?: string | null
           agent_type?: string
           capabilities?: string[] | null
           client_id?: string | null
@@ -239,6 +278,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_agents_agency_agent_id_fkey"
+            columns: ["agency_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_agents_client_id_fkey"
             columns: ["client_id"]
@@ -771,6 +817,72 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_agent_tokens: {
+        Row: {
+          agent_id: string
+          allowed_origins: string[] | null
+          client_id: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          last_used_at: string | null
+          name: string
+          rate_limit_per_day: number | null
+          rate_limit_per_minute: number | null
+          token: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          agent_id: string
+          allowed_origins?: string[] | null
+          client_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          name?: string
+          rate_limit_per_day?: number | null
+          rate_limit_per_minute?: number | null
+          token: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          agent_id?: string
+          allowed_origins?: string[] | null
+          client_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          name?: string
+          rate_limit_per_day?: number | null
+          rate_limit_per_minute?: number | null
+          token?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_agent_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_agent_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -2175,6 +2287,111 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      widget_configurations: {
+        Row: {
+          agent_id: string
+          client_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          suggested_prompts: string[] | null
+          theme: Json | null
+          token_id: string
+          updated_at: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          agent_id: string
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          suggested_prompts?: string[] | null
+          theme?: Json | null
+          token_id: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          agent_id?: string
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          suggested_prompts?: string[] | null
+          theme?: Json | null
+          token_id?: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_configurations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widget_configurations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widget_configurations_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "client_agent_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_conversations: {
+        Row: {
+          ended_at: string | null
+          id: string
+          is_active: boolean | null
+          messages: Json[] | null
+          session_id: string
+          started_at: string | null
+          visitor_info: Json | null
+          widget_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          messages?: Json[] | null
+          session_id: string
+          started_at?: string | null
+          visitor_info?: Json | null
+          widget_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          messages?: Json[] | null
+          session_id?: string
+          started_at?: string | null
+          visitor_info?: Json | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_conversations_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widget_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
