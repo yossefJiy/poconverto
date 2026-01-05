@@ -45,7 +45,7 @@ export function SocialAccountsManager({
   onConnect, 
   onDisconnect, 
   onSync 
-}: SocialAccountsManagerProps) {
+}: SocialAccountsManagerProps): React.JSX.Element {
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const getAccountForPlatform = (platformId: string) => {
@@ -152,5 +152,3 @@ export function SocialAccountsManager({
     </Card>
   );
 }
-
-export default SocialAccountsManager;

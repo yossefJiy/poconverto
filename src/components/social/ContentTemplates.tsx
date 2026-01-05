@@ -233,5 +233,3 @@ export function ContentTemplates({ templates, onUseTemplate }: ContentTemplatesP
     </>
   );
 }
-
-export default ContentTemplates;

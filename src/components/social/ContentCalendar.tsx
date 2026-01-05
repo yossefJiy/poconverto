@@ -203,5 +203,3 @@ export function ContentCalendar({
     </Card>
   );
 }
-
-export default ContentCalendar;

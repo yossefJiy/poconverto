@@ -214,5 +214,3 @@ export function HashtagManager({
     </>
   );
 }
-
-export default HashtagManager;

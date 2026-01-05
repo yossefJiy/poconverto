@@ -318,5 +318,3 @@ export function PostComposer({ onSubmit, onAISuggest, isLoading }: PostComposerP
     </Card>
   );
 }
-
-export default PostComposer;
