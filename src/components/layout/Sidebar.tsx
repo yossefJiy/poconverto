@@ -29,6 +29,9 @@ import {
   UserSearch,
   Share2,
   Eye,
+  Receipt,
+  ClipboardCheck,
+  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,6 +76,9 @@ const menuItems: MenuItem[] = [
   { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
+  { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
+  { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
+  { icon: ClipboardCheck, label: "אישורים", path: "/approvals", moduleKey: "approvals" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
   { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
   { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },

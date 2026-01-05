@@ -57,6 +57,9 @@ export function ClientOnboardingWizard({ open, onOpenChange }: ClientOnboardingW
     campaigns: false,
     tasks: true,
     team: false,
+    leads: true,
+    billing: true,
+    approvals: true,
   });
   
   const { setSelectedClient } = useClient();
@@ -103,6 +106,9 @@ export function ClientOnboardingWizard({ open, onOpenChange }: ClientOnboardingW
       campaigns: false,
       tasks: true,
       team: false,
+      leads: true,
+      billing: true,
+      approvals: true,
     });
     onOpenChange(false);
   };
@@ -120,6 +126,9 @@ export function ClientOnboardingWizard({ open, onOpenChange }: ClientOnboardingW
       campaigns: templateModules.campaigns ?? false,
       tasks: templateModules.tasks ?? true,
       team: templateModules.team ?? false,
+      leads: templateModules.leads ?? true,
+      billing: templateModules.billing ?? true,
+      approvals: templateModules.approvals ?? true,
     });
   };
 
