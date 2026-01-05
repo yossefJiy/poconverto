@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useClientModules } from "@/hooks/useClientModules";
@@ -225,6 +226,7 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="dashboard">
       <div className="p-8">
         <div className="flex items-center justify-between mb-6">
           <PageHeader 
@@ -514,6 +516,7 @@ export default function Dashboard() {
           </>
         )}
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
