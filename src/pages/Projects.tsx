@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -65,6 +66,7 @@ const priorityCategories = [
 export default function Projects() {
   const { selectedClient } = useClient();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -250,8 +252,9 @@ export default function Projects() {
                 return (
                   <Card 
                     key={project.id} 
-                    className="hover:shadow-lg transition-shadow group"
+                    className="hover:shadow-lg transition-shadow group cursor-pointer"
                     style={{ borderTopColor: project.color, borderTopWidth: 3 }}
+                    onClick={() => navigate(`/tasks?project=${project.id}`)}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
@@ -263,7 +266,7 @@ export default function Projects() {
                           <CardTitle className="text-base">{project.name}</CardTitle>
                         </div>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -272,13 +275,17 @@ export default function Projects() {
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(project)}>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/tasks?project=${project.id}`); }}>
+                              <CheckSquare className="w-4 h-4 ml-2" />
+                              צפה במשימות ({progress.total})
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(project); }}>
                               <Pencil className="w-4 h-4 ml-2" />
                               עריכה
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => deleteMutation.mutate(project.id)}
+                              onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(project.id); }}
                               className="text-destructive"
                             >
                               <Trash2 className="w-4 h-4 ml-2" />

@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
+import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { StyledDatePicker } from "@/components/ui/styled-date-picker";
@@ -39,7 +40,8 @@ import {
   UserPlus,
   Check,
   X,
-  Paperclip
+  Paperclip,
+  FolderKanban
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -106,6 +108,7 @@ interface Task {
   assignee: string | null;
   department: string | null;
   client_id: string | null;
+  project_id: string | null;
   category: string | null;
   reminder_at: string | null;
   notification_email: boolean;
@@ -117,6 +120,12 @@ interface Task {
   credits_cost: number | null;
   recurrence_type: string | null;
   recurrence_end_date: string | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  color: string | null;
 }
 
 interface TeamMember {
@@ -162,12 +171,14 @@ export default function Tasks() {
   const { selectedClient } = useClient();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectFilterId = searchParams.get("project");
   
   const [showDashboard, setShowDashboard] = useState(false);
   const [showTimeBoard, setShowTimeBoard] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
-  const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date" | "client">("all");
-  const [selectedValue, setSelectedValue] = useState("");
+  const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date" | "client" | "project">(projectFilterId ? "project" : "all");
+  const [selectedValue, setSelectedValue] = useState(projectFilterId || "");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -232,6 +243,7 @@ export default function Tasks() {
   const [formAssignee, setFormAssignee] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
   const [formCategory, setFormCategory] = useState("");
+  const [formProjectId, setFormProjectId] = useState("");
   const [formReminderAt, setFormReminderAt] = useState("");
   const [formNotificationEmail, setFormNotificationEmail] = useState(false);
   const [formNotificationSms, setFormNotificationSms] = useState(false);
@@ -330,12 +342,33 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
     },
   });
 
+  // Fetch projects for filter and form
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects-for-tasks", selectedClient?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from("projects")
+        .select("id, name, color")
+        .order("name");
+      
+      if (selectedClient) {
+        query = query.eq("client_id", selectedClient.id);
+      }
+      
+      const { data } = await query;
+      return (data || []) as Project[];
+    },
+  });
+
+  // Get current project name for header when filtering
+  const currentProject = projects.find(p => p.id === projectFilterId);
+
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", selectedClient?.id],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, clients(name, is_master_account)")
+        .select("*, clients(name, is_master_account), projects:projects!tasks_project_id_fkey(id, name, color)")
         .order("due_date", { ascending: true, nullsFirst: false })
         .order("scheduled_time", { ascending: true, nullsFirst: false });
       
@@ -349,7 +382,8 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
         ...task,
         scheduled_time: (task as any).scheduled_time || null,
         clients: (task as any).clients || null,
-      })) as (Task & { clients?: { name: string; is_master_account?: boolean } | null })[];
+        projects: (task as any).projects || null,
+      })) as (Task & { clients?: { name: string; is_master_account?: boolean } | null; projects?: Project | null })[];
     },
   });
 
@@ -445,6 +479,7 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
         assignee: task.assignee,
         department: task.department,
         category: task.category || null,
+        project_id: task.project_id || null,
         reminder_at: task.reminder_at || null,
         notification_email: task.notification_email || false,
         notification_sms: task.notification_sms || false,
@@ -694,6 +729,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormAssignee(task?.assignee || "");
     setFormDepartment(task?.department || "");
     setFormCategory(task?.category || "");
+    setFormProjectId(task?.project_id || projectFilterId || "");
     setFormReminderAt(task?.reminder_at ? task.reminder_at.slice(0, 16) : "");
     setFormNotificationEmail(task?.notification_email || false);
     setFormNotificationSms(task?.notification_sms || false);
@@ -717,6 +753,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     setFormAssignee("");
     setFormDepartment("");
     setFormCategory("");
+    setFormProjectId("");
     setFormReminderAt("");
     setFormNotificationEmail(false);
     setFormNotificationSms(false);
@@ -744,6 +781,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
       assignee: formAssignee || null,
       department: formDepartment || null,
       category: formCategory || null,
+      project_id: formProjectId || null,
       reminder_at: formReminderAt ? new Date(formReminderAt).toISOString() : null,
       notification_email: formNotificationEmail,
       notification_sms: formNotificationSms,
@@ -798,6 +836,10 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     // Client filter
     if (filter === "client" && selectedValue) {
       if (task.client_id !== selectedValue) return false;
+    }
+    // Project filter
+    if (filter === "project" && selectedValue) {
+      if (task.project_id !== selectedValue) return false;
     }
     return true;
   });
@@ -892,6 +934,16 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                 {hasChildren && (
                   <Badge variant="secondary" className="text-xs">
                     {childTasks.length} תתי-משימות
+                  </Badge>
+                )}
+                {(task as any).projects && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs flex items-center gap-1"
+                    style={{ borderColor: (task as any).projects.color || '#3B82F6' }}
+                  >
+                    <FolderKanban className="w-3 h-3" style={{ color: (task as any).projects.color || '#3B82F6' }} />
+                    {(task as any).projects.name}
                   </Badge>
                 )}
               </div>
@@ -1053,8 +1105,8 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
       <DomainErrorBoundary domain="tasks">
       <div className="p-4 md:p-8">
         <PageHeader 
-          title={showArchive ? "ארכיון משימות" : (selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות")}
-          description={showArchive ? "משימות שהושלמו" : "לפי עובד, לקוח ומחלקה"}
+          title={showArchive ? "ארכיון משימות" : (currentProject ? `משימות - ${currentProject.name}` : (selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות"))}
+          description={showArchive ? "משימות שהושלמו" : (currentProject ? `${filteredTasks.length} משימות בפרויקט` : "לפי עובד, לקוח ומחלקה")}
           actions={
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => { setNotificationHistoryTaskId(undefined); setNotificationHistoryOpen(true); }}>
@@ -1093,12 +1145,34 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
           }
         />
 
+        {/* Project Filter Banner */}
+        {projectFilterId && currentProject && (
+          <div className="mb-4 flex items-center justify-between bg-muted/50 rounded-lg p-3 border">
+            <div className="flex items-center gap-2">
+              <FolderKanban className="w-5 h-5" style={{ color: currentProject.color || '#3B82F6' }} />
+              <span className="font-medium">מציג משימות מפרויקט: {currentProject.name}</span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                setSearchParams({});
+                setFilter("all");
+                setSelectedValue("");
+              }}
+            >
+              <X className="w-4 h-4 ml-1" />
+              הצג הכל
+            </Button>
+          </div>
+        )}
+
         {/* Filters & View Toggle */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
               <button
-                onClick={() => { setFilter("all"); setSelectedValue(""); }}
+                onClick={() => { setFilter("all"); setSelectedValue(""); setSearchParams({}); }}
                 className={cn(
                   "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                   filter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
@@ -1146,21 +1220,43 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                 <Building2 className="w-3 h-3" />
                 לקוח
               </button>
+              <button
+                onClick={() => setFilter("project")}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
+                  filter === "project" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                )}
+              >
+                <FolderKanban className="w-3 h-3" />
+                פרויקט
+              </button>
             </div>
 
-            {(filter === "assignee" || filter === "department" || filter === "client") && (
-              <Select value={selectedValue} onValueChange={setSelectedValue}>
+            {(filter === "assignee" || filter === "department" || filter === "client" || filter === "project") && (
+              <Select value={selectedValue} onValueChange={(v) => {
+                setSelectedValue(v);
+                // Update URL when project filter changes
+                if (filter === "project") {
+                  if (v) {
+                    setSearchParams({ project: v });
+                  } else {
+                    setSearchParams({});
+                  }
+                }
+              }}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder={
                     filter === "assignee" ? "בחר עובד" : 
                     filter === "department" ? "בחר מחלקה" : 
-                    "בחר לקוח"
+                    filter === "client" ? "בחר לקוח" :
+                    "בחר פרויקט"
                   } />
                 </SelectTrigger>
                 <SelectContent>
                   {filter === "assignee" && assignees.map(a => <SelectItem key={a} value={a!}>{a}</SelectItem>)}
                   {filter === "department" && departments.map(d => <SelectItem key={d} value={d!}>{d}</SelectItem>)}
                   {filter === "client" && clientsForFilter.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {filter === "project" && projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
@@ -1437,6 +1533,32 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
                 </SelectContent>
               </Select>
             </CollapsibleField>
+
+            {/* Project - Collapsible */}
+            {projects.length > 0 && (
+              <CollapsibleField
+                label="פרויקט"
+                icon={<FolderKanban className="w-4 h-4" />}
+                isExpanded={expandedSections.has('project')}
+                onToggle={() => toggleSection('project')}
+                hasValue={!!formProjectId}
+              >
+                <Select value={formProjectId || "none"} onValueChange={(v) => setFormProjectId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="בחר פרויקט" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
+                          {p.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CollapsibleField>
+            )}
 
             {/* Date, Time & Reminders - Collapsible */}
             <CollapsibleField
