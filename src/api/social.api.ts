@@ -187,9 +187,18 @@ export class SocialAPI extends BaseAPI {
 
   async updatePost(id: string, data: Partial<SocialPost>) {
     return this.request<SocialPost>(async () => {
+      const updateData: Record<string, unknown> = {};
+      if (data.content !== undefined) updateData.content = data.content;
+      if (data.media_urls !== undefined) updateData.media_urls = data.media_urls;
+      if (data.hashtags !== undefined) updateData.hashtags = data.hashtags;
+      if (data.platforms !== undefined) updateData.platforms = data.platforms;
+      if (data.scheduled_for !== undefined) updateData.scheduled_for = data.scheduled_for;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.error_message !== undefined) updateData.error_message = data.error_message;
+      
       return this.client
         .from('social_posts')
-        .update(data as Record<string, unknown>)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -254,9 +263,20 @@ export class SocialAPI extends BaseAPI {
 
   async updateCalendarEntry(id: string, data: Partial<CalendarEntry>) {
     return this.request<CalendarEntry>(async () => {
+      const updateData: Record<string, unknown> = {};
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.content !== undefined) updateData.content = data.content;
+      if (data.date !== undefined) updateData.date = data.date;
+      if (data.time !== undefined) updateData.time = data.time;
+      if (data.platforms !== undefined) updateData.platforms = data.platforms;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.color !== undefined) updateData.color = data.color;
+      if (data.tags !== undefined) updateData.tags = data.tags;
+      
       return this.client
         .from('content_calendar')
-        .update(data as Record<string, unknown>)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -335,9 +355,16 @@ export class SocialAPI extends BaseAPI {
 
   async updateHashtagGroup(id: string, data: Partial<HashtagGroup>) {
     return this.request<HashtagGroup>(async () => {
+      const updateData: Record<string, unknown> = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.hashtags !== undefined) updateData.hashtags = data.hashtags;
+      if (data.category !== undefined) updateData.category = data.category;
+      if (data.usage_count !== undefined) updateData.usage_count = data.usage_count;
+      if (data.last_used_at !== undefined) updateData.last_used_at = data.last_used_at;
+      
       return this.client
         .from('hashtag_groups')
-        .update(data as Record<string, unknown>)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

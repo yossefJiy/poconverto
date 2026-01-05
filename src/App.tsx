@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Marketing from "./pages/Marketing";
@@ -93,9 +94,27 @@ const App = () => (
               <Route path="/code-health" element={<ProtectedRoute><CodeHealth /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
-              <Route path="/kpis" element={<ProtectedRoute><KPIDashboard /></ProtectedRoute>} />
-              <Route path="/competitors" element={<ProtectedRoute><Competitors /></ProtectedRoute>} />
-              <Route path="/social" element={<ProtectedRoute><SocialMedia /></ProtectedRoute>} />
+              <Route path="/kpis" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="marketing">
+                    <KPIDashboard />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/competitors" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="marketing">
+                    <Competitors />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/social" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="social">
+                    <SocialMedia />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

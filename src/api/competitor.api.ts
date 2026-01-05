@@ -85,9 +85,18 @@ export class CompetitorAPI extends BaseAPI {
 
   async update(id: string, data: Partial<Competitor>) {
     return this.request<Competitor>(async () => {
+      const updateData: Record<string, unknown> = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.website !== undefined) updateData.website = data.website;
+      if (data.industry !== undefined) updateData.industry = data.industry;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.logo_url !== undefined) updateData.logo_url = data.logo_url;
+      if (data.social_links !== undefined) updateData.social_links = data.social_links;
+      if (data.is_active !== undefined) updateData.is_active = data.is_active;
+      
       return this.client
         .from('competitor_tracking')
-        .update(data as Record<string, unknown>)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
