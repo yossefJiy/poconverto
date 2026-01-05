@@ -857,6 +857,139 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_health_scores: {
+        Row: {
+          calculated_at: string
+          client_id: string
+          competitive_score: number | null
+          engagement_score: number | null
+          growth_score: number | null
+          id: string
+          overall_score: number
+          period_end: string | null
+          period_start: string | null
+          score_breakdown: Json | null
+          sentiment_score: number | null
+          visibility_score: number | null
+        }
+        Insert: {
+          calculated_at?: string
+          client_id: string
+          competitive_score?: number | null
+          engagement_score?: number | null
+          growth_score?: number | null
+          id?: string
+          overall_score?: number
+          period_end?: string | null
+          period_start?: string | null
+          score_breakdown?: Json | null
+          sentiment_score?: number | null
+          visibility_score?: number | null
+        }
+        Update: {
+          calculated_at?: string
+          client_id?: string
+          competitive_score?: number | null
+          engagement_score?: number | null
+          growth_score?: number | null
+          id?: string
+          overall_score?: number
+          period_end?: string | null
+          period_start?: string | null
+          score_breakdown?: Json | null
+          sentiment_score?: number | null
+          visibility_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_health_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_kpis: {
+        Row: {
+          category: string
+          client_id: string
+          created_at: string
+          current_value: number | null
+          data_source: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          metric_type: string
+          name: string
+          period: string
+          period_end: string | null
+          period_start: string | null
+          previous_value: number | null
+          sort_order: number | null
+          status: string
+          target_value: number
+          threshold_critical: number | null
+          threshold_warning: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          client_id: string
+          created_at?: string
+          current_value?: number | null
+          data_source?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_type?: string
+          name: string
+          period?: string
+          period_end?: string | null
+          period_start?: string | null
+          previous_value?: number | null
+          sort_order?: number | null
+          status?: string
+          target_value: number
+          threshold_critical?: number | null
+          threshold_warning?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          client_id?: string
+          created_at?: string
+          current_value?: number | null
+          data_source?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_type?: string
+          name?: string
+          period?: string
+          period_end?: string | null
+          period_start?: string | null
+          previous_value?: number | null
+          sort_order?: number | null
+          status?: string
+          target_value?: number
+          threshold_critical?: number | null
+          threshold_warning?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_kpis_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           budget: number | null
@@ -1642,6 +1775,97 @@ export type Database = {
         }
         Relationships: []
       }
+      competitor_metrics: {
+        Row: {
+          competitor_id: string
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_unit: string | null
+          metric_value: number | null
+          recorded_at: string
+          source: string | null
+        }
+        Insert: {
+          competitor_id: string
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_unit?: string | null
+          metric_value?: number | null
+          recorded_at?: string
+          source?: string | null
+        }
+        Update: {
+          competitor_id?: string
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_unit?: string | null
+          metric_value?: number | null
+          recorded_at?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_metrics_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_tracking: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          industry: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          social_links: Json | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          social_links?: Json | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          social_links?: Json | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_tracking_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_alerts: {
         Row: {
           alert_type: string
@@ -1819,6 +2043,48 @@ export type Database = {
           },
         ]
       }
+      industry_benchmarks: {
+        Row: {
+          created_at: string
+          id: string
+          industry: string
+          metric_name: string
+          metric_unit: string | null
+          metric_value: number
+          percentile: number | null
+          source: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          industry: string
+          metric_name: string
+          metric_unit?: string | null
+          metric_value: number
+          percentile?: number | null
+          source?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          industry?: string
+          metric_name?: string
+          metric_unit?: string | null
+          metric_value?: number
+          percentile?: number | null
+          source?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           client_id: string
@@ -1869,6 +2135,44 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_history: {
+        Row: {
+          id: string
+          kpi_id: string
+          metadata: Json | null
+          recorded_at: string
+          recorded_value: number
+          status: string
+          target_value: number
+        }
+        Insert: {
+          id?: string
+          kpi_id: string
+          metadata?: Json | null
+          recorded_at?: string
+          recorded_value: number
+          status: string
+          target_value: number
+        }
+        Update: {
+          id?: string
+          kpi_id?: string
+          metadata?: Json | null
+          recorded_at?: string
+          recorded_value?: number
+          status?: string
+          target_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_history_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "brand_kpis"
             referencedColumns: ["id"]
           },
         ]
