@@ -54,6 +54,7 @@ import AgencyDashboard from "./pages/AgencyDashboard";
 import Projects from "./pages/Projects";
 import LeadManagement from "./pages/LeadManagement";
 import BillingManagement from "./pages/BillingManagement";
+import ApprovalsDashboard from "./pages/ApprovalsDashboard";
 
 const queryClient = new QueryClient();
 
@@ -300,6 +301,13 @@ const App = () => (
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="billing">
                     <BillingManagement />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/approvals" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="approvals">
+                    <ApprovalsDashboard />
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />

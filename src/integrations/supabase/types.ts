@@ -872,6 +872,207 @@ export type Database = {
           },
         ]
       }
+      approval_comments: {
+        Row: {
+          approval_item_id: string
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean | null
+          user_id: string
+        }
+        Insert: {
+          approval_item_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          user_id: string
+        }
+        Update: {
+          approval_item_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_comments_approval_item_id_fkey"
+            columns: ["approval_item_id"]
+            isOneToOne: false
+            referencedRelation: "approval_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_decisions: {
+        Row: {
+          approval_item_id: string
+          approver_id: string
+          comments: string | null
+          decided_at: string
+          decision: string
+          id: string
+          step_number: number
+        }
+        Insert: {
+          approval_item_id: string
+          approver_id: string
+          comments?: string | null
+          decided_at?: string
+          decision: string
+          id?: string
+          step_number: number
+        }
+        Update: {
+          approval_item_id?: string
+          approver_id?: string
+          comments?: string | null
+          decided_at?: string
+          decision?: string
+          id?: string
+          step_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_decisions_approval_item_id_fkey"
+            columns: ["approval_item_id"]
+            isOneToOne: false
+            referencedRelation: "approval_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_items: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          current_step: number | null
+          data: Json | null
+          description: string | null
+          due_date: string | null
+          id: string
+          item_id: string | null
+          item_type: string
+          metadata: Json | null
+          priority: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string | null
+          title: string
+          total_steps: number | null
+          updated_at: string
+          workflow_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          current_step?: number | null
+          data?: Json | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          item_id?: string | null
+          item_type: string
+          metadata?: Json | null
+          priority?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          title: string
+          total_steps?: number | null
+          updated_at?: string
+          workflow_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          current_step?: number | null
+          data?: Json | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          item_id?: string | null
+          item_type?: string
+          metadata?: Json | null
+          priority?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          title?: string
+          total_steps?: number | null
+          updated_at?: string
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_items_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "approval_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_workflows: {
+        Row: {
+          auto_approve_threshold: number | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          require_all_approvers: boolean | null
+          steps: Json
+          updated_at: string
+          workflow_type: string
+        }
+        Insert: {
+          auto_approve_threshold?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          require_all_approvers?: boolean | null
+          steps?: Json
+          updated_at?: string
+          workflow_type: string
+        }
+        Update: {
+          auto_approve_threshold?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          require_all_approvers?: boolean | null
+          steps?: Json
+          updated_at?: string
+          workflow_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_workflows_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       authorized_emails: {
         Row: {
           created_at: string | null
