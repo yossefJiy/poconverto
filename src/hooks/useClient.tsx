@@ -10,6 +10,7 @@ interface Client {
   logo_url: string | null;
   description: string | null;
   website: string | null;
+  is_master_account?: boolean;
 }
 
 interface ClientContextType {

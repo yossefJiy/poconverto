@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -32,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { useCodeHealth } from "@/hooks/useCodeHealth";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -88,7 +88,7 @@ const settingsItems = [
 
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
@@ -127,14 +127,14 @@ export function Sidebar() {
     <aside 
       className={cn(
         "fixed right-0 top-0 h-screen bg-sidebar border-l border-sidebar-border transition-all duration-300 z-50 flex flex-col",
-        collapsed ? "w-20" : "w-64"
+        isCollapsed ? "w-20" : "w-64"
       )}
       style={{ background: "var(--gradient-sidebar)" }}
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
         <Link to="/dashboard" className="flex items-center gap-3">
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="flex flex-col items-end animate-fade-in">
               <img src={logoText} alt="Converto" className="h-4 w-auto" />
               <img src={byJiyLogo} alt="by JIY" className="h-2 w-auto mt-1.5 opacity-70" />
@@ -145,15 +145,15 @@ export function Sidebar() {
             alt="Converto" 
             className={cn(
               "transition-all duration-300",
-              collapsed ? "h-10 w-auto" : "h-7 w-auto"
+              isCollapsed ? "h-10 w-auto" : "h-7 w-auto"
             )} 
           />
         </Link>
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
         >
-          {collapsed ? (
+          {isCollapsed ? (
             <ChevronLeft className="w-5 h-5 text-muted-foreground" />
           ) : (
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -163,7 +163,7 @@ export function Sidebar() {
 
       {/* Client Switcher */}
       <div className="p-3 border-b border-sidebar-border shrink-0">
-        <ClientSwitcher collapsed={collapsed} />
+        <ClientSwitcher collapsed={isCollapsed} />
       </div>
 
       {/* Navigation */}
@@ -189,7 +189,7 @@ export function Sidebar() {
                   isActive && "scale-110"
                 )} />
               </div>
-              {!collapsed && (
+              {!isCollapsed && (
                 <span className="font-medium flex-1">{item.label}</span>
               )}
               {isActive && (
@@ -211,7 +211,7 @@ export function Sidebar() {
             )}
           >
             <Settings className="w-5 h-5 shrink-0" />
-            {!collapsed && (
+            {!isCollapsed && (
               <span className="font-medium">הגדרות לקוח</span>
             )}
           </Link>
@@ -228,14 +228,14 @@ export function Sidebar() {
                 variant="ghost"
                 className={cn(
                   "w-full justify-start gap-3 h-10",
-                  collapsed && "justify-center px-2",
+                  isCollapsed && "justify-center px-2",
                   location.pathname === "/settings"
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 )}
               >
                 <Settings className="w-5 h-5 shrink-0" />
-                {!collapsed && <span className="font-medium">הגדרות</span>}
+                {!isCollapsed && <span className="font-medium">הגדרות</span>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="w-56">
@@ -268,7 +268,7 @@ export function Sidebar() {
                 variant="ghost"
                 className={cn(
                   "w-full justify-start gap-3 h-auto py-2",
-                  collapsed && "justify-center px-2"
+                  isCollapsed && "justify-center px-2"
                 )}
               >
                 <Avatar className="h-8 w-8 shrink-0">
@@ -276,7 +276,7 @@ export function Sidebar() {
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                {!collapsed && (
+                {!isCollapsed && (
                   <div className="flex flex-col items-start text-right overflow-hidden">
                     <span className="text-sm font-medium truncate max-w-[140px]">
                       {userEmail}

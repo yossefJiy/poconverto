@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { GAResponseData, GAResponseRow, IntegrationSettings, Integration } from "@/types/domains/analytics";
 
 interface TrafficSource {
   source: string;
@@ -107,7 +108,7 @@ function formatDuration(seconds: number): string {
 }
 
 // Parse GA4 response to our format
-function parseGAResponse(gaData: any): AnalyticsData {
+function parseGAResponse(gaData: GAResponseData): AnalyticsData {
   const emptyResult: AnalyticsData = {
     sessions: 0,
     users: 0,
@@ -123,7 +124,9 @@ function parseGAResponse(gaData: any): AnalyticsData {
   };
 
   if (!gaData || gaData.error) {
-    console.error("GA data error:", gaData?.error);
+    if (import.meta.env.DEV) {
+      console.error("GA data error:", gaData?.error);
+    }
     return emptyResult;
   }
 
@@ -169,7 +172,7 @@ function parseGAResponse(gaData: any): AnalyticsData {
   const trafficSources: TrafficSource[] = [];
   if (gaData.trafficSources?.rows) {
     const totalTrafficSessions = gaData.trafficSources.rows.reduce(
-      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      (sum: number, row: GAResponseRow) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
       0
     );
     
@@ -202,7 +205,7 @@ function parseGAResponse(gaData: any): AnalyticsData {
   const devices: DeviceData[] = [];
   if (gaData.devices?.rows) {
     const totalDeviceSessions = gaData.devices.rows.reduce(
-      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      (sum: number, row: GAResponseRow) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
       0
     );
     
@@ -222,7 +225,7 @@ function parseGAResponse(gaData: any): AnalyticsData {
   const countries: CountryData[] = [];
   if (gaData.countries?.rows) {
     const totalCountrySessions = gaData.countries.rows.reduce(
-      (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
+      (sum: number, row: GAResponseRow) => sum + parseInt(row.metricValues?.[0]?.value || "0"),
       0
     );
     
@@ -249,14 +252,16 @@ function parseGAResponse(gaData: any): AnalyticsData {
       transactions: gaData.ecommerce.totals?.transactions || 0,
       sessions: gaData.ecommerce.totals?.sessions || 0,
       conversionRates: {
-        addToCartRate: gaData.ecommerce.conversionRates?.addToCartRate || '0.00',
-        checkoutRate: gaData.ecommerce.conversionRates?.checkoutRate || '0.00',
-        purchaseRate: gaData.ecommerce.conversionRates?.purchaseRate || '0.00',
-        overallConversionRate: gaData.ecommerce.conversionRates?.overallConversionRate || '0.00',
-      },
-    };
+      addToCartRate: gaData.ecommerce.conversionRates?.addToCartRate || '0.00',
+      checkoutRate: gaData.ecommerce.conversionRates?.checkoutRate || '0.00',
+      purchaseRate: gaData.ecommerce.conversionRates?.purchaseRate || '0.00',
+      overallConversionRate: gaData.ecommerce.conversionRates?.overallConversionRate || '0.00',
+    },
+  };
+  if (import.meta.env.DEV) {
     console.log('[GA] Parsed ecommerce data:', ecommerce);
   }
+}
 
   return {
     sessions: totalSessions,
@@ -339,7 +344,8 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
 
   // Get GA property ID from integration settings
   const gaIntegration = integrations.find((i) => i.platform === "google_analytics");
-  const propertyId = (gaIntegration?.settings as any)?.property_id;
+  const gaSettings = gaIntegration?.settings as IntegrationSettings | undefined;
+  const propertyId = gaSettings?.property_id;
 
   // Fetch real analytics data from GA4 - only after auth is ready
   const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery({
@@ -350,7 +356,9 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       const daysAgo = parseInt(dateRange) || 30;
       const startDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      console.log("Fetching GA data:", { propertyId, startDate, endDate, dateRange });
+      if (import.meta.env.DEV) {
+        console.log("Fetching GA data:", { propertyId, startDate, endDate, dateRange });
+      }
 
       const { data, error } = await supabase.functions.invoke("google-analytics", {
         body: {
@@ -361,17 +369,23 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
       });
 
       if (error) {
-        console.error("GA function error:", error);
+        if (import.meta.env.DEV) {
+          console.error("GA function error:", error);
+        }
         throw error;
       }
 
       if (data.error) {
-        console.error("GA API error:", data.error);
+        if (import.meta.env.DEV) {
+          console.error("GA API error:", data.error);
+        }
         throw new Error(data.error);
       }
 
-      console.log("GA data received:", data);
-      return parseGAResponse(data);
+      if (import.meta.env.DEV) {
+        console.log("GA data received:", data);
+      }
+      return parseGAResponse(data as GAResponseData);
     },
     enabled: !!clientId && !!propertyId && !authLoading && !!session,
     retry: 1,

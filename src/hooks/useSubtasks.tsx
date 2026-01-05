@@ -68,10 +68,10 @@ export function useSubtasks(parentTaskId: string | null) {
 
   const updateSubtask = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Subtask> & { id: string }) => {
-      const updateData: any = { ...updates };
+      const updateData: Partial<Subtask> & { completed_at?: string | null } = { ...updates };
       
       // If completing, set completed_at
-      if (updates.status === "completed" as string) {
+      if (updates.status === "completed") {
         updateData.completed_at = new Date().toISOString();
       } else if (updates.status && updates.status !== "completed") {
         updateData.completed_at = null;
