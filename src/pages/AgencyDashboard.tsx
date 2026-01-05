@@ -5,6 +5,7 @@ import { ClientsSummaryGrid } from "@/components/agency/ClientsSummaryGrid";
 import { QuickTaskCreator } from "@/components/agency/QuickTaskCreator";
 import { AgencyNotificationsHub } from "@/components/agency/AgencyNotificationsHub";
 import { PriorityBalanceBar } from "@/components/agency/PriorityBalanceBar";
+import { TaskRequestsQueue } from "@/components/tasks/TaskRequestsQueue";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -256,11 +257,14 @@ export default function AgencyDashboard() {
             </div>
 
             {/* Notifications Hub */}
-            <div>
+            <div className="space-y-6">
               <AgencyNotificationsHub 
                 pendingRequests={pendingRequests.length}
                 urgentTasks={urgentTasks}
               />
+              
+              {/* Task Requests Queue */}
+              <TaskRequestsQueue />
             </div>
           </div>
 

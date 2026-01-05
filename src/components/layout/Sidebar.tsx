@@ -28,11 +28,13 @@ import {
   LayoutGrid,
   UserSearch,
   Share2,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { useCodeHealth } from "@/hooks/useCodeHealth";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +48,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ClientSwitcher } from "./ClientSwitcher";
+import { UserImpersonationSelector } from "@/components/admin/UserImpersonationSelector";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 import byJiyLogo from "@/assets/by-jiy-logo.svg";
@@ -98,6 +101,7 @@ export function Sidebar() {
   const { user, signOut, role } = useAuth();
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
   const { stats: codeHealthStats } = useCodeHealth();
+  const { canImpersonate, isImpersonating } = useImpersonation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -168,6 +172,11 @@ export function Sidebar() {
       {/* Client Switcher */}
       <div className="p-3 border-b border-sidebar-border shrink-0">
         <ClientSwitcher collapsed={isCollapsed} />
+        {canImpersonate && !isImpersonating && !isCollapsed && (
+          <div className="mt-2">
+            <UserImpersonationSelector />
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
