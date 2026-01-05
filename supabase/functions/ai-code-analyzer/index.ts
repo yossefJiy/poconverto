@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface AnalysisRequest {
-  action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close' | 'scan-codebase' | 'chat';
+  action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close' | 'scan-codebase' | 'chat' | 'get-file-content';
   issueId?: string;
   issueTitle?: string;
   issueDescription?: string;
@@ -20,7 +20,11 @@ interface AnalysisRequest {
   message?: string;
   codeContent?: string;
   fileName?: string;
+  filePath?: string;
 }
+
+// Hardcoded file contents for the AI to analyze
+const FILE_CONTENTS: Record<string, string> = {};
 
 // Model pricing (per 1M tokens in USD)
 const MODEL_PRICING: Record<string, { input: number; output: number; premium: boolean }> = {
@@ -65,7 +69,59 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, issueId, issueTitle, issueDescription, category, context, model, userId, clientId, conversationId, message, codeContent, fileName } = await req.json() as AnalysisRequest;
+    const { action, issueId, issueTitle, issueDescription, category, context, model, userId, clientId, conversationId, message, codeContent, fileName, filePath } = await req.json() as AnalysisRequest;
+    
+    // Handle file content request - return file from GitHub raw content
+    if (action === 'get-file-content') {
+      console.log(`Fetching file content for: ${filePath}`);
+      
+      try {
+        // Fetch from the Lovable project's raw GitHub content
+        const projectId = 'b4719bab-43ee-4d19-a348-8f68bf497857';
+        const rawUrl = `https://raw.githubusercontent.com/lovable-dev/lovable-${projectId}/main/${filePath}`;
+        
+        console.log(`Fetching from: ${rawUrl}`);
+        
+        const fileResponse = await fetch(rawUrl);
+        
+        if (!fileResponse.ok) {
+          // Try alternate URL format
+          const altUrl = `https://lovable.dev/api/projects/${projectId}/files/${encodeURIComponent(filePath || '')}`;
+          console.log(`Trying alternate URL: ${altUrl}`);
+          
+          // For now, return a message that file loading requires manual paste
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'טעינת קבצים אוטומטית לא זמינה כרגע. אנא העתק והדבק את תוכן הקובץ.',
+              filePath,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const content = await fileResponse.text();
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            content,
+            filePath,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error fetching file:', error);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'לא ניתן לטעון את הקובץ. אנא העתק והדבק את התוכן ידנית.',
+            filePath,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
     
     let selectedModel = model || 'x-ai/grok-code-fast-1';
     const modelInfo = MODEL_PRICING[selectedModel] || MODEL_PRICING['openai/gpt-4o-mini'];
