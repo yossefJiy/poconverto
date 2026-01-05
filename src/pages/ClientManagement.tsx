@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -208,7 +209,8 @@ export default function ClientManagement() {
 
   return (
     <MainLayout>
-      <PageHeader 
+      <DomainErrorBoundary domain="clients">
+      <PageHeader
         title="ניהול לקוחות" 
         description="נהל את כל הלקוחות במערכת, צפה בנתונים ושחזר לקוחות מחוקים"
       />
@@ -527,6 +529,7 @@ export default function ClientManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
