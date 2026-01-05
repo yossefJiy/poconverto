@@ -135,5 +135,3 @@ export function KPIProgressCard({ kpi, onClick }: KPIProgressCardProps) {
     </Card>
   );
 }
-
-export default KPIProgressCard;

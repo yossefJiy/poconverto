@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { DomainErrorBoundary } from '@/components/shared/DomainErrorBoundary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,6 +68,7 @@ export default function KPIDashboard() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="kpis">
       <PageHeader 
         title="יעדים ו-KPIs" 
         description={`ניהול ומעקב יעדים עבור ${selectedClient.name}`}
@@ -209,6 +211,7 @@ export default function KPIDashboard() {
         clientId={selectedClient.id}
         onSuccess={handleRefresh}
       />
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }

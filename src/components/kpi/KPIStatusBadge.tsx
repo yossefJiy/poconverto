@@ -57,5 +57,3 @@ export function KPIStatusBadge({ status, showIcon = true, size = 'md' }: KPIStat
     </Badge>
   );
 }
-
-export default KPIStatusBadge;

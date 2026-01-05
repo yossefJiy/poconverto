@@ -372,5 +372,3 @@ export function GoalSettingWizard({ clientId, onComplete, onCancel }: GoalSettin
     </Card>
   );
 }
-
-export default GoalSettingWizard;
