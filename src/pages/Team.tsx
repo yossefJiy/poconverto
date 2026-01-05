@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientContactsManager } from "@/components/client/ClientContactsManager";
 import { ClientTeamManager } from "@/components/client/ClientTeamManager";
+import { TeamDayBoard } from "@/components/tasks/TeamDayBoard";
 interface TeamMember {
   id: string;
   user_id: string | null;
@@ -250,6 +251,13 @@ export default function Team() {
   return (
     <MainLayout>
       <div className="p-4 md:p-8 space-y-8">
+        {/* Team Day Board - Show for master account */}
+        {isMasterAccount && (
+          <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.05s", animationFillMode: "forwards" }}>
+            <TeamDayBoard />
+          </div>
+        )}
+
         {/* Assigned Agency Team Section - Show for all clients */}
         {selectedClient && (
           <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.1s", animationFillMode: "forwards" }}>
