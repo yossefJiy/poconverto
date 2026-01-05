@@ -36,24 +36,24 @@ export interface FeatureFlags {
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  kpiGoals: false,
-  competitorTracking: false,
-  brandHealthScore: false,
-  socialMediaManager: false,
-  autoPosting: false,
-  contentCalendar: false,
-  contentStudio: false,
-  aiContentGeneration: true, // Already exists
-  contentApprovalFlow: false,
-  programmaticCampaigns: false,
-  campaignAssets: false,
-  abTesting: false,
-  googleShopping: false,
-  multiStoreDashboard: false,
-  humanApprovalPoints: false,
-  visualApproval: false,
-  aiOptimization: true, // Already exists
-  aiInsights: true, // Already exists
+  kpiGoals: true,
+  competitorTracking: true,
+  brandHealthScore: true,
+  socialMediaManager: true,
+  autoPosting: true,
+  contentCalendar: true,
+  contentStudio: true,
+  aiContentGeneration: true,
+  contentApprovalFlow: true,
+  programmaticCampaigns: true,
+  campaignAssets: true,
+  abTesting: true,
+  googleShopping: true,
+  multiStoreDashboard: true,
+  humanApprovalPoints: true,
+  visualApproval: true,
+  aiOptimization: true,
+  aiInsights: true,
 };
 
 class FeatureFlagService {
