@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { StyledDatePicker } from "@/components/ui/styled-date-picker";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Play }> = {
   active: { label: "פעיל", color: "bg-success text-success-foreground", icon: Play },
@@ -417,18 +418,20 @@ export default function Projects() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>תאריך התחלה</Label>
-                    <Input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    <StyledDatePicker
+                      value={formData.start_date ? new Date(formData.start_date) : undefined}
+                      onChange={(date) => setFormData({ ...formData, start_date: date ? date.toISOString().split('T')[0] : "" })}
+                      placeholder="בחר תאריך"
+                      showQuickOptions={false}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>תאריך יעד</Label>
-                    <Input
-                      type="date"
-                      value={formData.target_date}
-                      onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+                    <StyledDatePicker
+                      value={formData.target_date ? new Date(formData.target_date) : undefined}
+                      onChange={(date) => setFormData({ ...formData, target_date: date ? date.toISOString().split('T')[0] : "" })}
+                      placeholder="בחר תאריך"
+                      showQuickOptions={false}
                     />
                   </div>
                 </div>
