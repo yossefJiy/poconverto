@@ -24,6 +24,8 @@ import {
   FileText,
   Shield,
   Building2,
+  Crosshair,
+  UserSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +59,8 @@ const menuItems: MenuItem[] = [
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
   { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
   { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
+  { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "marketing" },
+  { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },

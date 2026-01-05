@@ -43,6 +43,8 @@ import ClientInsights from "./pages/ClientInsights";
 import Reports from "./pages/Reports";
 import Permissions from "./pages/Permissions";
 import ClientManagement from "./pages/ClientManagement";
+import KPIDashboard from "./pages/KPIDashboard";
+import Competitors from "./pages/Competitors";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,8 @@ const App = () => (
               <Route path="/code-health" element={<ProtectedRoute><CodeHealth /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
+              <Route path="/kpis" element={<ProtectedRoute><KPIDashboard /></ProtectedRoute>} />
+              <Route path="/competitors" element={<ProtectedRoute><Competitors /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
