@@ -1,6 +1,7 @@
 // Create KPI Dialog Component
 
 import { useState } from 'react';
+import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { kpiAPI, type CreateKPIInput } from '@/api/kpi.api';
 import { Loader2 } from 'lucide-react';
+
+// Zod validation schema
+const createKPISchema = z.object({
+  name: z.string().min(1, 'שם היעד הוא שדה חובה').max(100, 'שם היעד ארוך מדי'),
+  target_value: z.number().positive('ערך יעד חייב להיות חיובי'),
+  description: z.string().max(500, 'התיאור ארוך מדי').optional(),
+  category: z.string().optional(),
+  metric_type: z.string().optional(),
+  current_value: z.number().optional(),
+  period: z.string().optional(),
+  data_source: z.string().optional(),
+  unit: z.string().max(50).optional(),
+});
 
 interface CreateKPIDialogProps {
   open: boolean;
@@ -62,10 +76,17 @@ export function CreateKPIDialog({ open, onOpenChange, clientId, onSuccess }: Cre
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.target_value) {
+    // Validate with Zod
+    const validationResult = createKPISchema.safeParse({
+      ...formData,
+      target_value: formData.target_value || 0,
+    });
+
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
       toast({
         title: 'שגיאה',
-        description: 'נא למלא את כל השדות הנדרשים',
+        description: firstError.message,
         variant: 'destructive',
       });
       return;

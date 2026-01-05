@@ -222,5 +222,3 @@ export function DraftsManager({
     </Card>
   );
 }
-
-export default DraftsManager;
