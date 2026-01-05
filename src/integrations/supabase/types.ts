@@ -3901,7 +3901,7 @@ export type Database = {
         Row: {
           budget_credits: number | null
           budget_hours: number | null
-          client_id: string
+          client_id: string | null
           color: string | null
           created_at: string
           created_by: string | null
@@ -3919,7 +3919,7 @@ export type Database = {
         Insert: {
           budget_credits?: number | null
           budget_hours?: number | null
-          client_id: string
+          client_id?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -3937,7 +3937,7 @@ export type Database = {
         Update: {
           budget_credits?: number | null
           budget_hours?: number | null
-          client_id?: string
+          client_id?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
