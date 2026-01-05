@@ -9,6 +9,7 @@ import { kpiAPI } from './kpi.api';
 import { competitorAPI } from './competitor.api';
 import { socialAPI } from './social.api';
 import { contentAPI } from './content.api';
+import { reportsAPI } from './reports.api';
 
 export const api = {
   analytics: analyticsAPI,
@@ -20,11 +21,14 @@ export const api = {
   competitors: competitorAPI,
   social: socialAPI,
   content: contentAPI,
+  reports: reportsAPI,
 };
 
 export { analyticsAPI } from './analytics.api';
 export { campaignsAPI } from './campaigns.api';
 export { clientsAPI } from './clients.api';
+export { reportsAPI } from './reports.api';
+export type { ReportTemplate, ScheduledReport, ReportHistoryItem, CreateScheduledReportInput } from './reports.api';
 export { tasksAPI } from './tasks.api';
 export { aiAPI } from './ai.api';
 export { kpiAPI } from './kpi.api';

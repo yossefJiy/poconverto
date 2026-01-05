@@ -2791,6 +2791,198 @@ export type Database = {
         }
         Relationships: []
       }
+      report_history: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          file_format: string | null
+          file_url: string | null
+          generated_by: string | null
+          id: string
+          period_end: string
+          period_start: string
+          report_data: Json
+          report_type: string
+          scheduled_report_id: string | null
+          sent_to: Json | null
+          template_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          file_format?: string | null
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          report_data: Json
+          report_type: string
+          scheduled_report_id?: string | null
+          sent_to?: Json | null
+          template_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          file_format?: string | null
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          report_data?: Json
+          report_type?: string
+          scheduled_report_id?: string | null
+          sent_to?: Json | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_history_scheduled_report_id_fkey"
+            columns: ["scheduled_report_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          is_global: boolean | null
+          name: string
+          sections: Json
+          styling: Json | null
+          template_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_global?: boolean | null
+          name: string
+          sections?: Json
+          styling?: Json | null
+          template_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_global?: boolean | null
+          name?: string
+          sections?: Json
+          styling?: Json | null
+          template_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_reports: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          name: string
+          next_run_at: string | null
+          recipients: Json | null
+          template_id: string | null
+          time_of_day: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name: string
+          next_run_at?: string | null
+          recipients?: Json | null
+          template_id?: string | null
+          time_of_day?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          recipients?: Json | null
+          template_id?: string | null
+          time_of_day?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_audit_logs: {
         Row: {
           action: string | null

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClient } from "@/hooks/useClient";
 import { useReports } from "@/hooks/useReports";
 import { 
@@ -11,12 +12,12 @@ import {
   BarChart3,
   TrendingUp,
   Clock,
-  CheckCircle,
   Loader2,
+  Calendar,
+  History,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +26,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ReportTemplateSelector,
+  ScheduledReportsList,
+  ReportHistoryList,
+  CreateScheduledReportDialog,
+  ExportOptionsDialog,
+} from "@/components/reports";
+import { ReportTemplate } from "@/api/reports.api";
 
 export default function Reports() {
   const { selectedClient } = useClient();
+  const [activeTab, setActiveTab] = useState("create");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [reportType, setReportType] = useState<'monthly' | 'weekly' | 'campaign'>('monthly');
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const { isLoading, reportData, generateReport, downloadPDF } = useReports();
 
   const reportTypes = [
@@ -44,29 +49,29 @@ export default function Reports() {
       name: "דוח ביצועים חודשי", 
       description: "סיכום מקיף של כל מדדי הביצועים",
       icon: BarChart3,
-      color: "text-blue-500"
     },
     { 
       id: "campaign" as const, 
       name: "דוח קמפיינים", 
       description: "ניתוח מעמיק של קמפיינים פעילים",
       icon: TrendingUp,
-      color: "text-green-500"
     },
     { 
       id: "weekly" as const, 
       name: "דוח שבועי", 
       description: "עדכון שבועי מהיר",
       icon: Clock,
-      color: "text-orange-500"
     },
   ];
 
   const handleCreateReport = async (type: 'monthly' | 'weekly' | 'campaign') => {
     if (!selectedClient) return;
-    setReportType(type);
     setDialogOpen(true);
     await generateReport(selectedClient.id, type);
+  };
+
+  const handleTemplateSelect = (template: ReportTemplate) => {
+    setSelectedTemplate(template);
   };
 
   return (
@@ -77,48 +82,18 @@ export default function Reports() {
           <div>
             <h1 className="text-3xl font-bold">דוחות</h1>
             <p className="text-muted-foreground">
-              צור וצפה בדוחות ביצועים עבור {selectedClient?.name || "הלקוחות שלך"}
+              צור, תזמן וייצא דוחות ביצועים עבור {selectedClient?.name || "הלקוחות שלך"}
             </p>
           </div>
+          {selectedClient && (
+            <Button onClick={() => setScheduleDialogOpen(true)}>
+              <Calendar className="w-4 h-4 ml-2" />
+              תזמן דוח אוטומטי
+            </Button>
+          )}
         </div>
 
-        {/* Report Templates */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {reportTypes.map((type) => (
-            <Card key={type.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-muted ${type.color}`}>
-                    <type.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{type.name}</CardTitle>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{type.description}</CardDescription>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4 w-full"
-                  onClick={() => handleCreateReport(type.id)}
-                  disabled={!selectedClient || isLoading}
-                >
-                  {isLoading && reportType === type.id ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 ml-2" />
-                  )}
-                  צור דוח
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {!selectedClient && (
+        {!selectedClient ? (
           <Card>
             <CardContent className="text-center py-12">
               <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -128,6 +103,103 @@ export default function Reports() {
               </p>
             </CardContent>
           </Card>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="create">
+                <Plus className="w-4 h-4 ml-1" />
+                יצירת דוח
+              </TabsTrigger>
+              <TabsTrigger value="scheduled">
+                <Calendar className="w-4 h-4 ml-1" />
+                מתוזמנים
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <History className="w-4 h-4 ml-1" />
+                היסטוריה
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Create Report Tab */}
+            <TabsContent value="create" className="space-y-6">
+              {/* Template Selection */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">בחר תבנית דוח</h3>
+                <ReportTemplateSelector
+                  clientId={selectedClient.id}
+                  selectedTemplateId={selectedTemplate?.id}
+                  onSelect={handleTemplateSelect}
+                />
+              </div>
+
+              {/* Quick Report Types */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">או צור דוח מהיר</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {reportTypes.map((type) => (
+                    <Card key={type.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <type.icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <CardTitle className="text-lg">{type.name}</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription>{type.description}</CardDescription>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-4 w-full"
+                          onClick={() => handleCreateReport(type.id)}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4 ml-2" />
+                          )}
+                          צור דוח
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Scheduled Reports Tab */}
+            <TabsContent value="scheduled">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">דוחות מתוזמנים</h3>
+                  <Button onClick={() => setScheduleDialogOpen(true)} size="sm">
+                    <Plus className="w-4 h-4 ml-1" />
+                    הוסף תזמון
+                  </Button>
+                </div>
+                <ScheduledReportsList 
+                  clientId={selectedClient.id}
+                  onRefresh={() => {}}
+                />
+              </div>
+            </TabsContent>
+
+            {/* History Tab */}
+            <TabsContent value="history">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">היסטוריית דוחות</h3>
+                <ReportHistoryList 
+                  clientId={selectedClient.id}
+                  onView={(report) => {
+                    // Could open a dialog to view the report
+                    console.log('View report:', report);
+                  }}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
 
@@ -159,10 +231,16 @@ export default function Reports() {
                     {format(new Date(reportData.period.to), "dd MMMM yyyy", { locale: he })}
                   </p>
                 </div>
-                <Button onClick={() => downloadPDF(reportData)}>
-                  <Download className="w-4 h-4 ml-2" />
-                  הורד PDF
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
+                    <Download className="w-4 h-4 ml-2" />
+                    ייצוא
+                  </Button>
+                  <Button onClick={() => downloadPDF(reportData)}>
+                    <FileText className="w-4 h-4 ml-2" />
+                    PDF
+                  </Button>
+                </div>
               </div>
 
               {/* Summary Cards */}
@@ -211,6 +289,26 @@ export default function Reports() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Create Scheduled Report Dialog */}
+      {selectedClient && (
+        <CreateScheduledReportDialog
+          open={scheduleDialogOpen}
+          onOpenChange={setScheduleDialogOpen}
+          clientId={selectedClient.id}
+          onCreated={() => setActiveTab('scheduled')}
+        />
+      )}
+
+      {/* Export Options Dialog */}
+      {reportData && selectedClient && (
+        <ExportOptionsDialog
+          open={exportDialogOpen}
+          onOpenChange={setExportDialogOpen}
+          reportData={reportData}
+          clientName={selectedClient.name}
+        />
+      )}
     </MainLayout>
   );
 }
