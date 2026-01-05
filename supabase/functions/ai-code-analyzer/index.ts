@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface AnalysisRequest {
-  action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close';
+  action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close' | 'scan-codebase' | 'chat';
   issueId?: string;
   issueTitle?: string;
   issueDescription?: string;
@@ -16,10 +16,15 @@ interface AnalysisRequest {
   model?: string;
   userId?: string;
   clientId?: string;
+  conversationId?: string;
+  message?: string;
+  codeContent?: string;
+  fileName?: string;
 }
 
 // Model pricing (per 1M tokens in USD)
 const MODEL_PRICING: Record<string, { input: number; output: number; premium: boolean }> = {
+  'x-ai/grok-code-fast-1': { input: 0.10, output: 0.40, premium: false },
   'openai/gpt-4o-mini': { input: 0.15, output: 0.60, premium: false },
   'google/gemini-2.0-flash': { input: 0.075, output: 0.30, premium: false },
   'google/gemini-2.5-flash': { input: 0.075, output: 0.30, premium: false },
@@ -60,9 +65,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, issueId, issueTitle, issueDescription, category, context, model, userId, clientId } = await req.json() as AnalysisRequest;
+    const { action, issueId, issueTitle, issueDescription, category, context, model, userId, clientId, conversationId, message, codeContent, fileName } = await req.json() as AnalysisRequest;
     
-    let selectedModel = model || 'openai/gpt-4o-mini';
+    let selectedModel = model || 'x-ai/grok-code-fast-1';
     const modelInfo = MODEL_PRICING[selectedModel] || MODEL_PRICING['openai/gpt-4o-mini'];
 
     // Check if user can use premium models
@@ -337,6 +342,87 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
 \`\`\``;
         break;
 
+      case 'scan-codebase':
+        systemPrompt = `אתה Grok - סוכן AI מומחה לניתוח וסריקת קוד React/TypeScript.
+תפקידך לזהות בעיות בקוד ולספק פתרונות מפורטים.
+
+## מה אתה מחפש:
+1. **פונקציות ריקות או placeholder** - פונקציות עם TODO, console.log בלבד, או שמחזירות null/undefined ללא לוגיקה
+2. **בעיות RTL** - שימוש לא נכון ב-direction, marginLeft במקום marginInlineStart, left/right במקום start/end
+3. **Mock Data שלא הוחלף** - משתנים בשם MOCK_, mockData, או hardcoded data שצריך להיות דינמי
+4. **בעיות UI/UX** - קומפוננטות ללא loading state, missing error handling, accessibility issues
+5. **חוסר עקביות** - שימוש מעורב ב-patterns שונים, types חסרים, any usage
+6. **קוד לא מנוצל** - imports שלא בשימוש, פונקציות מתות
+
+## פורמט תשובה:
+לכל בעיה שמצאת, ספק:
+- 🔴/🟡/🟢 (קריטי/אזהרה/מידע)
+- שם הקובץ ומספר שורה
+- תיאור הבעיה
+- קוד מתוקן
+
+השתמש בעברית ובפורמט Markdown.`;
+
+        userPrompt = codeContent 
+          ? `סרוק את הקוד הבא מקובץ "${fileName || 'unknown'}":
+
+\`\`\`typescript
+${codeContent}
+\`\`\`
+
+מצא את כל הבעיות וספק פתרונות.`
+          : `בצע סריקה כללית של הקוד ותן המלצות לשיפור.`;
+        break;
+
+      case 'chat':
+        // Get conversation history
+        let conversationHistory: { role: string; content: string }[] = [];
+        
+        if (conversationId) {
+          const { data: messages } = await supabase
+            .from('chat_messages')
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true })
+            .limit(20);
+          
+          if (messages) {
+            conversationHistory = messages.map(m => ({ role: m.role, content: m.content }));
+          }
+        }
+
+        systemPrompt = `אתה Grok - סוכן AI מומחה לניתוח קוד, ארכיטקטורה ובריאות פרויקטים.
+אתה עוזר למפתחים לזהות בעיות בקוד, לשפר ביצועים, ולתת המלצות.
+
+כללים:
+- ענה בעברית
+- תן קוד לדוגמה כשרלוונטי
+- השתמש ב-Markdown
+- היה ספציפי ומעשי
+- אם יש קוד בהקשר, התייחס אליו ישירות`;
+
+        userPrompt = message || 'שלום, מה תוכל לעזור לי?';
+        
+        // If there's code context, add it
+        if (codeContent) {
+          userPrompt = `קובץ: ${fileName || 'unknown'}
+\`\`\`typescript
+${codeContent}
+\`\`\`
+
+${message || 'נתח את הקוד הזה.'}`;
+        }
+
+        // Save user message to conversation
+        if (conversationId && userId) {
+          await supabase.from('chat_messages').insert({
+            conversation_id: conversationId,
+            role: 'user',
+            content: userPrompt,
+          });
+        }
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -447,6 +533,16 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
       }
     }
 
+    // Save assistant message to conversation for chat action
+    if (action === 'chat' && conversationId) {
+      await supabase.from('chat_messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: aiResponse,
+        metadata: { model: selectedModel, provider, estimatedCost },
+      });
+    }
+
     // Save to history
     if (userId) {
       await supabase.from('ai_query_history').insert({
@@ -475,6 +571,7 @@ ${allIssues.map((issue, idx) => `${idx + 1}. [ID: ${issue.id}] ${issue.title} ($
         executedActions,
         provider,
         citations,
+        conversationId,
         usage: {
           inputTokens,
           outputTokens,
