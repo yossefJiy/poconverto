@@ -47,13 +47,17 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     enabled: !authLoading && !!user,
   });
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount and validate
   useEffect(() => {
     const saved = localStorage.getItem("selectedClientId");
     if (saved && clients.length > 0) {
       const client = clients.find(c => c.id === saved);
       if (client) {
         setSelectedClientState(client);
+      } else {
+        // Client doesn't exist anymore - clean up localStorage
+        localStorage.removeItem("selectedClientId");
+        setSelectedClientState(null);
       }
     }
   }, [clients]);
