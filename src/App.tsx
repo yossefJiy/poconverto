@@ -70,13 +70,31 @@ const App = () => (
               <Route path="/clients" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
               <Route path="/client-management" element={<ProtectedRoute><ClientManagement /></ProtectedRoute>} />
               <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
-              <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-              <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+              <Route path="/campaigns" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="campaigns">
+                    <Campaigns />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/tasks" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="tasks">
+                    <Tasks />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><CreditManagement /></ProtectedRoute>} />
               <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
-              <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <Analytics />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/analytics/google-ads" element={<ProtectedRoute><GoogleAdsDetail /></ProtectedRoute>} />
               <Route path="/analytics/shopify" element={<ProtectedRoute><ShopifyDetail /></ProtectedRoute>} />
               <Route path="/analytics/facebook-ads" element={<ProtectedRoute><FacebookAdsDetail /></ProtectedRoute>} />
@@ -84,7 +102,13 @@ const App = () => (
               <Route path="/analytics/woocommerce" element={<ProtectedRoute><WooCommerceDetail /></ProtectedRoute>} />
               <Route path="/analytics/google-analytics" element={<ProtectedRoute><GoogleAnalyticsDetail /></ProtectedRoute>} />
               <Route path="/campaigns/:campaignId" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />
-              <Route path="/ecommerce" element={<ProtectedRoute><Ecommerce /></ProtectedRoute>} />
+              <Route path="/ecommerce" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ecommerce">
+                    <Ecommerce />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
               <Route path="/agent-alerts" element={<ProtectedRoute><AgentAlerts /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute><ClientInsights /></ProtectedRoute>} />

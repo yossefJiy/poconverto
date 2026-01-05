@@ -1,6 +1,6 @@
 // AI Content Generator Component
 
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,12 +52,8 @@ const PROMPT_TEMPLATES = [
   { label: 'שאלה למעורבות', template: 'כתוב שאלה שתעורר דיון בנושא [נושא]' },
 ];
 
-export function AIContentGenerator({ 
-  history, 
-  onGenerate, 
-  onRate, 
-  onUseContent 
-}: AIContentGeneratorProps) {
+export const AIContentGenerator = forwardRef<HTMLDivElement, AIContentGeneratorProps>(
+  function AIContentGenerator({ history, onGenerate, onRate, onUseContent }, ref) {
   const [prompt, setPrompt] = useState('');
   const [contentType, setContentType] = useState('social_post');
   const [generatedContent, setGeneratedContent] = useState('');
@@ -94,7 +90,7 @@ export function AIContentGenerator({
   };
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -293,8 +289,8 @@ export function AIContentGenerator({
           </CardContent>
         )}
       </Card>
-    </div>
+  </div>
   );
-}
+});
 
 export default AIContentGenerator;

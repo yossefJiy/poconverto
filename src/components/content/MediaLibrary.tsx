@@ -398,5 +398,3 @@ export function MediaLibrary({
     </>
   );
 }
-
-export default MediaLibrary;

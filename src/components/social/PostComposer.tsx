@@ -2,6 +2,7 @@
 // Rich editor for creating social media posts
 
 import { useState } from 'react';
+import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +11,15 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
+
+// Zod validation schema
+const postSchema = z.object({
+  content: z.string().min(1, 'תוכן הפוסט הוא שדה חובה').max(63206, 'התוכן ארוך מדי'),
+  platforms: z.array(z.string()).min(1, 'יש לבחור לפחות פלטפורמה אחת'),
+  hashtags: z.array(z.string()).optional(),
+  scheduledFor: z.date().optional(),
+});
 import { 
   Send, 
   Clock, 
@@ -100,6 +110,20 @@ export function PostComposer({ onSubmit, onAISuggest, isLoading }: PostComposerP
       const [hours, minutes] = scheduledTime.split(':');
       scheduledFor = new Date(scheduledDate);
       scheduledFor.setHours(parseInt(hours), parseInt(minutes));
+    }
+
+    // Validate with Zod
+    const validationResult = postSchema.safeParse({
+      content,
+      platforms,
+      hashtags,
+      scheduledFor,
+    });
+
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast.error(firstError.message);
+      return;
     }
 
     onSubmit({

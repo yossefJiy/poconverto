@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Loader2 } from "lucide-react";
@@ -22,7 +22,8 @@ interface CreateClientDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange }: CreateClientDialogProps) {
+export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDialogProps>(
+  function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange }, ref) {
   const queryClient = useQueryClient();
   const { setSelectedClient } = useClient();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -75,7 +76,7 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger asChild ref={ref}>
         {trigger || (
           <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
             <Plus className="w-4 h-4" />
@@ -148,4 +149,4 @@ export function CreateClientDialog({ trigger, open: controlledOpen, onOpenChange
       </DialogContent>
     </Dialog>
   );
-}
+});

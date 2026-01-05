@@ -342,5 +342,3 @@ export function BrandAssetsManager({ assets, onCreate, onUpdate, onDelete }: Bra
     </>
   );
 }
-
-export default BrandAssetsManager;
