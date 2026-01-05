@@ -144,9 +144,9 @@ export class CompetitorAPI extends BaseAPI {
 
     // Deduplicate by metric_name, keeping latest
     const latestByName = new Map<string, CompetitorMetric>();
-    for (const metric of (data || [])) {
+    for (const metric of (data || []) as CompetitorMetric[]) {
       if (!latestByName.has(metric.metric_name)) {
-        latestByName.set(metric.metric_name, metric as unknown as CompetitorMetric);
+        latestByName.set(metric.metric_name, metric);
       }
     }
 

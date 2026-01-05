@@ -13,6 +13,8 @@ const Ecommerce = lazy(() => import('@/pages/Ecommerce'));
 const ClientProfile = lazy(() => import('@/pages/ClientProfile'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Reports = lazy(() => import('@/pages/Reports'));
+const KPIDashboard = lazy(() => import('@/pages/KPIDashboard'));
+const Competitors = lazy(() => import('@/pages/Competitors'));
 
 export interface RouteConfig {
   path: string;
@@ -105,6 +107,24 @@ export const routeConfig: RouteConfig[] = [
     domain: 'settings',
     requiresAuth: true,
     requiredPermission: { domain: 'settings', action: 'view' },
+  },
+  
+  // KPI Domain
+  {
+    path: '/kpis',
+    element: KPIDashboard,
+    domain: 'marketing',
+    requiresAuth: true,
+    requiredPermission: { domain: 'marketing', action: 'view' },
+  },
+  
+  // Competitors Domain
+  {
+    path: '/competitors',
+    element: Competitors,
+    domain: 'marketing',
+    requiresAuth: true,
+    requiredPermission: { domain: 'marketing', action: 'view' },
   },
 ];
 

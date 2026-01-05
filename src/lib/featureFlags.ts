@@ -1,8 +1,6 @@
 // Feature Flags System
 // Allows enabling/disabling features per client
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface FeatureFlags {
   // Phase 2: Marketing & KPI
   kpiGoals: boolean;
