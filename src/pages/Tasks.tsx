@@ -352,9 +352,9 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
         .order("name");
       
       if (selectedClient) {
-        query = query.eq("client_id", selectedClient.id);
+        // When a client is selected, still include internal (agency) projects
+        query = query.or(`client_id.eq.${selectedClient.id},client_id.is.null`);
       }
-      
       const { data } = await query;
       return (data || []) as Project[];
     },
