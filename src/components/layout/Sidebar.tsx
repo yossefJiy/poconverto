@@ -69,12 +69,15 @@ const menuItems: MenuItem[] = [
   { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "tasks" },
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
   { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
+  { icon: ShoppingBag, label: "Google Shopping", path: "/google-shopping", moduleKey: "ecommerce" },
   { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
   { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "marketing" },
   { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "marketing" },
   { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "marketing" },
   { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
+  { icon: Megaphone, label: "פרוגרמטי", path: "/programmatic", moduleKey: "campaigns" },
+  { icon: Target, label: "A/B Tests", path: "/ab-tests", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
   { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
@@ -82,6 +85,7 @@ const menuItems: MenuItem[] = [
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
   { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
   { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
+  { icon: Bot, label: "AI Insights", path: "/ai-insights", moduleKey: "ai_agent" },
   { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
 ];
 

@@ -55,6 +55,10 @@ import Projects from "./pages/Projects";
 import LeadManagement from "./pages/LeadManagement";
 import BillingManagement from "./pages/BillingManagement";
 import ApprovalsDashboard from "./pages/ApprovalsDashboard";
+import Programmatic from "./pages/Programmatic";
+import ABTests from "./pages/ABTests";
+import GoogleShopping from "./pages/GoogleShopping";
+import AIInsights from "./pages/AIInsights";
 
 const queryClient = new QueryClient();
 
@@ -308,6 +312,34 @@ const App = () => (
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="approvals">
                     <ApprovalsDashboard />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/programmatic" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="campaigns">
+                    <Programmatic />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/ab-tests" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="campaigns">
+                    <ABTests />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/google-shopping" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ecommerce">
+                    <GoogleShopping />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/ai-insights" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ai">
+                    <AIInsights />
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
