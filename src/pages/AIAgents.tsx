@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useClientModules } from "@/hooks/useClientModules";
@@ -343,6 +344,7 @@ export default function AIAgents() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="ai-agents">
       <div className="p-4 md:p-8 space-y-6">
         <PageHeader 
           title="סוכני AI"
@@ -717,6 +719,7 @@ export default function AIAgents() {
           onToggleExpand={() => {}}
         />
       )}
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
