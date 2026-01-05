@@ -16,6 +16,7 @@ import {
   Loader2,
   Calendar,
   History,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -33,6 +34,7 @@ import {
   CreateScheduledReportDialog,
   ExportOptionsDialog,
 } from "@/components/reports";
+import { ClientReportGenerator } from "@/components/reports/ClientReportGenerator";
 import { ReportTemplate } from "@/api/reports.api";
 
 export default function Reports() {
@@ -107,10 +109,14 @@ export default function Reports() {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsList className="grid w-full max-w-lg grid-cols-4">
               <TabsTrigger value="create">
                 <Plus className="w-4 h-4 ml-1" />
                 יצירת דוח
+              </TabsTrigger>
+              <TabsTrigger value="client">
+                <Users className="w-4 h-4 ml-1" />
+                דוח לקוח
               </TabsTrigger>
               <TabsTrigger value="scheduled">
                 <Calendar className="w-4 h-4 ml-1" />
@@ -169,6 +175,11 @@ export default function Reports() {
                   ))}
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Client Report Tab */}
+            <TabsContent value="client">
+              <ClientReportGenerator />
             </TabsContent>
 
             {/* Scheduled Reports Tab */}
