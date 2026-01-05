@@ -24,6 +24,8 @@ import {
   Shield,
   Building2,
   Crosshair,
+  FolderKanban,
+  LayoutGrid,
   UserSearch,
   Share2,
 } from "lucide-react";
@@ -56,7 +58,9 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
+  { icon: LayoutGrid, label: "סוכנות", path: "/agency", moduleKey: "dashboard" },
   { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
+  { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "tasks" },
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
   { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
   { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
