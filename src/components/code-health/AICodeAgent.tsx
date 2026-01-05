@@ -25,6 +25,10 @@ import {
   Send,
   Code,
   FileCode,
+  FolderTree,
+  ChevronDown,
+  ChevronRight,
+  File,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -52,6 +56,56 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+// Project files structure for code analysis
+const PROJECT_FILES: { path: string; category: string }[] = [
+  // Pages
+  { path: "src/pages/Dashboard.tsx", category: "pages" },
+  { path: "src/pages/Analytics.tsx", category: "pages" },
+  { path: "src/pages/Tasks.tsx", category: "pages" },
+  { path: "src/pages/Campaigns.tsx", category: "pages" },
+  { path: "src/pages/ClientDashboard.tsx", category: "pages" },
+  { path: "src/pages/CodeHealth.tsx", category: "pages" },
+  { path: "src/pages/SocialMedia.tsx", category: "pages" },
+  { path: "src/pages/Reports.tsx", category: "pages" },
+  { path: "src/pages/Settings.tsx", category: "pages" },
+  { path: "src/pages/Auth.tsx", category: "pages" },
+  // Components - Analytics
+  { path: "src/components/analytics/AnalyticsSummary.tsx", category: "analytics" },
+  { path: "src/components/analytics/GoogleAdsCard.tsx", category: "analytics" },
+  { path: "src/components/analytics/FacebookAdsCard.tsx", category: "analytics" },
+  { path: "src/components/analytics/GlobalKPIBar.tsx", category: "analytics" },
+  // Components - AI
+  { path: "src/components/ai/AIInsightsChat.tsx", category: "ai" },
+  { path: "src/components/ai/ModularAgentChat.tsx", category: "ai" },
+  { path: "src/components/ai/GlobalAgentFAB.tsx", category: "ai" },
+  { path: "src/components/ai/AIContentReviewer.tsx", category: "ai" },
+  // Components - Tasks
+  { path: "src/components/tasks/TaskList.tsx", category: "tasks" },
+  { path: "src/components/tasks/MyDayBoard.tsx", category: "tasks" },
+  { path: "src/components/tasks/TeamDashboard.tsx", category: "tasks" },
+  // Components - Dashboard
+  { path: "src/components/dashboard/CampaignOverview.tsx", category: "dashboard" },
+  { path: "src/components/dashboard/MetricCard.tsx", category: "dashboard" },
+  { path: "src/components/dashboard/PerformanceChart.tsx", category: "dashboard" },
+  // Components - Layout
+  { path: "src/components/layout/Sidebar.tsx", category: "layout" },
+  { path: "src/components/layout/MainLayout.tsx", category: "layout" },
+  // Hooks
+  { path: "src/hooks/useAuth.tsx", category: "hooks" },
+  { path: "src/hooks/useClient.tsx", category: "hooks" },
+  { path: "src/hooks/useAnalyticsData.ts", category: "hooks" },
+  { path: "src/hooks/useRealtime.tsx", category: "hooks" },
+  // Edge Functions
+  { path: "supabase/functions/ai-code-analyzer/index.ts", category: "edge-functions" },
+  { path: "supabase/functions/insights-chat/index.ts", category: "edge-functions" },
+  { path: "supabase/functions/google-ads/index.ts", category: "edge-functions" },
+  { path: "supabase/functions/facebook-ads/index.ts", category: "edge-functions" },
+  // Core
+  { path: "src/App.tsx", category: "core" },
+  { path: "src/routes/config.ts", category: "core" },
+];
 
 interface CodeHealthIssue {
   id: string;
@@ -134,7 +188,9 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [codeInput, setCodeInput] = useState('');
   const [fileName, setFileName] = useState('');
   const [conversations, setConversations] = useState<{ id: string; title: string; updated_at: string }[]>([]);
-
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['pages']);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   // Check if user is admin/manager
   useEffect(() => {
     const checkRole = async () => {
@@ -276,6 +332,68 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
     if (data) {
       setChatMessages(data);
     }
+  };
+
+  // Load file content from project
+  const loadFileContent = async (filePath: string) => {
+    setIsLoadingFile(true);
+    try {
+      // Fetch file from the project - using the raw GitHub-like approach via edge function
+      const { data, error } = await supabase.functions.invoke('ai-code-analyzer', {
+        body: {
+          action: 'get-file-content',
+          filePath,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.content) {
+        setCodeInput(data.content);
+        setFileName(filePath.split('/').pop() || filePath);
+        toast.success(`נטען: ${filePath}`);
+      } else {
+        throw new Error(data.error || 'Failed to load file');
+      }
+    } catch (error) {
+      console.error('Error loading file:', error);
+      toast.error('לא ניתן לטעון את הקובץ');
+    } finally {
+      setIsLoadingFile(false);
+    }
+  };
+
+  // Toggle category expansion
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  // Get files by category
+  const getFilesByCategory = () => {
+    const categories: Record<string, typeof PROJECT_FILES> = {};
+    PROJECT_FILES.forEach(file => {
+      if (!categories[file.category]) {
+        categories[file.category] = [];
+      }
+      categories[file.category].push(file);
+    });
+    return categories;
+  };
+
+  const categoryLabels: Record<string, string> = {
+    'pages': '📄 דפים',
+    'analytics': '📊 אנליטיקס',
+    'ai': '🤖 AI',
+    'tasks': '✅ משימות',
+    'dashboard': '📈 דאשבורד',
+    'layout': '🎨 לייאאוט',
+    'hooks': '🪝 Hooks',
+    'edge-functions': '⚡ Edge Functions',
+    'core': '⚙️ Core',
   };
 
   // Send chat message
@@ -508,6 +626,57 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
 
                 {/* Code Input Area */}
                 <div className="mb-3 p-3 border rounded-lg bg-background">
+                  {/* File Browser */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 mb-2">
+                        <FolderTree className="h-4 w-4" />
+                        <span>בחר קובץ מהפרויקט</span>
+                        <ChevronDown className="h-4 w-4 mr-auto" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="border rounded-lg p-2 mb-2 max-h-[200px] overflow-y-auto bg-muted/30">
+                        {Object.entries(getFilesByCategory()).map(([category, files]) => (
+                          <Collapsible key={category} open={expandedCategories.includes(category)}>
+                            <CollapsibleTrigger 
+                              onClick={() => toggleCategory(category)}
+                              className="flex items-center gap-2 w-full p-1.5 hover:bg-muted rounded text-sm font-medium"
+                            >
+                              {expandedCategories.includes(category) ? (
+                                <ChevronDown className="h-3 w-3" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3" />
+                              )}
+                              {categoryLabels[category] || category}
+                              <Badge variant="secondary" className="text-xs mr-auto">{files.length}</Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mr-4 border-r pr-2 space-y-0.5">
+                                {files.map(file => (
+                                  <Button
+                                    key={file.path}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs h-7 gap-2"
+                                    disabled={isLoadingFile}
+                                    onClick={() => loadFileContent(file.path)}
+                                  >
+                                    <File className="h-3 w-3 text-muted-foreground" />
+                                    <span className="truncate" dir="ltr">{file.path.split('/').pop()}</span>
+                                    {isLoadingFile && fileName === file.path.split('/').pop() && (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-auto" />
+                                    )}
+                                  </Button>
+                                ))}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   <div className="flex items-center gap-2 mb-2">
                     <FileCode className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">הדבק קוד לניתוח</span>
@@ -522,12 +691,12 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                   <Textarea
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="הדבק כאן קוד TypeScript/React לניתוח..."
+                    placeholder="הדבק כאן קוד TypeScript/React לניתוח, או בחר קובץ מלמעלה..."
                     className="font-mono text-sm min-h-[100px] resize-y"
                     dir="ltr"
                   />
                   {codeInput && (
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2 flex gap-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
@@ -561,6 +730,9 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                         <AlertTriangle className="h-3 w-3 ml-1" />
                         מצא ריקים
                       </Button>
+                      <Badge variant="outline" className="text-xs">
+                        {codeInput.split('\n').length} שורות
+                      </Badge>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -568,6 +740,7 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                           setCodeInput('');
                           setFileName('');
                         }}
+                        className="mr-auto"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
