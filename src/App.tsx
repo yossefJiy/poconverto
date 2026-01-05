@@ -45,6 +45,7 @@ import Permissions from "./pages/Permissions";
 import ClientManagement from "./pages/ClientManagement";
 import KPIDashboard from "./pages/KPIDashboard";
 import Competitors from "./pages/Competitors";
+import SocialMedia from "./pages/SocialMedia";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
               <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
               <Route path="/kpis" element={<ProtectedRoute><KPIDashboard /></ProtectedRoute>} />
               <Route path="/competitors" element={<ProtectedRoute><Competitors /></ProtectedRoute>} />
+              <Route path="/social" element={<ProtectedRoute><SocialMedia /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

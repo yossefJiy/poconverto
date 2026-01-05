@@ -1866,6 +1866,134 @@ export type Database = {
           },
         ]
       }
+      content_calendar: {
+        Row: {
+          assigned_to: string | null
+          client_id: string
+          color: string | null
+          content: string | null
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          platforms: string[] | null
+          post_id: string | null
+          status: string
+          tags: string[] | null
+          time: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id: string
+          color?: string | null
+          content?: string | null
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          platforms?: string[] | null
+          post_id?: string | null
+          status?: string
+          tags?: string[] | null
+          time?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string
+          color?: string | null
+          content?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          platforms?: string[] | null
+          post_id?: string | null
+          status?: string
+          tags?: string[] | null
+          time?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_calendar_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_calendar_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_templates: {
+        Row: {
+          category: string
+          client_id: string | null
+          content: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_global: boolean | null
+          media_urls: Json | null
+          name: string
+          platforms: string[] | null
+          updated_at: string | null
+          usage_count: number | null
+          variables: Json | null
+        }
+        Insert: {
+          category?: string
+          client_id?: string | null
+          content: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          media_urls?: Json | null
+          name: string
+          platforms?: string[] | null
+          updated_at?: string | null
+          usage_count?: number | null
+          variables?: Json | null
+        }
+        Update: {
+          category?: string
+          client_id?: string | null
+          content?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          media_urls?: Json | null
+          name?: string
+          platforms?: string[] | null
+          updated_at?: string | null
+          usage_count?: number | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_alerts: {
         Row: {
           alert_type: string
@@ -2036,6 +2164,50 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_feature_requests_client"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hashtag_groups: {
+        Row: {
+          category: string | null
+          client_id: string
+          created_at: string | null
+          hashtags: string[]
+          id: string
+          last_used_at: string | null
+          name: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          client_id: string
+          created_at?: string | null
+          hashtags: string[]
+          id?: string
+          last_used_at?: string | null
+          name: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          client_id?: string
+          created_at?: string | null
+          hashtags?: string[]
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hashtag_groups_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -2459,6 +2631,143 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      social_accounts: {
+        Row: {
+          access_token: string | null
+          account_id: string
+          account_name: string | null
+          account_url: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          metadata: Json | null
+          platform: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          account_id: string
+          account_name?: string | null
+          account_url?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          platform: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          account_id?: string
+          account_name?: string | null
+          account_url?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          platform?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_posts: {
+        Row: {
+          account_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          engagement: Json | null
+          error_message: string | null
+          external_post_id: string | null
+          hashtags: string[] | null
+          id: string
+          media_urls: Json | null
+          platforms: string[] | null
+          published_at: string | null
+          scheduled_for: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          engagement?: Json | null
+          error_message?: string | null
+          external_post_id?: string | null
+          hashtags?: string[] | null
+          id?: string
+          media_urls?: Json | null
+          platforms?: string[] | null
+          published_at?: string | null
+          scheduled_for?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          engagement?: Json | null
+          error_message?: string | null
+          external_post_id?: string | null
+          hashtags?: string[] | null
+          id?: string
+          media_urls?: Json | null
+          platforms?: string[] | null
+          published_at?: string | null
+          scheduled_for?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sync_schedules: {
         Row: {

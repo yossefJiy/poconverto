@@ -26,6 +26,7 @@ import {
   Building2,
   Crosshair,
   UserSearch,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,6 +62,7 @@ const menuItems: MenuItem[] = [
   { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
   { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "marketing" },
   { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "marketing" },
+  { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
