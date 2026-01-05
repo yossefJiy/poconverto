@@ -21,14 +21,6 @@ import {
   Lock,
   DollarSign,
   AlertTriangle,
-  MessageSquare,
-  Send,
-  Code,
-  FileCode,
-  FolderTree,
-  ChevronDown,
-  ChevronRight,
-  File,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -52,60 +44,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-// Project files structure for code analysis
-const PROJECT_FILES: { path: string; category: string }[] = [
-  // Pages
-  { path: "src/pages/Dashboard.tsx", category: "pages" },
-  { path: "src/pages/Analytics.tsx", category: "pages" },
-  { path: "src/pages/Tasks.tsx", category: "pages" },
-  { path: "src/pages/Campaigns.tsx", category: "pages" },
-  { path: "src/pages/ClientDashboard.tsx", category: "pages" },
-  { path: "src/pages/CodeHealth.tsx", category: "pages" },
-  { path: "src/pages/SocialMedia.tsx", category: "pages" },
-  { path: "src/pages/Reports.tsx", category: "pages" },
-  { path: "src/pages/Settings.tsx", category: "pages" },
-  { path: "src/pages/Auth.tsx", category: "pages" },
-  // Components - Analytics
-  { path: "src/components/analytics/AnalyticsSummary.tsx", category: "analytics" },
-  { path: "src/components/analytics/GoogleAdsCard.tsx", category: "analytics" },
-  { path: "src/components/analytics/FacebookAdsCard.tsx", category: "analytics" },
-  { path: "src/components/analytics/GlobalKPIBar.tsx", category: "analytics" },
-  // Components - AI
-  { path: "src/components/ai/AIInsightsChat.tsx", category: "ai" },
-  { path: "src/components/ai/ModularAgentChat.tsx", category: "ai" },
-  { path: "src/components/ai/GlobalAgentFAB.tsx", category: "ai" },
-  { path: "src/components/ai/AIContentReviewer.tsx", category: "ai" },
-  // Components - Tasks
-  { path: "src/components/tasks/TaskList.tsx", category: "tasks" },
-  { path: "src/components/tasks/MyDayBoard.tsx", category: "tasks" },
-  { path: "src/components/tasks/TeamDashboard.tsx", category: "tasks" },
-  // Components - Dashboard
-  { path: "src/components/dashboard/CampaignOverview.tsx", category: "dashboard" },
-  { path: "src/components/dashboard/MetricCard.tsx", category: "dashboard" },
-  { path: "src/components/dashboard/PerformanceChart.tsx", category: "dashboard" },
-  // Components - Layout
-  { path: "src/components/layout/Sidebar.tsx", category: "layout" },
-  { path: "src/components/layout/MainLayout.tsx", category: "layout" },
-  // Hooks
-  { path: "src/hooks/useAuth.tsx", category: "hooks" },
-  { path: "src/hooks/useClient.tsx", category: "hooks" },
-  { path: "src/hooks/useAnalyticsData.ts", category: "hooks" },
-  { path: "src/hooks/useRealtime.tsx", category: "hooks" },
-  // Edge Functions
-  { path: "supabase/functions/ai-code-analyzer/index.ts", category: "edge-functions" },
-  { path: "supabase/functions/insights-chat/index.ts", category: "edge-functions" },
-  { path: "supabase/functions/google-ads/index.ts", category: "edge-functions" },
-  { path: "supabase/functions/facebook-ads/index.ts", category: "edge-functions" },
-  // Core
-  { path: "src/App.tsx", category: "core" },
-  { path: "src/routes/config.ts", category: "core" },
-];
 
 interface CodeHealthIssue {
   id: string;
@@ -154,7 +94,6 @@ interface UsageStats {
 }
 
 const AI_MODELS = [
-  { id: 'x-ai/grok-code-fast-1', name: 'Grok Code Fast', icon: '🚀', description: 'מהיר לקוד - מומלץ!', costIndicator: '$', premium: false },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '⚡', description: 'מהיר וזול', costIndicator: '$', premium: false },
   { id: 'google/gemini-2.0-flash', name: 'Gemini Flash', icon: '💨', description: 'הכי זול', costIndicator: '$', premium: false },
   { id: 'perplexity/sonar-pro', name: 'Perplexity Sonar Pro', icon: '🔍', description: 'חיפוש אינטרנט + AI', costIndicator: '$$$', premium: true },
@@ -173,24 +112,14 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [executedActions, setExecutedActions] = useState<any>(null);
   const [provider, setProvider] = useState<string>('');
   const [citations, setCitations] = useState<Citation[]>([]);
-  const [selectedModel, setSelectedModel] = useState('x-ai/grok-code-fast-1');
-  const [activeTab, setActiveTab] = useState('chat');
+  const [selectedModel, setSelectedModel] = useState('openai/gpt-4o-mini');
+  const [activeTab, setActiveTab] = useState('agent');
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUsage, setLastUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCost: number } | null>(null);
-  
-  // Chat state
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatConversationId, setChatConversationId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
-  const [codeInput, setCodeInput] = useState('');
-  const [fileName, setFileName] = useState('');
-  const [conversations, setConversations] = useState<{ id: string; title: string; updated_at: string }[]>([]);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['pages']);
-  const [isLoadingFile, setIsLoadingFile] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+
   // Check if user is admin/manager
   useEffect(() => {
     const checkRole = async () => {
@@ -274,183 +203,7 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
     if (activeTab === 'history') {
       fetchHistory();
     }
-    if (activeTab === 'chat') {
-      fetchConversations();
-    }
   }, [activeTab, user?.id]);
-
-  // Fetch conversations
-  const fetchConversations = async () => {
-    if (!user?.id) return;
-    const { data } = await supabase
-      .from('chat_conversations')
-      .select('id, title, updated_at')
-      .eq('user_id', user.id)
-      .eq('agent_type', 'code_review')
-      .order('updated_at', { ascending: false })
-      .limit(10);
-    
-    if (data) {
-      setConversations(data);
-    }
-  };
-
-  // Create new conversation
-  const createConversation = async () => {
-    if (!user?.id) return null;
-    
-    const { data, error } = await supabase
-      .from('chat_conversations')
-      .insert({
-        user_id: user.id,
-        agent_type: 'code_review',
-        title: 'שיחה חדשה',
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating conversation:', error);
-      return null;
-    }
-    
-    setChatConversationId(data.id);
-    setChatMessages([]);
-    fetchConversations();
-    return data.id;
-  };
-
-  // Load conversation messages
-  const loadConversation = async (convId: string) => {
-    setChatConversationId(convId);
-    const { data } = await supabase
-      .from('chat_messages')
-      .select('role, content')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: true });
-    
-    if (data) {
-      setChatMessages(data);
-    }
-  };
-
-  // Load file content from project
-  const loadFileContent = async (filePath: string) => {
-    setIsLoadingFile(true);
-    try {
-      // Fetch file from the project - using the raw GitHub-like approach via edge function
-      const { data, error } = await supabase.functions.invoke('ai-code-analyzer', {
-        body: {
-          action: 'get-file-content',
-          filePath,
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success && data.content) {
-        setCodeInput(data.content);
-        setFileName(filePath.split('/').pop() || filePath);
-        toast.success(`נטען: ${filePath}`);
-      } else {
-        throw new Error(data.error || 'Failed to load file');
-      }
-    } catch (error) {
-      console.error('Error loading file:', error);
-      toast.error('לא ניתן לטעון את הקובץ');
-    } finally {
-      setIsLoadingFile(false);
-    }
-  };
-
-  // Toggle category expansion
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  // Get files by category
-  const getFilesByCategory = () => {
-    const categories: Record<string, typeof PROJECT_FILES> = {};
-    PROJECT_FILES.forEach(file => {
-      if (!categories[file.category]) {
-        categories[file.category] = [];
-      }
-      categories[file.category].push(file);
-    });
-    return categories;
-  };
-
-  const categoryLabels: Record<string, string> = {
-    'pages': '📄 דפים',
-    'analytics': '📊 אנליטיקס',
-    'ai': '🤖 AI',
-    'tasks': '✅ משימות',
-    'dashboard': '📈 דאשבורד',
-    'layout': '🎨 לייאאוט',
-    'hooks': '🪝 Hooks',
-    'edge-functions': '⚡ Edge Functions',
-    'core': '⚙️ Core',
-  };
-
-  // Send chat message
-  const sendChatMessage = async () => {
-    if (!chatMessage.trim() || isLoading) return;
-    
-    setIsLoading(true);
-    const userMessage = chatMessage;
-    setChatMessage('');
-    
-    // Add user message to UI immediately
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    
-    try {
-      // Create conversation if needed
-      let convId = chatConversationId;
-      if (!convId) {
-        convId = await createConversation();
-        if (!convId) throw new Error('Failed to create conversation');
-      }
-      
-      const { data, error } = await supabase.functions.invoke('ai-code-analyzer', {
-        body: {
-          action: 'chat',
-          message: userMessage,
-          conversationId: convId,
-          model: selectedModel,
-          userId: user?.id,
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-        setLastUsage(data.usage || null);
-        
-        // Update conversation title after first message
-        if (chatMessages.length === 0) {
-          const title = userMessage.slice(0, 50) + (userMessage.length > 50 ? '...' : '');
-          await supabase
-            .from('chat_conversations')
-            .update({ title })
-            .eq('id', convId);
-          fetchConversations();
-        }
-      } else {
-        throw new Error(data.error || 'Unknown error');
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      toast.error('שגיאה בשליחת ההודעה');
-      setChatMessages(prev => prev.slice(0, -1)); // Remove failed user message
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const runAction = async (action: 'analyze' | 'suggest-fix' | 'scan-duplicates' | 'auto-close') => {
     setIsLoading(true);
@@ -563,10 +316,6 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-full justify-start">
-            <TabsTrigger value="chat" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              צ'אט
-            </TabsTrigger>
             <TabsTrigger value="agent" className="gap-2">
               <Sparkles className="h-4 w-4" />
               סוכן
@@ -576,252 +325,6 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
               היסטוריה
             </TabsTrigger>
           </TabsList>
-
-          {/* Chat Tab */}
-          <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 mt-4">
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Conversations List */}
-              <div className="w-48 flex-shrink-0 border-l pl-4 flex flex-col gap-2">
-                <Button size="sm" onClick={createConversation} className="w-full gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  שיחה חדשה
-                </Button>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-1">
-                    {conversations.map(conv => (
-                      <Button
-                        key={conv.id}
-                        variant={chatConversationId === conv.id ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="w-full justify-start text-xs truncate"
-                        onClick={() => loadConversation(conv.id)}
-                      >
-                        {conv.title || 'שיחה ללא כותרת'}
-                      </Button>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-
-              {/* Chat Area */}
-              <div className="flex-1 flex flex-col min-h-0">
-                {/* Model Selector */}
-                <div className="mb-3">
-                  <Select value={selectedModel} onValueChange={setSelectedModel}>
-                    <SelectTrigger className="w-[200px] h-8">
-                      <SelectValue>
-                        {AI_MODELS.find(m => m.id === selectedModel)?.icon}{' '}
-                        {AI_MODELS.find(m => m.id === selectedModel)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AI_MODELS.filter(m => canUsePremiumModel(m.id)).map(model => (
-                        <SelectItem key={model.id} value={model.id}>
-                          <span>{model.icon} {model.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Code Input Area */}
-                <div className="mb-3 p-3 border rounded-lg bg-background">
-                  {/* File Browser */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 mb-2">
-                        <FolderTree className="h-4 w-4" />
-                        <span>בחר קובץ מהפרויקט</span>
-                        <ChevronDown className="h-4 w-4 mr-auto" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="border rounded-lg p-2 mb-2 max-h-[200px] overflow-y-auto bg-muted/30">
-                        {Object.entries(getFilesByCategory()).map(([category, files]) => (
-                          <Collapsible key={category} open={expandedCategories.includes(category)}>
-                            <CollapsibleTrigger 
-                              onClick={() => toggleCategory(category)}
-                              className="flex items-center gap-2 w-full p-1.5 hover:bg-muted rounded text-sm font-medium"
-                            >
-                              {expandedCategories.includes(category) ? (
-                                <ChevronDown className="h-3 w-3" />
-                              ) : (
-                                <ChevronRight className="h-3 w-3" />
-                              )}
-                              {categoryLabels[category] || category}
-                              <Badge variant="secondary" className="text-xs mr-auto">{files.length}</Badge>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="mr-4 border-r pr-2 space-y-0.5">
-                                {files.map(file => (
-                                  <Button
-                                    key={file.path}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="w-full justify-start text-xs h-7 gap-2"
-                                    disabled={isLoadingFile}
-                                    onClick={() => loadFileContent(file.path)}
-                                  >
-                                    <File className="h-3 w-3 text-muted-foreground" />
-                                    <span className="truncate" dir="ltr">{file.path.split('/').pop()}</span>
-                                    {isLoadingFile && fileName === file.path.split('/').pop() && (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-auto" />
-                                    )}
-                                  </Button>
-                                ))}
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileCode className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">הדבק קוד לניתוח</span>
-                    <Input
-                      placeholder="שם הקובץ (אופציונלי)"
-                      value={fileName}
-                      onChange={(e) => setFileName(e.target.value)}
-                      className="w-40 h-7 text-xs"
-                      dir="ltr"
-                    />
-                  </div>
-                  <Textarea
-                    value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="הדבק כאן קוד TypeScript/React לניתוח, או בחר קובץ מלמעלה..."
-                    className="font-mono text-sm min-h-[100px] resize-y"
-                    dir="ltr"
-                  />
-                  {codeInput && (
-                    <div className="mt-2 flex gap-2 flex-wrap">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const prompt = `נתח את הקוד הבא${fileName ? ` מהקובץ ${fileName}` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\`\n\nבדוק:\n1. פונקציות ריקות או placeholder\n2. בעיות RTL\n3. Mock data שצריך להחליף\n4. בעיות UI/UX\n5. שיפורים אפשריים`;
-                          setChatMessage(prompt);
-                        }}
-                      >
-                        <Search className="h-3 w-3 ml-1" />
-                        נתח קוד
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const prompt = `מצא בעיות RTL בקוד הבא${fileName ? ` (${fileName})` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\`\n\nבדוק direction, text-align, flexbox order, margins/paddings שצריכים להיות הפוכים בעברית.`;
-                          setChatMessage(prompt);
-                        }}
-                      >
-                        <Globe className="h-3 w-3 ml-1" />
-                        בדוק RTL
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const prompt = `מצא פונקציות ריקות, TODO, placeholder, והערות FIXME בקוד${fileName ? ` (${fileName})` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\``;
-                          setChatMessage(prompt);
-                        }}
-                      >
-                        <AlertTriangle className="h-3 w-3 ml-1" />
-                        מצא ריקים
-                      </Button>
-                      <Badge variant="outline" className="text-xs">
-                        {codeInput.split('\n').length} שורות
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setCodeInput('');
-                          setFileName('');
-                        }}
-                        className="mr-auto"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Messages */}
-                <ScrollArea className="flex-1 border rounded-lg p-4 mb-3 bg-muted/30">
-                  <div className="space-y-4">
-                    {chatMessages.length === 0 && !codeInput ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>שלום! אני Grok - סוכן AI לניתוח קוד.</p>
-                        <p className="text-sm mt-2">הדבק קוד למעלה או שאל אותי שאלה.</p>
-                        <div className="mt-4 flex flex-wrap justify-center gap-2">
-                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('סרוק את כל הקוד ומצא פונקציות ריקות')}>
-                            🔍 מצא פונקציות ריקות
-                          </Badge>
-                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('בדוק בעיות RTL בפרויקט')}>
-                            🌐 בדוק RTL
-                          </Badge>
-                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('מצא Mock data שצריך להחליף')}>
-                            📦 מצא Mock Data
-                          </Badge>
-                        </div>
-                      </div>
-                    ) : (
-                      chatMessages.map((msg, idx) => (
-                        <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                          <div className={`p-2 rounded-lg ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border'}`}>
-                            {msg.role === 'user' ? '👤' : '🤖'}
-                          </div>
-                          <div className={`flex-1 p-3 rounded-lg ${msg.role === 'user' ? 'bg-primary/10' : 'bg-background border'}`}>
-                            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                              {msg.content}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    {isLoading && (
-                      <div className="flex gap-3">
-                        <div className="p-2 rounded-lg bg-background border">🤖</div>
-                        <div className="flex-1 p-3 rounded-lg bg-background border">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                {/* Input */}
-                <div className="flex gap-2">
-                  <Textarea
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="שאל על הקוד שלך..."
-                    className="min-h-[60px] resize-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendChatMessage();
-                      }
-                    }}
-                  />
-                  <Button onClick={sendChatMessage} disabled={isLoading || !chatMessage.trim()} className="self-end">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Usage Info */}
-                {lastUsage && (
-                  <div className="text-xs text-muted-foreground mt-2 flex gap-4">
-                    <span>Tokens: {lastUsage.inputTokens} → {lastUsage.outputTokens}</span>
-                    <span>עלות: ${lastUsage.estimatedCost.toFixed(4)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
 
           <TabsContent value="agent" className="flex-1 flex flex-col min-h-0 space-y-4 mt-4">
             {/* Usage Stats Bar */}
