@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { useClient } from "@/hooks/useClient";
 import { ShopifyDashboard } from "@/components/shopify/ShopifyDashboard";
 import { WooCommerceDashboard } from "@/components/woocommerce/WooCommerceDashboard";
@@ -110,6 +111,7 @@ export default function Ecommerce() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="ecommerce">
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -172,6 +174,7 @@ export default function Ecommerce() {
           </Tabs>
         )}
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
