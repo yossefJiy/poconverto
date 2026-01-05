@@ -53,6 +53,7 @@ import ContentStudio from "./pages/ContentStudio";
 import AgencyDashboard from "./pages/AgencyDashboard";
 import Projects from "./pages/Projects";
 import LeadManagement from "./pages/LeadManagement";
+import BillingManagement from "./pages/BillingManagement";
 
 const queryClient = new QueryClient();
 
@@ -292,6 +293,13 @@ const App = () => (
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="leads">
                     <LeadManagement />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/billing" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="billing">
+                    <BillingManagement />
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
