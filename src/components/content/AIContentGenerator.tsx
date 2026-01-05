@@ -292,5 +292,3 @@ export const AIContentGenerator = forwardRef<HTMLDivElement, AIContentGeneratorP
   </div>
   );
 });
-
-export default AIContentGenerator;

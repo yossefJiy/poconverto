@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,6 +77,7 @@ export default function Reports() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="reports">
       <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -309,6 +311,7 @@ export default function Reports() {
           clientName={selectedClient.name}
         />
       )}
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
