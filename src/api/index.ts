@@ -8,6 +8,7 @@ import { aiAPI } from './ai.api';
 import { kpiAPI } from './kpi.api';
 import { competitorAPI } from './competitor.api';
 import { socialAPI } from './social.api';
+import { contentAPI } from './content.api';
 
 export const api = {
   analytics: analyticsAPI,
@@ -18,6 +19,7 @@ export const api = {
   kpi: kpiAPI,
   competitors: competitorAPI,
   social: socialAPI,
+  content: contentAPI,
 };
 
 export { analyticsAPI } from './analytics.api';
@@ -28,4 +30,5 @@ export { aiAPI } from './ai.api';
 export { kpiAPI } from './kpi.api';
 export { competitorAPI } from './competitor.api';
 export { socialAPI } from './social.api';
+export { contentAPI } from './content.api';
 export { BaseAPI } from './base';

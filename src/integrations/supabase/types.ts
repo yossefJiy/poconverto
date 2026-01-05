@@ -445,6 +445,63 @@ export type Database = {
           },
         ]
       }
+      ai_content_history: {
+        Row: {
+          client_id: string | null
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          generated_content: string
+          id: string
+          metadata: Json | null
+          model_used: string | null
+          prompt: string
+          rating: number | null
+          used_in_draft_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          content_type: string
+          created_at?: string | null
+          created_by?: string | null
+          generated_content: string
+          id?: string
+          metadata?: Json | null
+          model_used?: string | null
+          prompt: string
+          rating?: number | null
+          used_in_draft_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          generated_content?: string
+          id?: string
+          metadata?: Json | null
+          model_used?: string | null
+          prompt?: string
+          rating?: number | null
+          used_in_draft_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_content_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_content_history_used_in_draft_id_fkey"
+            columns: ["used_in_draft_id"]
+            isOneToOne: false
+            referencedRelation: "content_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_module_settings: {
         Row: {
           allowed_capabilities: string[] | null
@@ -856,6 +913,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      brand_assets: {
+        Row: {
+          asset_type: string
+          client_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_primary: boolean | null
+          metadata: Json | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          asset_type: string
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          metadata?: Json | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          asset_type?: string
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_primary?: boolean | null
+          metadata?: Json | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brand_health_scores: {
         Row: {
@@ -1935,6 +2042,65 @@ export type Database = {
           },
         ]
       }
+      content_drafts: {
+        Row: {
+          client_id: string | null
+          content: string | null
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          media_ids: string[] | null
+          metadata: Json | null
+          platforms: string[] | null
+          scheduled_for: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          content?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          media_ids?: string[] | null
+          metadata?: Json | null
+          platforms?: string[] | null
+          scheduled_for?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          content?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          media_ids?: string[] | null
+          metadata?: Json | null
+          platforms?: string[] | null
+          scheduled_for?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_templates: {
         Row: {
           category: string
@@ -2429,6 +2595,68 @@ export type Database = {
           },
           {
             foreignKeyName: "marketing_data_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_library: {
+        Row: {
+          alt_text: string | null
+          client_id: string | null
+          created_at: string | null
+          file_size: number | null
+          file_type: string
+          file_url: string
+          folder: string | null
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          name: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          alt_text?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          folder?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          name: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          alt_text?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          folder?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          name?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_library_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
