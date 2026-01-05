@@ -9,7 +9,10 @@ import {
   CheckSquare, 
   Users,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Contact,
+  Receipt,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +26,9 @@ export interface DefaultModules {
   campaigns: boolean;
   tasks: boolean;
   team: boolean;
+  leads: boolean;
+  billing: boolean;
+  approvals: boolean;
 }
 
 // Alias for backward compatibility
@@ -36,6 +42,9 @@ export const defaultModulesConfig: DefaultModules = {
   campaigns: true,
   tasks: true,
   team: true,
+  leads: true,
+  billing: true,
+  approvals: true,
 };
 
 interface DefaultModulesSelectorProps {
@@ -51,6 +60,9 @@ const moduleConfig = [
   { key: "campaigns", label: "קמפיינים", icon: Megaphone, description: "ניהול קמפיינים" },
   { key: "tasks", label: "משימות", icon: CheckSquare, description: "ניהול משימות" },
   { key: "team", label: "צוות", icon: Users, description: "צוות משויך" },
+  { key: "leads", label: "לידים", icon: Contact, description: "ניהול לידים" },
+  { key: "billing", label: "חיובים", icon: Receipt, description: "חשבוניות והצעות מחיר" },
+  { key: "approvals", label: "אישורים", icon: ClipboardCheck, description: "תהליכי אישור" },
 ];
 
 export function DefaultModulesSelector({ modules, onChange }: DefaultModulesSelectorProps) {
