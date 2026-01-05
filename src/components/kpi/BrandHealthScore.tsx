@@ -170,5 +170,3 @@ export function BrandHealthScore({ kpis, className }: BrandHealthScoreProps) {
     </Card>
   );
 }
-
-export default BrandHealthScore;

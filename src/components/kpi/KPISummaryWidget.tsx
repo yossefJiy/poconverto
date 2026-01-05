@@ -103,5 +103,3 @@ export function KPISummaryWidget({ kpis, className }: KPISummaryWidgetProps) {
     </Card>
   );
 }
-
-export default KPISummaryWidget;

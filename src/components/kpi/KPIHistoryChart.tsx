@@ -139,5 +139,3 @@ export function KPIHistoryChart({
     </Card>
   );
 }
-
-export default KPIHistoryChart;
