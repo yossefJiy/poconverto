@@ -48,6 +48,8 @@ import KPIDashboard from "./pages/KPIDashboard";
 import Competitors from "./pages/Competitors";
 import SocialMedia from "./pages/SocialMedia";
 import ContentStudio from "./pages/ContentStudio";
+import AgencyDashboard from "./pages/AgencyDashboard";
+import Projects from "./pages/Projects";
 
 const queryClient = new QueryClient();
 
@@ -257,6 +259,20 @@ const App = () => (
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="social">
                     <SocialMedia />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/agency" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="agency">
+                    <AgencyDashboard />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/projects" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="projects">
+                    <Projects />
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
