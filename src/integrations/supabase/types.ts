@@ -14,6 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_tests: {
+        Row: {
+          campaign_id: string | null
+          client_id: string | null
+          confidence_level: number | null
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          results: Json | null
+          sample_size: number | null
+          start_date: string | null
+          status: string | null
+          updated_at: string
+          variant_a: Json
+          variant_b: Json
+          winner: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id?: string | null
+          confidence_level?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          results?: Json | null
+          sample_size?: number | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string
+          variant_a?: Json
+          variant_b?: Json
+          winner?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string | null
+          confidence_level?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          results?: Json | null
+          sample_size?: number | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string
+          variant_a?: Json
+          variant_b?: Json
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ab_tests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ab_tests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_placements: {
+        Row: {
+          bid_amount: number | null
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          daily_budget: number | null
+          id: string
+          performance_data: Json | null
+          placement_name: string | null
+          placement_type: string
+          platform: string
+          status: string | null
+          targeting_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          bid_amount?: number | null
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          daily_budget?: number | null
+          id?: string
+          performance_data?: Json | null
+          placement_name?: string | null
+          placement_type: string
+          platform: string
+          status?: string | null
+          targeting_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          bid_amount?: number | null
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          daily_budget?: number | null
+          id?: string
+          performance_data?: Json | null
+          placement_name?: string | null
+          placement_type?: string
+          platform?: string
+          status?: string | null
+          targeting_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_placements_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_placements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_agents: {
         Row: {
           agent_type: string
@@ -1291,6 +1426,69 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "brand_kpis_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_rules: {
+        Row: {
+          actions: Json
+          campaign_id: string | null
+          client_id: string | null
+          conditions: Json
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          priority: number | null
+          rule_type: string
+          trigger_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          campaign_id?: string | null
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          priority?: number | null
+          rule_type: string
+          trigger_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          campaign_id?: string | null
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          priority?: number | null
+          rule_type?: string
+          trigger_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_rules_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -2645,6 +2843,62 @@ export type Database = {
           },
         ]
       }
+      customer_segments: {
+        Row: {
+          avg_order_value: number | null
+          client_id: string | null
+          conditions: Json
+          created_at: string
+          customer_count: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_calculated_at: string | null
+          name: string
+          segment_type: string | null
+          total_revenue: number | null
+          updated_at: string
+        }
+        Insert: {
+          avg_order_value?: number | null
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          customer_count?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_calculated_at?: string | null
+          name: string
+          segment_type?: string | null
+          total_revenue?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avg_order_value?: number | null
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          customer_count?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_calculated_at?: string | null
+          name?: string
+          segment_type?: string | null
+          total_revenue?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_segments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_requests: {
         Row: {
           archived_at: string | null
@@ -3465,6 +3719,56 @@ export type Database = {
           },
         ]
       }
+      price_tracking: {
+        Row: {
+          client_id: string | null
+          competitor_name: string | null
+          competitor_price: number | null
+          competitor_url: string | null
+          created_at: string
+          id: string
+          our_price: number | null
+          price_difference: number | null
+          product_id: string
+          product_name: string | null
+          tracked_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          competitor_name?: string | null
+          competitor_price?: number | null
+          competitor_url?: string | null
+          created_at?: string
+          id?: string
+          our_price?: number | null
+          price_difference?: number | null
+          product_id: string
+          product_name?: string | null
+          tracked_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          competitor_name?: string | null
+          competitor_price?: number | null
+          competitor_url?: string | null
+          created_at?: string
+          id?: string
+          our_price?: number | null
+          price_difference?: number | null
+          product_id?: string
+          product_name?: string | null
+          tracked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_tracking_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       priority_allocation: {
         Row: {
           created_at: string
@@ -3503,6 +3807,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      product_feeds: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          error_count: number | null
+          feed_name: string
+          feed_type: string | null
+          feed_url: string | null
+          id: string
+          last_sync_at: string | null
+          platform: string
+          product_count: number | null
+          settings: Json | null
+          status: string | null
+          sync_frequency: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          error_count?: number | null
+          feed_name: string
+          feed_type?: string | null
+          feed_url?: string | null
+          id?: string
+          last_sync_at?: string | null
+          platform: string
+          product_count?: number | null
+          settings?: Json | null
+          status?: string | null
+          sync_frequency?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          error_count?: number | null
+          feed_name?: string
+          feed_type?: string | null
+          feed_url?: string | null
+          id?: string
+          last_sync_at?: string | null
+          platform?: string
+          product_count?: number | null
+          settings?: Json | null
+          status?: string | null
+          sync_frequency?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_feeds_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
