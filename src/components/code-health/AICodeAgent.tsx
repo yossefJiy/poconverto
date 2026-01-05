@@ -131,6 +131,8 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
   const [chatMessage, setChatMessage] = useState('');
   const [chatConversationId, setChatConversationId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
+  const [codeInput, setCodeInput] = useState('');
+  const [fileName, setFileName] = useState('');
   const [conversations, setConversations] = useState<{ id: string; title: string; updated_at: string }[]>([]);
 
   // Check if user is admin/manager
@@ -504,14 +506,94 @@ export function AICodeAgent({ issue, onActionComplete }: AICodeAgentProps) {
                   </Select>
                 </div>
 
+                {/* Code Input Area */}
+                <div className="mb-3 p-3 border rounded-lg bg-background">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileCode className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">הדבק קוד לניתוח</span>
+                    <Input
+                      placeholder="שם הקובץ (אופציונלי)"
+                      value={fileName}
+                      onChange={(e) => setFileName(e.target.value)}
+                      className="w-40 h-7 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Textarea
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    placeholder="הדבק כאן קוד TypeScript/React לניתוח..."
+                    className="font-mono text-sm min-h-[100px] resize-y"
+                    dir="ltr"
+                  />
+                  {codeInput && (
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const prompt = `נתח את הקוד הבא${fileName ? ` מהקובץ ${fileName}` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\`\n\nבדוק:\n1. פונקציות ריקות או placeholder\n2. בעיות RTL\n3. Mock data שצריך להחליף\n4. בעיות UI/UX\n5. שיפורים אפשריים`;
+                          setChatMessage(prompt);
+                        }}
+                      >
+                        <Search className="h-3 w-3 ml-1" />
+                        נתח קוד
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const prompt = `מצא בעיות RTL בקוד הבא${fileName ? ` (${fileName})` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\`\n\nבדוק direction, text-align, flexbox order, margins/paddings שצריכים להיות הפוכים בעברית.`;
+                          setChatMessage(prompt);
+                        }}
+                      >
+                        <Globe className="h-3 w-3 ml-1" />
+                        בדוק RTL
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const prompt = `מצא פונקציות ריקות, TODO, placeholder, והערות FIXME בקוד${fileName ? ` (${fileName})` : ''}:\n\n\`\`\`typescript\n${codeInput}\n\`\`\``;
+                          setChatMessage(prompt);
+                        }}
+                      >
+                        <AlertTriangle className="h-3 w-3 ml-1" />
+                        מצא ריקים
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setCodeInput('');
+                          setFileName('');
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Messages */}
                 <ScrollArea className="flex-1 border rounded-lg p-4 mb-3 bg-muted/30">
                   <div className="space-y-4">
-                    {chatMessages.length === 0 ? (
+                    {chatMessages.length === 0 && !codeInput ? (
                       <div className="text-center text-muted-foreground py-8">
                         <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>שלום! אני Grok - סוכן AI לניתוח קוד.</p>
-                        <p className="text-sm mt-2">שאל אותי על הקוד שלך, בעיות RTL, פונקציות ריקות, או כל שאלה אחרת.</p>
+                        <p className="text-sm mt-2">הדבק קוד למעלה או שאל אותי שאלה.</p>
+                        <div className="mt-4 flex flex-wrap justify-center gap-2">
+                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('סרוק את כל הקוד ומצא פונקציות ריקות')}>
+                            🔍 מצא פונקציות ריקות
+                          </Badge>
+                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('בדוק בעיות RTL בפרויקט')}>
+                            🌐 בדוק RTL
+                          </Badge>
+                          <Badge variant="outline" className="cursor-pointer hover:bg-muted" onClick={() => setChatMessage('מצא Mock data שצריך להחליף')}>
+                            📦 מצא Mock Data
+                          </Badge>
+                        </div>
                       </div>
                     ) : (
                       chatMessages.map((msg, idx) => (
