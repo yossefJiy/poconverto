@@ -2639,44 +2639,239 @@ export type Database = {
           },
         ]
       }
-      leads: {
+      lead_activities: {
         Row: {
-          company: string | null
+          activity_type: string
           created_at: string
-          email: string
+          created_by: string | null
+          description: string | null
           id: string
-          message: string | null
-          name: string
-          phone: string | null
-          source: string | null
+          lead_id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_conversations: {
+        Row: {
+          channel: string
+          created_at: string
+          external_id: string | null
+          id: string
+          last_message_at: string | null
+          lead_id: string
+          metadata: Json | null
           status: string | null
+          unread_count: number | null
           updated_at: string
         }
         Insert: {
-          company?: string | null
+          channel: string
           created_at?: string
-          email: string
+          external_id?: string | null
           id?: string
-          message?: string | null
-          name: string
-          phone?: string | null
-          source?: string | null
+          last_message_at?: string | null
+          lead_id: string
+          metadata?: Json | null
           status?: string | null
+          unread_count?: number | null
           updated_at?: string
         }
         Update: {
+          channel?: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string
+          metadata?: Json | null
+          status?: string | null
+          unread_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_messages: {
+        Row: {
+          content: string
+          content_type: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          external_id: string | null
+          id: string
+          media_url: string | null
+          metadata: Json | null
+          sender_id: string | null
+          sender_type: string
+          status: string | null
+        }
+        Insert: {
+          content: string
+          content_type?: string | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          external_id?: string | null
+          id?: string
+          media_url?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type: string
+          status?: string | null
+        }
+        Update: {
+          content?: string
+          content_type?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          external_id?: string | null
+          id?: string
+          media_url?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "lead_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_agent_id: string | null
+          assigned_user_id: string | null
+          client_id: string | null
+          company: string | null
+          conversion_value: number | null
+          created_at: string
+          email: string
+          id: string
+          last_contact_at: string | null
+          lead_score: number | null
+          lost_reason: string | null
+          message: string | null
+          metadata: Json | null
+          name: string
+          next_followup_at: string | null
+          phone: string | null
+          pipeline_stage: string | null
+          priority: string | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+          won_at: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          assigned_user_id?: string | null
+          client_id?: string | null
           company?: string | null
+          conversion_value?: number | null
+          created_at?: string
+          email: string
+          id?: string
+          last_contact_at?: string | null
+          lead_score?: number | null
+          lost_reason?: string | null
+          message?: string | null
+          metadata?: Json | null
+          name: string
+          next_followup_at?: string | null
+          phone?: string | null
+          pipeline_stage?: string | null
+          priority?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          won_at?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          assigned_user_id?: string | null
+          client_id?: string | null
+          company?: string | null
+          conversion_value?: number | null
           created_at?: string
           email?: string
           id?: string
+          last_contact_at?: string | null
+          lead_score?: number | null
+          lost_reason?: string | null
           message?: string | null
+          metadata?: Json | null
           name?: string
+          next_followup_at?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          priority?: string | null
           source?: string | null
           status?: string | null
+          tags?: string[] | null
           updated_at?: string
+          won_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_data: {
         Row: {
