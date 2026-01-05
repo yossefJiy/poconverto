@@ -1675,6 +1675,44 @@ export type Database = {
         }
         Relationships: []
       }
+      client_user_access: {
+        Row: {
+          access_level: string
+          client_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          client_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          client_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_user_access_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           access_level: string
@@ -2761,6 +2799,45 @@ export type Database = {
           },
         ]
       }
+      priority_allocation: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          innovation_percent: number
+          is_active: boolean | null
+          period: string | null
+          scope_id: string | null
+          scope_type: string
+          stability_percent: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          innovation_percent?: number
+          is_active?: boolean | null
+          period?: string | null
+          scope_id?: string | null
+          scope_type: string
+          stability_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          innovation_percent?: number
+          is_active?: boolean | null
+          period?: string | null
+          scope_id?: string | null
+          scope_type?: string
+          stability_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2790,6 +2867,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          budget_credits: number | null
+          budget_hours: number | null
+          client_id: string
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          priority_category: string | null
+          priority_override_percent: number | null
+          start_date: string | null
+          status: string
+          target_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_credits?: number | null
+          budget_hours?: number | null
+          client_id: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          priority_category?: string | null
+          priority_override_percent?: number | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_credits?: number | null
+          budget_hours?: number | null
+          client_id?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          priority_category?: string | null
+          priority_override_percent?: number | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_history: {
         Row: {
@@ -3335,6 +3477,7 @@ export type Database = {
           description: string | null
           estimated_credits: number | null
           id: string
+          project_id: string | null
           rejection_reason: string | null
           requested_by: string | null
           status: string
@@ -3350,6 +3493,7 @@ export type Database = {
           description?: string | null
           estimated_credits?: number | null
           id?: string
+          project_id?: string | null
           rejection_reason?: string | null
           requested_by?: string | null
           status?: string
@@ -3365,6 +3509,7 @@ export type Database = {
           description?: string | null
           estimated_credits?: number | null
           id?: string
+          project_id?: string | null
           rejection_reason?: string | null
           requested_by?: string | null
           status?: string
@@ -3391,6 +3536,13 @@ export type Database = {
             columns: ["converted_task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3523,6 +3675,7 @@ export type Database = {
           category: string | null
           client_id: string | null
           created_at: string
+          credit_weight: number | null
           credits_cost: number | null
           department: string | null
           description: string | null
@@ -3534,6 +3687,8 @@ export type Database = {
           notification_phone: string | null
           notification_sms: boolean | null
           priority: string
+          priority_category: string | null
+          project_id: string | null
           recurrence_end_date: string | null
           recurrence_type: string | null
           reminder_at: string | null
@@ -3549,6 +3704,7 @@ export type Database = {
           category?: string | null
           client_id?: string | null
           created_at?: string
+          credit_weight?: number | null
           credits_cost?: number | null
           department?: string | null
           description?: string | null
@@ -3560,6 +3716,8 @@ export type Database = {
           notification_phone?: string | null
           notification_sms?: boolean | null
           priority?: string
+          priority_category?: string | null
+          project_id?: string | null
           recurrence_end_date?: string | null
           recurrence_type?: string | null
           reminder_at?: string | null
@@ -3575,6 +3733,7 @@ export type Database = {
           category?: string | null
           client_id?: string | null
           created_at?: string
+          credit_weight?: number | null
           credits_cost?: number | null
           department?: string | null
           description?: string | null
@@ -3586,6 +3745,8 @@ export type Database = {
           notification_phone?: string | null
           notification_sms?: boolean | null
           priority?: string
+          priority_category?: string | null
+          project_id?: string | null
           recurrence_end_date?: string | null
           recurrence_type?: string | null
           reminder_at?: string | null
@@ -3615,6 +3776,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3715,6 +3883,36 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_impersonation_log: {
+        Row: {
+          actions_performed: Json | null
+          admin_user_id: string
+          ended_at: string | null
+          id: string
+          reason: string | null
+          started_at: string
+          target_user_id: string
+        }
+        Insert: {
+          actions_performed?: Json | null
+          admin_user_id: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id: string
+        }
+        Update: {
+          actions_performed?: Json | null
+          admin_user_id?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id?: string
         }
         Relationships: []
       }
