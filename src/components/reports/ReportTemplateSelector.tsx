@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Check, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +11,8 @@ interface ReportTemplateSelectorProps {
   onSelect: (template: ReportTemplate) => void;
 }
 
-export function ReportTemplateSelector({ 
-  clientId, 
-  selectedTemplateId, 
-  onSelect 
-}: ReportTemplateSelectorProps) {
+export const ReportTemplateSelector = React.forwardRef<HTMLDivElement, ReportTemplateSelectorProps>(
+  function ReportTemplateSelector({ clientId, selectedTemplateId, onSelect }, ref) {
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +32,7 @@ export function ReportTemplateSelector({
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-3">
+      <div ref={ref} className="grid gap-4 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader className="pb-2">
@@ -51,7 +48,7 @@ export function ReportTemplateSelector({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div ref={ref} className="grid gap-4 md:grid-cols-3">
       {templates.map((template) => (
         <Card
           key={template.id}
@@ -94,4 +91,4 @@ export function ReportTemplateSelector({
       ))}
     </div>
   );
-}
+});

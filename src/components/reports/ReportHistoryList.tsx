@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
@@ -26,7 +26,8 @@ const reportTypeLabels: Record<string, string> = {
   executive: 'מנהלים',
 };
 
-export function ReportHistoryList({ clientId, onView }: ReportHistoryListProps) {
+export const ReportHistoryList = React.forwardRef<HTMLDivElement, ReportHistoryListProps>(
+  function ReportHistoryList({ clientId, onView }, ref) {
   const [history, setHistory] = useState<ReportHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,7 +47,7 @@ export function ReportHistoryList({ clientId, onView }: ReportHistoryListProps) 
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div ref={ref} className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -54,7 +55,7 @@ export function ReportHistoryList({ clientId, onView }: ReportHistoryListProps) 
 
   if (history.length === 0) {
     return (
-      <Card>
+      <Card ref={ref}>
         <CardContent className="text-center py-8">
           <Clock className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">אין היסטוריית דוחות</p>
@@ -67,7 +68,7 @@ export function ReportHistoryList({ clientId, onView }: ReportHistoryListProps) 
   }
 
   return (
-    <div className="space-y-3">
+    <div ref={ref} className="space-y-3">
       {history.map((item) => (
         <Card key={item.id}>
           <CardContent className="p-4">
@@ -118,4 +119,4 @@ export function ReportHistoryList({ clientId, onView }: ReportHistoryListProps) 
       ))}
     </div>
   );
-}
+});

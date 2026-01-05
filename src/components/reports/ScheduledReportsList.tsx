@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -39,7 +39,8 @@ const frequencyLabels: Record<string, string> = {
 
 const dayLabels = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
-export function ScheduledReportsList({ clientId, onEdit, onRefresh }: ScheduledReportsListProps) {
+export const ScheduledReportsList = React.forwardRef<HTMLDivElement, ScheduledReportsListProps>(
+  function ScheduledReportsList({ clientId, onEdit, onRefresh }, ref) {
   const [reports, setReports] = useState<ScheduledReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -96,7 +97,7 @@ export function ScheduledReportsList({ clientId, onEdit, onRefresh }: ScheduledR
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div ref={ref} className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -104,7 +105,7 @@ export function ScheduledReportsList({ clientId, onEdit, onRefresh }: ScheduledR
 
   if (reports.length === 0) {
     return (
-      <Card>
+      <Card ref={ref}>
         <CardContent className="text-center py-8">
           <Calendar className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">אין דוחות מתוזמנים</p>
@@ -114,7 +115,7 @@ export function ScheduledReportsList({ clientId, onEdit, onRefresh }: ScheduledR
   }
 
   return (
-    <div className="space-y-3">
+    <div ref={ref} className="space-y-3">
       {reports.map((report) => (
         <Card key={report.id}>
           <CardContent className="p-4">
@@ -190,4 +191,4 @@ export function ScheduledReportsList({ clientId, onEdit, onRefresh }: ScheduledR
       ))}
     </div>
   );
-}
+});
