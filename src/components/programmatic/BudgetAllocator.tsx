@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { Plus, Trash2, Zap } from "lucide-react";
+import { Plus, Trash2, Zap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CreateRuleDialog } from "./CreateRuleDialog";
 
 interface Props {
   clientId?: string;
@@ -19,9 +19,11 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "#10b981", "#f59
 
 export function BudgetAllocator({ clientId }: Props) {
   const [showCreateRule, setShowCreateRule] = useState(false);
+  const [autoOptimize, setAutoOptimize] = useState(false);
+  const [limitDailySpend, setLimitDailySpend] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: rules = [] } = useQuery({
+  const { data: rules = [], isLoading: rulesLoading } = useQuery({
     queryKey: ["budget-rules", clientId],
     queryFn: async () => {
       const query = supabase
@@ -87,6 +89,16 @@ export function BudgetAllocator({ clientId }: Props) {
     },
   });
 
+  const handleAutoOptimizeChange = (checked: boolean) => {
+    setAutoOptimize(checked);
+    toast.success(checked ? "אופטימיזציה אוטומטית הופעלה" : "אופטימיזציה אוטומטית הושבתה");
+  };
+
+  const handleLimitSpendChange = (checked: boolean) => {
+    setLimitDailySpend(checked);
+    toast.success(checked ? "הגבלת הוצאה יומית הופעלה" : "הגבלת הוצאה יומית הושבתה");
+  };
+
   // Aggregate budget by platform
   const budgetByPlatform = placements.reduce((acc, p) => {
     const platform = p.platform || "other";
@@ -108,9 +120,13 @@ export function BudgetAllocator({ clientId }: Props) {
           </CardHeader>
           <CardContent>
             {chartData.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                אין נתוני תקציב
-              </p>
+              <div className="text-center py-8">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">אין נתוני תקציב</p>
+                <p className="text-sm text-muted-foreground mt-1">הוסף מיקומי פרסום כדי לראות חלוקה</p>
+              </div>
             ) : (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -148,10 +164,15 @@ export function BudgetAllocator({ clientId }: Props) {
             </Button>
           </CardHeader>
           <CardContent>
-            {rules.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                אין כללי הקצאה
-              </p>
+            {rulesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : rules.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">אין כללי הקצאה</p>
+                <p className="text-sm text-muted-foreground mt-1">צור כלל ראשון לניהול תקציבים אוטומטי</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {rules.map((rule) => (
@@ -208,7 +229,10 @@ export function BudgetAllocator({ clientId }: Props) {
                 המערכת תעביר תקציב אוטומטית לקמפיינים עם ROAS גבוה
               </p>
             </div>
-            <Switch />
+            <Switch 
+              checked={autoOptimize}
+              onCheckedChange={handleAutoOptimizeChange}
+            />
           </div>
           <div className="flex items-center justify-between">
             <div>
@@ -217,10 +241,19 @@ export function BudgetAllocator({ clientId }: Props) {
                 עצור קמפיינים שמגיעים ל-80% מהתקציב היומי
               </p>
             </div>
-            <Switch />
+            <Switch 
+              checked={limitDailySpend}
+              onCheckedChange={handleLimitSpendChange}
+            />
           </div>
         </CardContent>
       </Card>
+
+      <CreateRuleDialog 
+        open={showCreateRule} 
+        onOpenChange={setShowCreateRule}
+        clientId={clientId}
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingUp, TrendingDown, Minus, Search, AlertTriangle, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Search, AlertTriangle, DollarSign, Plus, Loader2 } from "lucide-react";
 
 interface Props {
   clientId?: string;
@@ -35,18 +35,7 @@ export function PriceTracker({ clientId }: Props) {
     enabled: !!clientId,
   });
 
-  // Mock data if no real data
-  const mockData = [
-    { id: "1", product_name: "מחשב נייד HP", our_price: 2499, competitor_name: "Amazon", competitor_price: 2399, price_difference: -100 },
-    { id: "2", product_name: "אוזניות Sony", our_price: 899, competitor_name: "eBay", competitor_price: 949, price_difference: 50 },
-    { id: "3", product_name: "טלוויזיה Samsung 55\"", our_price: 3299, competitor_name: "KSP", competitor_price: 3199, price_difference: -100 },
-    { id: "4", product_name: "מקרר LG", our_price: 4500, competitor_name: "Zap", competitor_price: 4500, price_difference: 0 },
-    { id: "5", product_name: "מכונת כביסה Bosch", our_price: 2800, competitor_name: "Amazon", competitor_price: 2950, price_difference: 150 },
-  ];
-
-  const displayData = priceData.length > 0 ? priceData : mockData;
-
-  const filteredData = displayData.filter(item => 
+  const filteredData = priceData.filter(item => 
     item.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.competitor_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -57,14 +46,14 @@ export function PriceTracker({ clientId }: Props) {
   const getPriceDiffDisplay = (diff: number) => {
     if (diff > 0) {
       return (
-        <span className="flex items-center gap-1 text-green-600">
+        <span className="flex items-center gap-1 text-success">
           <TrendingUp className="h-4 w-4" />
           +₪{diff}
         </span>
       );
     } else if (diff < 0) {
       return (
-        <span className="flex items-center gap-1 text-red-600">
+        <span className="flex items-center gap-1 text-destructive">
           <TrendingDown className="h-4 w-4" />
           ₪{diff}
         </span>
@@ -84,10 +73,10 @@ export function PriceTracker({ clientId }: Props) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">אנחנו זולים יותר</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{cheaperCount}</div>
+            <div className="text-2xl font-bold text-success">{cheaperCount}</div>
             <p className="text-xs text-muted-foreground">מוצרים</p>
           </CardContent>
         </Card>
@@ -95,10 +84,10 @@ export function PriceTracker({ clientId }: Props) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">אנחנו יקרים יותר</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{expensiveCount}</div>
+            <div className="text-2xl font-bold text-destructive">{expensiveCount}</div>
             <p className="text-xs text-muted-foreground">מוצרים</p>
           </CardContent>
         </Card>
@@ -132,10 +121,18 @@ export function PriceTracker({ clientId }: Props) {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-12 bg-muted animate-pulse rounded" />
-              ))}
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="text-center py-8">
+              <DollarSign className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">אין מוצרים במעקב מחירים</p>
+              <p className="text-sm text-muted-foreground mt-1">הוסף מוצרים לקבלת השוואת מחירים</p>
+              <Button className="mt-4" variant="outline" size="sm">
+                <Plus className="h-4 w-4 ml-1" />
+                הוסף מוצר למעקב
+              </Button>
             </div>
           ) : (
             <Table>
@@ -159,7 +156,7 @@ export function PriceTracker({ clientId }: Props) {
                     <TableCell>{getPriceDiffDisplay(item.price_difference || 0)}</TableCell>
                     <TableCell>
                       {(item.price_difference || 0) > 0 ? (
-                        <Badge variant="default" className="bg-green-500">זול יותר</Badge>
+                        <Badge className="bg-success text-success-foreground">זול יותר</Badge>
                       ) : (item.price_difference || 0) < 0 ? (
                         <Badge variant="destructive">יקר יותר</Badge>
                       ) : (

@@ -128,7 +128,7 @@ export default function ApprovalsDashboard() {
               <Clock className="w-4 h-4" />
               ממתינים
               {pendingItems.length > 0 && (
-                <Badge variant="destructive" className="mr-1">
+                <Badge variant="destructive" className="ml-1">
                   {pendingItems.length}
                 </Badge>
               )}

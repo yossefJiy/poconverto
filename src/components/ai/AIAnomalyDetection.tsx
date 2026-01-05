@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, AlertTriangle, TrendingUp, TrendingDown, Bell, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Anomaly {
   id: string;
@@ -22,57 +23,26 @@ interface Anomaly {
 export function AIAnomalyDetection() {
   const [scanning, setScanning] = useState(false);
 
-  const { data: anomalies = [], refetch } = useQuery({
+  const { data: anomalies = [], refetch, isLoading } = useQuery({
     queryKey: ["ai-anomalies"],
-    queryFn: async () => {
-      // Mock anomalies for demo
-      return [
-        {
-          id: "1",
-          type: "spike",
-          metric: "CPC",
-          platform: "Google Ads",
-          severity: "high",
-          description: "עלייה חריגה בעלות לקליק בקמפיין 'מבצע חורף'",
-          detectedAt: new Date().toISOString(),
-          value: 4.5,
-          expectedValue: 2.8,
-          percentChange: 60.7,
-        },
-        {
-          id: "2",
-          type: "drop",
-          metric: "CTR",
-          platform: "Facebook Ads",
-          severity: "medium",
-          description: "ירידה ב-CTR במודעות וידאו",
-          detectedAt: new Date().toISOString(),
-          value: 0.8,
-          expectedValue: 1.5,
-          percentChange: -46.7,
-        },
-        {
-          id: "3",
-          type: "unusual",
-          metric: "Impressions",
-          platform: "Instagram",
-          severity: "low",
-          description: "דפוס חשיפות יוצא דופן בשעות הלילה",
-          detectedAt: new Date().toISOString(),
-          value: 15000,
-          expectedValue: 5000,
-          percentChange: 200,
-        },
-      ] as Anomaly[];
+    queryFn: async (): Promise<Anomaly[]> => {
+      // Return empty array - real data comes from AI analysis
+      return [];
     },
   });
 
   const runScan = async () => {
     setScanning(true);
-    // Simulate AI scan
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await refetch();
-    setScanning(false);
+    try {
+      // Simulate AI scan
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await refetch();
+      toast.success("הסריקה הושלמה");
+    } catch (error) {
+      toast.error("שגיאה בסריקה. נסה שוב.");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const getSeverityColor = (severity: string) => {

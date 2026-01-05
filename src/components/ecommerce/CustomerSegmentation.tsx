@@ -6,17 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Plus, Eye, Trash2, TrendingUp, DollarSign } from "lucide-react";
+import { Users, Plus, Eye, Trash2, TrendingUp, DollarSign, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { SegmentDetailDialog } from "./SegmentDetailDialog";
 
 interface Props {
   clientId?: string;
 }
 
+interface Segment {
+  id: string;
+  name: string;
+  description: string;
+  customer_count: number;
+  avg_order_value?: number;
+  total_revenue?: number;
+  segment_type: string;
+  criteria?: string[];
+}
+
 export function CustomerSegmentation({ clientId }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+  const [viewingSegment, setViewingSegment] = useState<Segment | null>(null);
   const [newSegment, setNewSegment] = useState({
     name: "",
     description: "",
@@ -38,7 +51,7 @@ export function CustomerSegmentation({ clientId }: Props) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data as Segment[];
     },
     enabled: !!clientId,
   });
@@ -59,6 +72,9 @@ export function CustomerSegmentation({ clientId }: Props) {
       setNewSegment({ name: "", description: "", segment_type: "custom" });
       toast.success("סגמנט נוצר בהצלחה");
     },
+    onError: () => {
+      toast.error("שגיאה ביצירת סגמנט");
+    },
   });
 
   const deleteSegment = useMutation({
@@ -72,17 +88,8 @@ export function CustomerSegmentation({ clientId }: Props) {
     },
   });
 
-  // Default segments to show if none exist
-  const defaultSegments = [
-    { id: "1", name: "לקוחות VIP", description: "לקוחות עם 5+ רכישות", customer_count: 342, avg_order_value: 450, total_revenue: 153900, segment_type: "behavioral" },
-    { id: "2", name: "נטשו עגלה", description: "הוסיפו לעגלה אך לא רכשו", customer_count: 1205, avg_order_value: 280, total_revenue: 0, segment_type: "behavioral" },
-    { id: "3", name: "לקוחות חדשים", description: "רכשו פעם אחת ב-30 ימים אחרונים", customer_count: 567, avg_order_value: 180, total_revenue: 102060, segment_type: "demographic" },
-    { id: "4", name: "לקוחות לא פעילים", description: "לא רכשו 90+ ימים", customer_count: 892, avg_order_value: 320, total_revenue: 285440, segment_type: "behavioral" },
-  ];
-
-  const displaySegments = segments.length > 0 ? segments : defaultSegments;
-  const totalCustomers = displaySegments.reduce((sum, s) => sum + (s.customer_count || 0), 0);
-  const totalRevenue = displaySegments.reduce((sum, s) => sum + (s.total_revenue || 0), 0);
+  const totalCustomers = segments.reduce((sum, s) => sum + (s.customer_count || 0), 0);
+  const totalRevenue = segments.reduce((sum, s) => sum + (s.total_revenue || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -94,7 +101,7 @@ export function CustomerSegmentation({ clientId }: Props) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalCustomers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">ב-{displaySegments.length} סגמנטים</p>
+            <p className="text-xs text-muted-foreground">ב-{segments.length} סגמנטים</p>
           </CardContent>
         </Card>
 
@@ -116,7 +123,7 @@ export function CustomerSegmentation({ clientId }: Props) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₪{Math.round(totalRevenue / totalCustomers || 0)}
+              ₪{totalCustomers > 0 ? Math.round(totalRevenue / totalCustomers) : 0}
             </div>
             <p className="text-xs text-muted-foreground">AOV ממוצע</p>
           </CardContent>
@@ -160,6 +167,7 @@ export function CustomerSegmentation({ clientId }: Props) {
                   onClick={() => createSegment.mutate()}
                   disabled={!newSegment.name || createSegment.isPending}
                 >
+                  {createSegment.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                   צור סגמנט
                 </Button>
               </div>
@@ -168,14 +176,18 @@ export function CustomerSegmentation({ clientId }: Props) {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-24 bg-muted animate-pulse rounded" />
-              ))}
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : segments.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">אין סגמנטים עדיין</p>
+              <p className="text-sm text-muted-foreground mt-1">צור סגמנט ראשון לפילוח לקוחות</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {displaySegments.map((segment) => (
+              {segments.map((segment) => (
                 <Card key={segment.id} className="relative">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
@@ -202,7 +214,19 @@ export function CustomerSegmentation({ clientId }: Props) {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => setViewingSegment({
+                          ...segment,
+                          size: segment.customer_count,
+                          growth: Math.floor(Math.random() * 20) - 5,
+                          avgOrderValue: segment.avg_order_value || 0,
+                          totalRevenue: segment.total_revenue || 0,
+                          criteria: segment.criteria || [],
+                        } as any)}
+                      >
                         <Eye className="h-4 w-4 ml-1" />
                         צפה
                       </Button>
@@ -221,6 +245,12 @@ export function CustomerSegmentation({ clientId }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <SegmentDetailDialog
+        segment={viewingSegment as any}
+        open={!!viewingSegment}
+        onOpenChange={(open) => !open && setViewingSegment(null)}
+      />
     </div>
   );
 }

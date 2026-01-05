@@ -38,26 +38,10 @@ export function AIBudgetAdvisor() {
 
       if (error) throw error;
       setRecommendation(data);
+      toast.success("הניתוח הושלם");
     } catch (error) {
       console.error("Analysis error:", error);
-      // Mock result for demo
-      const budgetNum = Number(budget);
-      setRecommendation({
-        totalBudget: budgetNum,
-        allocation: [
-          { platform: "Google Ads", amount: budgetNum * 0.4, percentage: 40, reason: "ביצועים היסטוריים מצוינים" },
-          { platform: "Facebook Ads", amount: budgetNum * 0.3, percentage: 30, reason: "קהל יעד רלוונטי" },
-          { platform: "Instagram", amount: budgetNum * 0.2, percentage: 20, reason: "מעורבות גבוהה" },
-          { platform: "TikTok", amount: budgetNum * 0.1, percentage: 10, reason: "ניסיון לקהל צעיר" },
-        ],
-        expectedROAS: 3.5,
-        tips: [
-          "העבר תקציב מפלטפורמות עם CPA גבוה",
-          "בדוק קמפיינים ב-A/B testing",
-          "הגדל תקציב בימים עם ביצועים גבוהים",
-          "צמצם הוצאות בסופי שבוע (B2B)",
-        ],
-      });
+      toast.error("שגיאה בניתוח התקציב. נסה שוב מאוחר יותר.");
     } finally {
       setIsAnalyzing(false);
     }
