@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { StyledDatePicker } from "@/components/ui/styled-date-picker";
 import { TaskQuickActions } from "@/components/tasks/TaskQuickActions";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -990,25 +991,28 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
   if (showDashboard) {
     return (
       <MainLayout>
-        <div className="p-4 md:p-8">
-          <PageHeader 
-            title="הדשבורד שלי"
-            description="משימות להיום ולקראת"
-            actions={
-              <Button variant="outline" onClick={() => setShowDashboard(false)}>
-                <List className="w-4 h-4 ml-2" />
-                תצוגה מלאה
-              </Button>
-            }
-          />
-          <TeamDashboard />
-        </div>
+        <DomainErrorBoundary domain="tasks">
+          <div className="p-4 md:p-8">
+            <PageHeader 
+              title="הדשבורד שלי"
+              description="משימות להיום ולקראת"
+              actions={
+                <Button variant="outline" onClick={() => setShowDashboard(false)}>
+                  <List className="w-4 h-4 ml-2" />
+                  תצוגה מלאה
+                </Button>
+              }
+            />
+            <TeamDashboard />
+          </div>
+        </DomainErrorBoundary>
       </MainLayout>
     );
   }
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="tasks">
       <div className="p-4 md:p-8">
         <PageHeader 
           title={showArchive ? "ארכיון משימות" : (selectedClient ? `משימות - ${selectedClient.name}` : "ניהול משימות")}
@@ -1846,6 +1850,7 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
         onOpenChange={setNotificationHistoryOpen}
         taskId={notificationHistoryTaskId}
       />
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
