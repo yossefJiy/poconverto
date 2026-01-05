@@ -63,6 +63,7 @@ const menuItems: MenuItem[] = [
   { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "marketing" },
   { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "marketing" },
   { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "marketing" },
+  { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "marketing" },
   { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
   { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
   { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
