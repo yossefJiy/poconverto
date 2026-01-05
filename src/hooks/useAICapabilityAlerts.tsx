@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertTriangle, Ban, Shield } from "lucide-react";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 export interface AICapabilityAlert {
   id: string;
@@ -15,6 +16,58 @@ export interface AICapabilityAlert {
   clientId: string | null;
   createdAt: string;
   isRead: boolean;
+}
+
+interface CapabilityUsagePayload {
+  id: string;
+  agent_id: string | null;
+  capability_id: string | null;
+  was_allowed: boolean;
+  executed_at: string | null;
+  error_message: string | null;
+}
+
+interface AgentActionPayload {
+  id: string;
+  agent_id: string | null;
+  action_type: string;
+  status: string;
+  client_id: string | null;
+  created_at: string;
+}
+
+interface PendingAction {
+  id: string;
+  agent_id: string | null;
+  action_type: string;
+  status: string;
+  client_id: string | null;
+  created_at: string;
+  agent?: { name: string } | null;
+}
+
+interface DeniedUsage {
+  id: string;
+  agent_id: string | null;
+  capability_id: string | null;
+  was_allowed: boolean;
+  executed_at: string | null;
+  error_message: string | null;
+  client_id: string | null;
+  agent?: { name: string } | null;
+  capability?: { display_name: string; is_dangerous: boolean } | null;
+}
+
+interface LimitAlert {
+  id: string;
+  agent_id: string | null;
+  capability_id: string | null;
+  client_id: string | null;
+  max_daily_uses: number | null;
+  current_daily_uses: number | null;
+  updated_at: string | null;
+  agent?: { name: string } | null;
+  capability?: { display_name: string } | null;
 }
 
 export function useAICapabilityAlerts() {
@@ -102,8 +155,9 @@ export function useAICapabilityAlerts() {
           schema: 'public',
           table: 'ai_capability_usage',
         },
-        async (payload) => {
-          const usage = payload.new as any;
+        async (payload: RealtimePostgresChangesPayload<CapabilityUsagePayload>) => {
+          const usage = payload.new as CapabilityUsagePayload;
+          if (!usage) return;
           
           // If action was denied, show toast
           if (!usage.was_allowed) {
@@ -174,8 +228,9 @@ export function useAICapabilityAlerts() {
           schema: 'public',
           table: 'ai_agent_actions',
         },
-        (payload) => {
-          const action = payload.new as any;
+        (payload: RealtimePostgresChangesPayload<AgentActionPayload>) => {
+          const action = payload.new as AgentActionPayload;
+          if (!action) return;
           
           if (action.status === "pending") {
             toast.info(
@@ -213,14 +268,14 @@ export function useAICapabilityAlerts() {
     const newAlerts: AICapabilityAlert[] = [];
 
     // Pending actions needing approval
-    pendingActions.forEach((action: any) => {
+    pendingActions.forEach((action: PendingAction) => {
       newAlerts.push({
         id: `pending-${action.id}`,
         type: "approval_needed",
         title: "נדרש אישור",
         message: `פעולה ${action.action_type} ממתינה לאישור`,
         agentId: action.agent_id,
-        agentName: action.agent?.name,
+        agentName: action.agent?.name || null,
         capabilityName: action.action_type,
         clientId: action.client_id,
         createdAt: action.created_at,
@@ -229,34 +284,34 @@ export function useAICapabilityAlerts() {
     });
 
     // Denied actions
-    deniedUsage.forEach((usage: any) => {
+    deniedUsage.forEach((usage: DeniedUsage) => {
       newAlerts.push({
         id: `denied-${usage.id}`,
         type: "denied_action",
         title: "פעולה נחסמה",
         message: usage.error_message || `${usage.capability?.display_name || "פעולה"} נחסמה`,
         agentId: usage.agent_id,
-        agentName: usage.agent?.name,
-        capabilityName: usage.capability?.display_name,
+        agentName: usage.agent?.name || null,
+        capabilityName: usage.capability?.display_name || null,
         clientId: usage.client_id,
-        createdAt: usage.executed_at,
+        createdAt: usage.executed_at || new Date().toISOString(),
         isRead: false,
       });
     });
 
     // Limit alerts
-    limitAlerts.forEach((perm: any) => {
-      const percent = (perm.current_daily_uses || 0) / perm.max_daily_uses * 100;
+    limitAlerts.forEach((perm: LimitAlert) => {
+      const percent = ((perm.current_daily_uses || 0) / (perm.max_daily_uses || 1)) * 100;
       newAlerts.push({
         id: `limit-${perm.id}`,
         type: "daily_limit",
         title: percent >= 100 ? "הגבלה יומית הגיעה!" : "מתקרב להגבלה יומית",
-        message: `${perm.agent?.name || "סוכן"} הגיע ל-${percent.toFixed(0)}% מהמכסה ל-${perm.capability?.display_name}`,
+        message: `${perm.agent?.name || "סוכן"} הגיע ל-${percent.toFixed(0)}% מהמכסה ל-${perm.capability?.display_name || "פעולה"}`,
         agentId: perm.agent_id,
-        agentName: perm.agent?.name,
-        capabilityName: perm.capability?.display_name,
+        agentName: perm.agent?.name || null,
+        capabilityName: perm.capability?.display_name || null,
         clientId: perm.client_id,
-        createdAt: perm.updated_at,
+        createdAt: perm.updated_at || new Date().toISOString(),
         isRead: false,
       });
     });

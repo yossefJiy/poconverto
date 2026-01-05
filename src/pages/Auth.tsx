@@ -14,6 +14,7 @@ import { PhoneSignIn } from "@/components/auth/PhoneSignIn";
 import { Mail, Phone, ShieldCheck, KeyRound, ArrowRight, Clock, RefreshCw } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { generateDeviceFingerprint } from "@/lib/deviceFingerprint";
+import { logger } from "@/lib/logger";
 
 const emailSchema = z.string().email("אימייל לא תקין");
 const passwordSchema = z.string().min(6, "הסיסמה חייבת להכיל לפחות 6 תווים");
@@ -51,23 +52,23 @@ const Auth = () => {
   useEffect(() => {
     // Check if user is already logged in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[Auth] onAuthStateChange:", { event, hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
+      logger.debug("[Auth] onAuthStateChange", { event, hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
       
       // Don't navigate if we're in the middle of 2FA flow
       if (is2FAInProgress.current) {
-        console.log("[Auth] Skipping navigation - 2FA in progress");
+        logger.debug("[Auth] Skipping navigation - 2FA in progress");
         return;
       }
       if (session?.user) {
-        console.log("[Auth] User session detected, navigating to dashboard");
+        logger.debug("[Auth] User session detected, navigating to dashboard");
         navigate("/dashboard");
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("[Auth] Initial getSession:", { hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
+      logger.debug("[Auth] Initial getSession", { hasSession: !!session, is2FAInProgress: is2FAInProgress.current });
       if (session?.user && !is2FAInProgress.current) {
-        console.log("[Auth] Existing session found, navigating to dashboard");
+        logger.debug("[Auth] Existing session found, navigating to dashboard");
         navigate("/dashboard");
       }
     });
@@ -108,7 +109,7 @@ const Auth = () => {
 
     const phone = authUser?.phone;
     const notificationPref = authUser?.notification_preference || "email";
-    console.log("[Auth] User 2FA preference:", notificationPref, "phone:", phone ? "found" : "not found");
+    logger.debug("[Auth] User 2FA preference", { notificationPref, hasPhone: !!phone });
 
     const response = await supabase.functions.invoke("send-2fa-code", {
       body: { email, phone, notification_preference: notificationPref, action: "send" },
@@ -133,13 +134,13 @@ const Auth = () => {
       });
 
       if (response.error) {
-        console.error("[Auth] Error checking trusted device:", response.error);
+        logger.error(response.error, { context: "[Auth] Error checking trusted device" });
         return false;
       }
 
       return response.data?.trusted === true;
     } catch (error) {
-      console.error("[Auth] Error checking trusted device:", error);
+      logger.error(error, { context: "[Auth] Error checking trusted device" });
       return false;
     }
   }, [email]);
@@ -152,12 +153,12 @@ const Auth = () => {
       });
 
       if (response.error) {
-        console.error("[Auth] Error adding trusted device:", response.error);
+        logger.error(response.error, { context: "[Auth] Error adding trusted device" });
       } else {
-        console.log("[Auth] Device added as trusted until:", response.data?.trusted_until);
+        logger.debug("[Auth] Device added as trusted", { trustedUntil: response.data?.trusted_until });
       }
     } catch (error) {
-      console.error("[Auth] Error adding trusted device:", error);
+      logger.error(error, { context: "[Auth] Error adding trusted device" });
     }
   }, [email]);
 
@@ -168,18 +169,18 @@ const Auth = () => {
     setLoading(true);
     // Set flag to prevent navigation during 2FA
     is2FAInProgress.current = true;
-    console.log("[Auth][2FA] Starting credential verification for:", email);
+    logger.debug("[Auth][2FA] Starting credential verification", { email });
     
     try {
       // First verify credentials are correct
-      console.log("[Auth][2FA] Calling signInWithPassword...");
+      logger.debug("[Auth][2FA] Calling signInWithPassword...");
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
-        console.error("[Auth][2FA] signInWithPassword failed:", signInError);
+        logger.error(signInError, { context: "[Auth][2FA] signInWithPassword failed" });
         is2FAInProgress.current = false;
         if (signInError.message.includes("Invalid login credentials")) {
           toast.error("אימייל או סיסמה שגויים");
@@ -190,14 +191,14 @@ const Auth = () => {
         return;
       }
 
-      console.log("[Auth][2FA] Credentials valid, session created:", { userId: signInData.user?.id });
+      logger.debug("[Auth][2FA] Credentials valid, session created", { userId: signInData.user?.id });
 
       // Check if this device is trusted
       const isTrusted = await checkTrustedDevice();
       
       if (isTrusted) {
         // Device is trusted - skip 2FA
-        console.log("[Auth][2FA] Device is trusted, skipping 2FA");
+        logger.debug("[Auth][2FA] Device is trusted, skipping 2FA");
         is2FAInProgress.current = false;
         toast.success("התחברת בהצלחה!");
         navigate("/dashboard");
@@ -205,13 +206,13 @@ const Auth = () => {
       }
 
       // Sign out immediately - we need 2FA verification
-      console.log("[Auth][2FA] Device not trusted, signing out for 2FA verification...");
+      logger.debug("[Auth][2FA] Device not trusted, signing out for 2FA verification...");
       await supabase.auth.signOut();
-      console.log("[Auth][2FA] Signed out, sending 2FA code...");
+      logger.debug("[Auth][2FA] Signed out, sending 2FA code...");
 
       // Send 2FA code via our edge function
       const result = await send2FACode();
-      console.log("[Auth][2FA] 2FA code sent successfully via:", result.method);
+      logger.debug("[Auth][2FA] 2FA code sent successfully", { method: result.method });
       
       const method = result.method as "sms" | "email" | "both";
       setCodeDeliveryMethod(method === "both" ? "sms" : method);
@@ -225,10 +226,11 @@ const Auth = () => {
       }
       setAuthStep("otp");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
-    } catch (error: any) {
+    } catch (error: unknown) {
       is2FAInProgress.current = false;
-      console.error("[Auth][2FA] Error in handleSendOtp:", error);
-      toast.error("שגיאה בשליחת קוד אימות: " + (error.message || "Unknown error"));
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(error, { context: "[Auth][2FA] Error in handleSendOtp" });
+      toast.error("שגיאה בשליחת קוד אימות: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -243,26 +245,26 @@ const Auth = () => {
     }
     
     setLoading(true);
-    console.log("[Auth][2FA] Starting OTP verification...");
+    logger.debug("[Auth][2FA] Starting OTP verification...");
     
     try {
       // Verify the code via our edge function
-      console.log("[Auth][2FA] Calling verify function...");
+      logger.debug("[Auth][2FA] Calling verify function...");
       const response = await supabase.functions.invoke("send-2fa-code", {
         body: { email, action: "verify", code: otpCode },
       });
 
-      console.log("[Auth][2FA] Verify response:", { hasError: !!response.error, data: response.data });
+      logger.debug("[Auth][2FA] Verify response", { hasError: !!response.error, data: response.data });
 
       if (response.error || !response.data?.valid) {
         const errorMessage = response.data?.error || response.error?.message || "Invalid code";
-        console.error("[Auth][2FA] OTP verification failed:", errorMessage);
+        logger.error(new Error(errorMessage), { context: "[Auth][2FA] OTP verification failed" });
         toast.error(errorMessage === "Invalid code" ? "קוד אימות שגוי" : errorMessage);
         setLoading(false);
         return;
       }
 
-      console.log("[Auth][2FA] OTP verified, signing in with password...");
+      logger.debug("[Auth][2FA] OTP verified, signing in with password...");
       
       // Code is valid - now sign in with password
       // Reset the 2FA flag so navigation works
@@ -274,20 +276,20 @@ const Auth = () => {
       });
 
       if (signInError) {
-        console.error("[Auth][2FA] Final signIn failed:", signInError);
+        logger.error(signInError, { context: "[Auth][2FA] Final signIn failed" });
         toast.error("שגיאה בהתחברות: " + signInError.message);
         setLoading(false);
         return;
       }
 
-      console.log("[Auth][2FA] Login successful:", { userId: finalSignIn.user?.id, sessionExists: !!finalSignIn.session });
+      logger.debug("[Auth][2FA] Login successful", { userId: finalSignIn.user?.id, sessionExists: !!finalSignIn.session });
       
       // Add device as trusted for 30 days
       await addTrustedDevice();
       
       // Log session details for debugging
       const sessionCheck = await supabase.auth.getSession();
-      console.log("[Auth][2FA] Session check after login:", { 
+      logger.debug("[Auth][2FA] Session check after login", { 
         hasSession: !!sessionCheck.data.session,
         accessToken: sessionCheck.data.session?.access_token ? "present" : "missing",
         expiresAt: sessionCheck.data.session?.expires_at
@@ -295,9 +297,10 @@ const Auth = () => {
 
       toast.success("התחברת בהצלחה! המכשיר יזכר ל-30 יום");
       navigate("/dashboard");
-    } catch (error: any) {
-      console.error("[Auth][2FA] Error in handleVerifyOtp:", error);
-      toast.error("שגיאה באימות: " + (error.message || "Unknown error"));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(error, { context: "[Auth][2FA] Error in handleVerifyOtp" });
+      toast.error("שגיאה באימות: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -312,9 +315,10 @@ const Auth = () => {
       await send2FACode();
       toast.success("קוד חדש נשלח לאימייל שלך");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
-    } catch (error: any) {
-      console.error("Resend error:", error);
-      toast.error("שגיאה בשליחת קוד: " + (error.message || "Unknown error"));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error(error, { context: "Resend error" });
+      toast.error("שגיאה בשליחת קוד: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -477,69 +481,57 @@ const Auth = () => {
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
-                  <p className="text-center text-sm text-muted-foreground">
-                    {codeDeliveryMethod === "sms" 
-                      ? "בדוק את ה-SMS שלך, הקוד יגיע תוך שניות"
-                      : "בדוק את תיבת האימייל שלך, הקוד יגיע תוך דקות ספורות"
-                    }
-                  </p>
                 </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 text-lg font-semibold" 
-                  disabled={loading || otpCode.length !== 6}
-                >
+                
+                <Button type="submit" className="w-full" disabled={loading || otpCode.length !== 6}>
                   {loading ? "מאמת..." : "אמת והתחבר"}
                 </Button>
               </form>
 
-              <div className="flex flex-col gap-4 pt-2">
-                {/* Resend button with timer */}
-                <div className="flex items-center justify-center">
-                  {resendTimer > 0 ? (
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm bg-muted/50 px-4 py-2 rounded-lg">
-                      <Clock className="w-4 h-4" />
-                      <span>שליחה מחדש תתאפשר בעוד {formatTime(resendTimer)}</span>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={handleResendOtp}
-                      disabled={loading}
-                      className="flex items-center gap-2"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      לא קיבלת? שלח קוד חדש
-                    </Button>
-                  )}
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToCredentials}
-                  disabled={loading}
-                  className="flex items-center gap-2 mx-auto"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                  חזרה להתחברות
-                </Button>
+              {/* Resend Code */}
+              <div className="text-center space-y-3">
+                {resendTimer > 0 ? (
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span>ניתן לשלוח קוד חדש בעוד {formatTime(resendTimer)}</span>
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    שלח קוד חדש
+                  </Button>
+                )}
               </div>
+
+              {/* Back Button */}
+              <Button
+                variant="outline"
+                onClick={handleBackToCredentials}
+                className="w-full flex items-center gap-2"
+              >
+                <ArrowRight className="w-4 h-4" />
+                חזור להתחברות
+              </Button>
             </div>
           )}
-          
-          {/* Policy Links */}
-          <div className="pt-4 border-t border-border">
-            <div className="flex items-center justify-center gap-4 text-sm">
-              <Link to="/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors">
-                מדיניות פרטיות
+
+          {/* Footer Links */}
+          <div className="text-center text-sm text-muted-foreground space-y-2">
+            <p>
+              בהתחברות אתה מסכים ל
+              <Link to="/terms-of-service" className="text-primary hover:underline mx-1">
+                תנאי השימוש
               </Link>
-              <span className="text-muted-foreground">|</span>
-              <Link to="/terms-of-service" className="text-muted-foreground hover:text-primary transition-colors">
-                תנאי שימוש
+              ול
+              <Link to="/privacy-policy" className="text-primary hover:underline mx-1">
+                מדיניות הפרטיות
               </Link>
-            </div>
+            </p>
           </div>
         </CardContent>
       </Card>

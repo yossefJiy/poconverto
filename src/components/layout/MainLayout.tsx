@@ -3,18 +3,24 @@ import { Sidebar } from "./Sidebar";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
 import { GlobalAgentFAB } from "@/components/ai/GlobalAgentFAB";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
+import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+function MainLayoutContent({ children }: MainLayoutProps) {
   const { showWarning, remainingTime, extendSession } = useSessionTimeout();
+  const { isCollapsed } = useSidebar();
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <Sidebar />
-      <main className="mr-64 min-h-screen">
+      <main className={cn(
+        "min-h-screen transition-all duration-300",
+        isCollapsed ? "mr-20" : "mr-64"
+      )}>
         {children}
       </main>
       
@@ -27,5 +33,13 @@ export function MainLayout({ children }: MainLayoutProps) {
         onExtendSession={extendSession} 
       />
     </div>
+  );
+}
+
+export function MainLayout({ children }: MainLayoutProps) {
+  return (
+    <SidebarProvider>
+      <MainLayoutContent>{children}</MainLayoutContent>
+    </SidebarProvider>
   );
 }

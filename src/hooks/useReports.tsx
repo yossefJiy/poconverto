@@ -2,6 +2,36 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface ReportPlatformMetrics {
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  spent: number;
+  ctr: number;
+  cpc: number;
+}
+
+interface ReportCampaign {
+  id?: string;
+  name: string;
+  platform: string;
+  status?: string;
+  impressions?: number;
+  clicks?: number;
+  conversions?: number;
+  spent?: number;
+  budget?: number;
+}
+
+interface ReportGoal {
+  name: string;
+  target: number;
+  current: number;
+  progress: number;
+  unit: string;
+  period: string;
+}
+
 interface ReportData {
   generated_at: string;
   report_type: string;
@@ -31,7 +61,7 @@ interface ReportData {
     cost_per_conversion: number;
     roi: number;
   };
-  platforms: Record<string, any>;
+  platforms: Record<string, ReportPlatformMetrics>;
   tasks: {
     completed: number;
     in_progress: number;
@@ -39,15 +69,8 @@ interface ReportData {
     total: number;
     completion_rate: number;
   };
-  goals: Array<{
-    name: string;
-    target: number;
-    current: number;
-    progress: number;
-    unit: string;
-    period: string;
-  }>;
-  campaigns: Array<any>;
+  goals: ReportGoal[];
+  campaigns: ReportCampaign[];
 }
 
 export function useReports() {

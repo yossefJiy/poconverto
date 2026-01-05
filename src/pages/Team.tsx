@@ -95,7 +95,7 @@ export default function Team() {
   const [formColor, setFormColor] = useState("#6366f1");
 
   // Check if selected client is master account (JIY)
-  const isMasterAccount = (selectedClient as any)?.is_master_account === true;
+  const isMasterAccount = selectedClient?.is_master_account === true;
 
   const { data: teamMembers = [], isLoading } = useQuery({
     queryKey: ["team"],

@@ -40,3 +40,62 @@ export interface PlatformConnection extends BaseEntity {
   last_sync: string | null;
   error_message: string | null;
 }
+
+// GA Response types for useAnalyticsData
+export interface GAResponseRow {
+  dimensionValues?: Array<{ value: string }>;
+  metricValues?: Array<{ value: string }>;
+}
+
+export interface GAResponseData {
+  dailyMetrics?: {
+    rows?: GAResponseRow[];
+  };
+  trafficSources?: {
+    rows?: GAResponseRow[];
+  };
+  topPages?: {
+    rows?: GAResponseRow[];
+  };
+  devices?: {
+    rows?: GAResponseRow[];
+  };
+  countries?: {
+    rows?: GAResponseRow[];
+  };
+  ecommerce?: {
+    totals?: {
+      addToCarts?: number;
+      checkouts?: number;
+      purchases?: number;
+      purchaseRevenue?: number;
+      transactions?: number;
+      sessions?: number;
+    };
+    conversionRates?: {
+      addToCartRate?: string;
+      checkoutRate?: string;
+      purchaseRate?: string;
+      overallConversionRate?: string;
+    };
+  };
+  error?: string;
+}
+
+export interface IntegrationSettings {
+  property_id?: string;
+  account_id?: string;
+  refresh_token?: string;
+  access_token?: string;
+  [key: string]: string | undefined;
+}
+
+export interface Integration {
+  id: string;
+  client_id: string;
+  platform: string;
+  is_connected: boolean;
+  settings?: IntegrationSettings;
+  created_at?: string;
+  updated_at?: string;
+}

@@ -67,9 +67,27 @@ const App = () => (
               <Route path="/products/dashboard" element={<ProductDashboard />} />
               <Route path="/client/:clientId" element={<ClientDashboard />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/clients" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
-              <Route path="/client-management" element={<ProtectedRoute><ClientManagement /></ProtectedRoute>} />
-              <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
+              <Route path="/clients" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="clients">
+                    <ClientProfile />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/client-management" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="clients">
+                    <ClientManagement />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/marketing" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="marketing">
+                    <Marketing />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/campaigns" element={
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="campaigns">
@@ -84,9 +102,27 @@ const App = () => (
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
-              <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/credits" element={<ProtectedRoute><CreditManagement /></ProtectedRoute>} />
+              <Route path="/team" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="team">
+                    <Team />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="settings">
+                    <Settings />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/credits" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="admin">
+                    <CreditManagement />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
               <Route path="/analytics" element={
                 <ProtectedRoute>
@@ -95,13 +131,55 @@ const App = () => (
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
-              <Route path="/analytics/google-ads" element={<ProtectedRoute><GoogleAdsDetail /></ProtectedRoute>} />
-              <Route path="/analytics/shopify" element={<ProtectedRoute><ShopifyDetail /></ProtectedRoute>} />
-              <Route path="/analytics/facebook-ads" element={<ProtectedRoute><FacebookAdsDetail /></ProtectedRoute>} />
-              <Route path="/analytics/meta" element={<ProtectedRoute><MetaSummary /></ProtectedRoute>} />
-              <Route path="/analytics/woocommerce" element={<ProtectedRoute><WooCommerceDetail /></ProtectedRoute>} />
-              <Route path="/analytics/google-analytics" element={<ProtectedRoute><GoogleAnalyticsDetail /></ProtectedRoute>} />
-              <Route path="/campaigns/:campaignId" element={<ProtectedRoute><CampaignDetail /></ProtectedRoute>} />
+              <Route path="/analytics/google-ads" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <GoogleAdsDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/shopify" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <ShopifyDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/facebook-ads" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <FacebookAdsDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/meta" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <MetaSummary />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/woocommerce" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <WooCommerceDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/google-analytics" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <GoogleAnalyticsDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/campaigns/:campaignId" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="campaigns">
+                    <CampaignDetail />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/ecommerce" element={
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="ecommerce">
@@ -109,16 +187,58 @@ const App = () => (
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
-              <Route path="/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
-              <Route path="/agent-alerts" element={<ProtectedRoute><AgentAlerts /></ProtectedRoute>} />
-              <Route path="/insights" element={<ProtectedRoute><ClientInsights /></ProtectedRoute>} />
+              <Route path="/ai-agents" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ai">
+                    <AIAgents />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/agent-alerts" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ai">
+                    <AgentAlerts />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/insights" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="ai">
+                    <ClientInsights />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/system-diagram" element={<SystemDiagram />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/status" element={<ProtectedRoute><StatusPage /></ProtectedRoute>} />
-              <Route path="/code-health" element={<ProtectedRoute><CodeHealth /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-              <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
+              <Route path="/status" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="admin">
+                    <StatusPage />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/code-health" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="admin">
+                    <CodeHealth />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="reports">
+                    <Reports />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/permissions" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="admin">
+                    <Permissions />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
               <Route path="/kpis" element={
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="marketing">
