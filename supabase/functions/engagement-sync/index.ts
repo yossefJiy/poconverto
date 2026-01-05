@@ -27,10 +27,10 @@ Deno.serve(async (req) => {
     const body: SyncRequest = await req.json().catch(() => ({}));
     console.log('[engagement-sync] Request:', body);
 
-    // Build query for published posts
+    // Build query for published posts - use left join to handle missing accounts
     let query = supabase
       .from('social_posts')
-      .select('*, social_accounts!inner(*)')
+      .select('*, social_accounts(*)')
       .eq('status', 'published')
       .not('external_post_id', 'is', null);
 
@@ -67,14 +67,25 @@ Deno.serve(async (req) => {
     }> = [];
 
     for (const post of posts || []) {
+      // Skip posts without account data
+      if (!post.social_accounts) {
+        console.warn(`[engagement-sync] Post ${post.id} missing account data, skipping`);
+        syncResults.push({
+          post_id: post.id,
+          success: false,
+        });
+        continue;
+      }
+
       try {
         // In a real implementation, this would call the platform APIs
         // For now, we'll simulate engagement data
+        const existingEngagement = post.engagement as { likes?: number; comments?: number; shares?: number; reach?: number } | null;
         const mockEngagement = {
-          likes: Math.floor(Math.random() * 100) + (post.engagement?.likes || 0),
-          comments: Math.floor(Math.random() * 20) + (post.engagement?.comments || 0),
-          shares: Math.floor(Math.random() * 10) + (post.engagement?.shares || 0),
-          reach: Math.floor(Math.random() * 500) + (post.engagement?.reach || 0),
+          likes: Math.floor(Math.random() * 100) + (existingEngagement?.likes || 0),
+          comments: Math.floor(Math.random() * 20) + (existingEngagement?.comments || 0),
+          shares: Math.floor(Math.random() * 10) + (existingEngagement?.shares || 0),
+          reach: Math.floor(Math.random() * 500) + (existingEngagement?.reach || 0),
         };
 
         // Update post engagement

@@ -3,20 +3,14 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import type { BrandKPI } from '@/api/kpi.api';
 
-interface BrandKPI {
-  id: string;
-  name: string;
-  current_value: number | null;
-  target_value: number;
-  category: string;
-  status: string;
-}
+// Pick only the fields we need from BrandKPI
+type BrandHealthKPI = Pick<BrandKPI, 'id' | 'name' | 'current_value' | 'target_value' | 'category' | 'status'>;
 
 interface BrandHealthScoreProps {
-  kpis: BrandKPI[];
+  kpis: BrandHealthKPI[];
   className?: string;
 }
 

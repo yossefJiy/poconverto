@@ -108,9 +108,18 @@ export class KPIAPI extends BaseAPI {
 
   async update(id: string, data: UpdateKPIInput) {
     return this.request<BrandKPI>(async () => {
+      const updateData: Record<string, unknown> = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.target_value !== undefined) updateData.target_value = data.target_value;
+      if (data.current_value !== undefined) updateData.current_value = data.current_value;
+      if (data.threshold_warning !== undefined) updateData.threshold_warning = data.threshold_warning;
+      if (data.threshold_critical !== undefined) updateData.threshold_critical = data.threshold_critical;
+      if (data.is_active !== undefined) updateData.is_active = data.is_active;
+      
       return this.client
         .from('brand_kpis')
-        .update(data as Record<string, unknown>)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

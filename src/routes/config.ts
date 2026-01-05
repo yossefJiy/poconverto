@@ -15,6 +15,7 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const KPIDashboard = lazy(() => import('@/pages/KPIDashboard'));
 const Competitors = lazy(() => import('@/pages/Competitors'));
+const SocialMedia = lazy(() => import('@/pages/SocialMedia'));
 
 export interface RouteConfig {
   path: string;
@@ -125,6 +126,15 @@ export const routeConfig: RouteConfig[] = [
     domain: 'marketing',
     requiresAuth: true,
     requiredPermission: { domain: 'marketing', action: 'view' },
+  },
+  
+  // Social Media Domain
+  {
+    path: '/social',
+    element: SocialMedia,
+    domain: 'social',
+    requiresAuth: true,
+    requiredPermission: { domain: 'social', action: 'view' },
   },
 ];
 

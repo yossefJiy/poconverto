@@ -129,11 +129,14 @@ export function GoalSettingWizard({ clientId, onComplete, onCancel }: GoalSettin
       case 3:
         return data.target_value! > 0 && !!data.period;
       case 4:
-        return true;
+        // Ensure critical threshold is lower than warning threshold
+        return (data.threshold_critical ?? 60) < (data.threshold_warning ?? 80);
       default:
         return false;
     }
   };
+
+  const thresholdError = step === 4 && (data.threshold_critical ?? 60) >= (data.threshold_warning ?? 80);
 
   const selectedMetrics = data.category ? METRIC_TYPES[data.category] || [] : [];
 
@@ -311,9 +314,16 @@ export function GoalSettingWizard({ clientId, onComplete, onCancel }: GoalSettin
                   onChange={(e) => updateData({ threshold_critical: Number(e.target.value) })}
                   min={0}
                   max={100}
+                  className={thresholdError ? 'border-destructive' : ''}
                 />
               </div>
             </div>
+            
+            {thresholdError && (
+              <p className="text-destructive text-sm">
+                סף קריטי חייב להיות נמוך מסף אזהרה
+              </p>
+            )}
 
             {/* Summary */}
             <div className="p-4 bg-muted/50 rounded-lg space-y-2 mt-4">
