@@ -232,7 +232,7 @@ export function ApprovalDetailDialog({ item, open, onOpenChange }: ApprovalDetai
                 onClick={() => handleDecision("request_changes")}
                 disabled={isSubmitting}
               >
-                <MessageSquare className="w-4 h-4 mr-2" />
+                <MessageSquare className="w-4 h-4 ml-2" />
                 בקש שינויים
               </Button>
               <Button 
@@ -240,7 +240,7 @@ export function ApprovalDetailDialog({ item, open, onOpenChange }: ApprovalDetai
                 onClick={() => handleDecision("rejected")}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 ml-2" />}
                 דחה
               </Button>
               <Button 
@@ -248,7 +248,7 @@ export function ApprovalDetailDialog({ item, open, onOpenChange }: ApprovalDetai
                 onClick={() => handleDecision("approved")}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 ml-2" />}
                 אשר
               </Button>
             </DialogFooter>

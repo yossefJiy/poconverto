@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useClient } from "@/hooks/useClient";
 import { useLeads, Lead } from "@/hooks/useLeads";
 import { LeadPipeline, LeadCard, LeadAnalytics, ConversationInbox, CreateLeadDialog } from "@/components/leads";
+import { LeadActivityHistory } from "@/components/leads/LeadActivityHistory";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, Plus, Search, LayoutGrid, List, BarChart3 } from "lucide-react";
@@ -51,7 +52,7 @@ export default function LeadManagement() {
           description={`${leads.length} לידים ${selectedClient ? `עבור ${selectedClient.name}` : ""}`}
           actions={
             <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 ml-2" />
               ליד חדש
             </Button>
           }
@@ -203,9 +204,7 @@ export default function LeadManagement() {
                   </div>
                 </TabsContent>
                 <TabsContent value="activity" className="mt-4">
-                  <p className="text-muted-foreground text-center py-8">
-                    היסטוריית פעילות תוצג כאן
-                  </p>
+                  <LeadActivityHistory leadId={selectedLead.id} />
                 </TabsContent>
               </Tabs>
             </div>

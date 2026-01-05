@@ -87,7 +87,7 @@ export function ApprovalCard({ item, onView, onApprove, onReject, className }: A
           
           <div className="flex items-center gap-2">
             <Badge className={cn("text-xs", status.color)}>
-              <StatusIcon className="w-3 h-3 mr-1" />
+              <StatusIcon className="w-3 h-3 ml-1" />
               {status.label}
             </Badge>
           </div>
@@ -110,7 +110,7 @@ export function ApprovalCard({ item, onView, onApprove, onReject, className }: A
           )}
           {isOverdue && (
             <Badge className="text-xs bg-destructive/20 text-destructive">
-              <AlertTriangle className="w-3 h-3 mr-1" />
+              <AlertTriangle className="w-3 h-3 ml-1" />
               באיחור
             </Badge>
           )}
@@ -130,7 +130,7 @@ export function ApprovalCard({ item, onView, onApprove, onReject, className }: A
         {isPending && (
           <div className="flex items-center gap-2 pt-3 border-t border-border">
             <Button size="sm" variant="outline" className="flex-1" onClick={onView}>
-              <Eye className="w-4 h-4 mr-1" />
+              <Eye className="w-4 h-4 ml-1" />
               צפייה
             </Button>
             <Button 

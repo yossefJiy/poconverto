@@ -33,38 +33,26 @@ export function AIContentReviewer() {
 
       if (error) throw error;
       setResult(data);
+      toast.success("הבדיקה הושלמה");
     } catch (error) {
       console.error("Review error:", error);
-      // Mock result for demo
-      setResult({
-        score: 78,
-        issues: [
-          { type: "grammar", message: "בדוק את הפיסוק בפסקה הראשונה", severity: "warning" },
-          { type: "seo", message: "הוסף מילות מפתח נוספות", severity: "info" },
-        ],
-        suggestions: [
-          "הוסף קריאה לפעולה ברורה",
-          "קצר את המשפטים הארוכים",
-          "הוסף תמונות או אלמנטים ויזואליים",
-        ],
-        summary: "התוכן טוב אך ניתן לשיפור. הדגש על SEO ומעורבות קורא.",
-      });
+      toast.error("שגיאה בבדיקת התוכן. נסה שוב מאוחר יותר.");
     } finally {
       setIsReviewing(false);
     }
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-500";
-    if (score >= 60) return "text-yellow-500";
-    return "text-red-500";
+    if (score >= 80) return "text-success";
+    if (score >= 60) return "text-warning";
+    return "text-destructive";
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case "error": return <XCircle className="h-4 w-4 text-red-500" />;
-      case "warning": return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      default: return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      case "error": return <XCircle className="h-4 w-4 text-destructive" />;
+      case "warning": return <AlertTriangle className="h-4 w-4 text-warning" />;
+      default: return <CheckCircle className="h-4 w-4 text-info" />;
     }
   };
 
