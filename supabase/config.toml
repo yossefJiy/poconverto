@@ -122,3 +122,9 @@ verify_jwt = false
 
 [functions.kpi-alerts]
 verify_jwt = false
+
+[functions.social-publish]
+verify_jwt = false
+
+[functions.engagement-sync]
+verify_jwt = false

@@ -7,6 +7,7 @@ import { tasksAPI } from './tasks.api';
 import { aiAPI } from './ai.api';
 import { kpiAPI } from './kpi.api';
 import { competitorAPI } from './competitor.api';
+import { socialAPI } from './social.api';
 
 export const api = {
   analytics: analyticsAPI,
@@ -16,6 +17,7 @@ export const api = {
   ai: aiAPI,
   kpi: kpiAPI,
   competitors: competitorAPI,
+  social: socialAPI,
 };
 
 export { analyticsAPI } from './analytics.api';
@@ -25,4 +27,5 @@ export { tasksAPI } from './tasks.api';
 export { aiAPI } from './ai.api';
 export { kpiAPI } from './kpi.api';
 export { competitorAPI } from './competitor.api';
+export { socialAPI } from './social.api';
 export { BaseAPI } from './base';
