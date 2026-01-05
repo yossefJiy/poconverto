@@ -262,5 +262,3 @@ export function SocialAnalyticsDashboard({
     </div>
   );
 }
-
-export default SocialAnalyticsDashboard;

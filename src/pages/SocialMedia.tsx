@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { DomainErrorBoundary } from '@/components/shared/DomainErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { 
@@ -111,6 +112,7 @@ export default function SocialMedia() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="social-media">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -216,6 +218,7 @@ export default function SocialMedia() {
           </TabsContent>
         </Tabs>
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
