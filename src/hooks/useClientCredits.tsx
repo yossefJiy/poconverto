@@ -6,8 +6,8 @@ import { toast } from "sonner";
 export const CREDITS_PER_HOUR = 60;
 export const PRICE_PER_HOUR = 218;
 
-export function calculateTaskCredits(durationMinutes: number): number {
-  return Math.ceil((durationMinutes / 60) * CREDITS_PER_HOUR);
+export function calculateTaskCredits(durationMinutes: number, complexityMultiplier: number = 1): number {
+  return Math.ceil((durationMinutes / 60) * CREDITS_PER_HOUR * complexityMultiplier);
 }
 
 export function creditsToHours(credits: number): number {
@@ -59,6 +59,27 @@ interface TaskRequest {
   converted_task_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface ClientLimit {
+  id: string;
+  client_id: string;
+  monthly_hours_limit: number | null;
+  monthly_credits_limit: number | null;
+  limit_type: string;
+  overage_rate: number;
+  alert_at_percentage: number;
+  block_at_limit: boolean;
+}
+
+interface CreditFormula {
+  id: string;
+  name: string;
+  description: string | null;
+  base_credits: number;
+  time_multiplier: number;
+  complexity_multiplier: number;
+  is_default: boolean;
 }
 
 export function useClientCredits(clientId?: string) {
@@ -136,6 +157,36 @@ export function useClientCredits(clientId?: string) {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch client limits
+  const { data: clientLimit } = useQuery({
+    queryKey: ["client-limit", clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_limits")
+        .select("*")
+        .eq("client_id", clientId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data as ClientLimit | null;
+    },
+    enabled: !!clientId,
+  });
+
+  // Fetch credit formulas
+  const { data: formulas = [] } = useQuery({
+    queryKey: ["credit-formulas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credit_formulas")
+        .select("*")
+        .order("is_default", { ascending: false });
+      
+      if (error) throw error;
+      return data as CreditFormula[];
     },
   });
 
@@ -315,7 +366,10 @@ export function useClientCredits(clientId?: string) {
 
   const remainingCredits = credits ? credits.total_credits - credits.used_credits : 0;
   const usagePercentage = credits ? (credits.used_credits / credits.total_credits) * 100 : 0;
-  const isLowCredits = usagePercentage >= (credits?.notify_at_percentage || 80);
+  const alertThreshold = clientLimit?.alert_at_percentage || credits?.notify_at_percentage || 80;
+  const isLowCredits = usagePercentage >= alertThreshold;
+  const isAtLimit = clientLimit?.block_at_limit && credits && credits.used_credits >= (clientLimit.monthly_credits_limit || credits.total_credits);
+  const defaultFormula = formulas.find(f => f.is_default) || formulas[0];
 
   return {
     credits,
@@ -323,9 +377,13 @@ export function useClientCredits(clientId?: string) {
     taskRequests,
     allCredits,
     allTaskRequests,
+    clientLimit,
+    formulas,
+    defaultFormula,
     remainingCredits,
     usagePercentage,
     isLowCredits,
+    isAtLimit,
     isLoading: isLoadingCredits || isLoadingTransactions || isLoadingRequests,
     isLoadingAllCredits,
     addCredits: addCreditsMutation.mutate,

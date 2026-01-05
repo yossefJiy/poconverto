@@ -1530,6 +1530,56 @@ export type Database = {
           },
         ]
       }
+      client_limits: {
+        Row: {
+          alert_at_percentage: number | null
+          block_at_limit: boolean | null
+          client_id: string
+          created_at: string
+          id: string
+          limit_type: string
+          monthly_credits_limit: number | null
+          monthly_hours_limit: number | null
+          overage_rate: number | null
+          percentage_base: number | null
+          updated_at: string
+        }
+        Insert: {
+          alert_at_percentage?: number | null
+          block_at_limit?: boolean | null
+          client_id: string
+          created_at?: string
+          id?: string
+          limit_type?: string
+          monthly_credits_limit?: number | null
+          monthly_hours_limit?: number | null
+          overage_rate?: number | null
+          percentage_base?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alert_at_percentage?: number | null
+          block_at_limit?: boolean | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          limit_type?: string
+          monthly_credits_limit?: number | null
+          monthly_hours_limit?: number | null
+          overage_rate?: number | null
+          percentage_base?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_performance_history: {
         Row: {
           client_id: string
@@ -2239,6 +2289,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      credit_formulas: {
+        Row: {
+          base_credits: number
+          complexity_multiplier: number
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          time_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          base_credits?: number
+          complexity_multiplier?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          time_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          base_credits?: number
+          complexity_multiplier?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          time_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       credit_transactions: {
         Row: {
