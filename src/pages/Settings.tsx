@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth, usePermissions } from "@/hooks/useAuth";
 import { useClient } from "@/hooks/useClient";
@@ -64,6 +65,7 @@ export default function Settings() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="settings">
       <div className="p-8">
         <PageHeader 
           title="הגדרות"
@@ -236,6 +238,7 @@ export default function Settings() {
           </div>
         </div>
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }

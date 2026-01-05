@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { useAuth, usePermissions, ROLE_LABELS, AppRole } from "@/hooks/useAuth";
 import { 
   Shield, 
@@ -211,6 +212,7 @@ export default function Permissions() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="permissions">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -406,6 +408,7 @@ export default function Permissions() {
           </TabsContent>
         </Tabs>
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
