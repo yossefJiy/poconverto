@@ -81,6 +81,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { TeamDashboard } from "@/components/tasks/TeamDashboard";
+import { MyDayBoard } from "@/components/tasks/MyDayBoard";
+import { TimeSlotBoard } from "@/components/tasks/TimeSlotBoard";
 import { BulkTaskImport } from "@/components/tasks/BulkTaskImport";
 import { TaskBulkActions } from "@/components/tasks/TaskBulkActions";
 import { TaskShareDialog } from "@/components/tasks/TaskShareDialog";
@@ -162,6 +164,7 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showTimeBoard, setShowTimeBoard] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [filter, setFilter] = useState<"all" | "assignee" | "department" | "date" | "client">("all");
   const [selectedValue, setSelectedValue] = useState("");
@@ -987,6 +990,35 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
     );
   };
 
+  // Show time slot board view
+  if (showTimeBoard) {
+    return (
+      <MainLayout>
+        <DomainErrorBoundary domain="tasks">
+          <div className="p-4 md:p-8">
+            <PageHeader 
+              title="לוח זמנים יומי"
+              description="תכנון משימות לפי שעות"
+              actions={
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowDashboard(true)}>
+                    <LayoutDashboard className="w-4 h-4 ml-2" />
+                    הדשבורד שלי
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowTimeBoard(false)}>
+                    <List className="w-4 h-4 ml-2" />
+                    תצוגה מלאה
+                  </Button>
+                </div>
+              }
+            />
+            <TimeSlotBoard showAllTeam={!selectedClient} />
+          </div>
+        </DomainErrorBoundary>
+      </MainLayout>
+    );
+  }
+
   // Show dashboard view
   if (showDashboard) {
     return (
@@ -997,13 +1029,19 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               title="הדשבורד שלי"
               description="משימות להיום ולקראת"
               actions={
-                <Button variant="outline" onClick={() => setShowDashboard(false)}>
-                  <List className="w-4 h-4 ml-2" />
-                  תצוגה מלאה
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowTimeBoard(true)}>
+                    <Clock className="w-4 h-4 ml-2" />
+                    לוח זמנים
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowDashboard(false)}>
+                    <List className="w-4 h-4 ml-2" />
+                    תצוגה מלאה
+                  </Button>
+                </div>
               }
             />
-            <TeamDashboard />
+            <MyDayBoard />
           </div>
         </DomainErrorBoundary>
       </MainLayout>
@@ -1026,6 +1064,10 @@ ${formDescription ? `תיאור: ${formDescription}` : ""}
               <Button variant="outline" size="sm" onClick={() => setIntegrationsDialogOpen(true)}>
                 <Settings2 className="w-4 h-4 ml-2" />
                 אינטגרציות
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowTimeBoard(true)}>
+                <Clock className="w-4 h-4 ml-2" />
+                לוח זמנים
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowDashboard(true)}>
                 <LayoutDashboard className="w-4 h-4 ml-2" />
