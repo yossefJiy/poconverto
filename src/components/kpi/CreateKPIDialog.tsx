@@ -293,5 +293,3 @@ export function CreateKPIDialog({ open, onOpenChange, clientId, onSuccess }: Cre
     </Dialog>
   );
 }
-
-export default CreateKPIDialog;

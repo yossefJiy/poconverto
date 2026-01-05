@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { DomainErrorBoundary } from '@/components/shared/DomainErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MediaLibrary, 
@@ -311,6 +312,7 @@ export default function ContentStudio() {
 
   return (
     <MainLayout>
+      <DomainErrorBoundary domain="content">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">סטודיו תוכן</h1>
@@ -421,6 +423,7 @@ export default function ContentStudio() {
           </TabsContent>
         </Tabs>
       </div>
+      </DomainErrorBoundary>
     </MainLayout>
   );
 }
