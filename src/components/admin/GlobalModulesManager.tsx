@@ -16,7 +16,6 @@ import {
   Bot,
   Lightbulb,
   FileText,
-  Shield,
   Contact,
   Receipt,
   LayoutGrid,
@@ -35,14 +34,6 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 interface GlobalModuleSetting {
   id: string;
@@ -107,6 +98,57 @@ const moduleColors: Record<string, string> = {
   approvals: "text-sky-500",
   agency: "text-fuchsia-500",
 };
+
+const MODULE_CATEGORIES = [
+  { 
+    key: 'core', 
+    label: 'ליבה', 
+    icon: LayoutDashboard,
+    modules: ['dashboard', 'projects', 'tasks', 'team'] 
+  },
+  { 
+    key: 'marketing', 
+    label: 'מרקטינג', 
+    icon: Target,
+    modules: ['marketing', 'kpis', 'competitors', 'social', 'content_studio'] 
+  },
+  { 
+    key: 'campaigns', 
+    label: 'קמפיינים', 
+    icon: Megaphone,
+    modules: ['campaigns', 'programmatic', 'ab_tests'] 
+  },
+  { 
+    key: 'ecommerce', 
+    label: 'איקומרס', 
+    icon: ShoppingBag,
+    modules: ['ecommerce', 'google_shopping'] 
+  },
+  { 
+    key: 'data', 
+    label: 'נתונים', 
+    icon: BarChart3,
+    modules: ['analytics', 'insights', 'reports'] 
+  },
+  { 
+    key: 'ai', 
+    label: 'בינה מלאכותית', 
+    icon: Bot,
+    modules: ['ai_agent', 'ai_insights'] 
+  },
+  { 
+    key: 'business', 
+    label: 'ניהול עסקי', 
+    icon: Receipt,
+    modules: ['leads', 'billing', 'approvals'] 
+  },
+  { 
+    key: 'agency', 
+    label: 'סוכנות', 
+    icon: LayoutGrid,
+    modules: ['agency'] 
+  }
+];
 
 export function GlobalModulesManager() {
   const queryClient = useQueryClient();
@@ -178,9 +220,6 @@ export function GlobalModulesManager() {
     );
   }
 
-  // Sort settings for display - in triplets
-  const sortedModules = Object.values(settings).sort((a, b) => a.sort_order - b.sort_order);
-
   return (
     <Card className="glass border-0">
       <CardHeader>
@@ -206,84 +245,106 @@ export function GlobalModulesManager() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
             נהל איזה מודולים זמינים גלובלית ומה ברירת המחדל לפי סוג לקוח.
             ניתן לעקוף הגדרות אלו ברמת לקוח ספציפי.
           </p>
 
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-right">מודול</TableHead>
-                  <TableHead className="text-center w-32">פעיל גלובלית</TableHead>
-                  <TableHead className="text-center w-32">ברירת מחדל - בסיסי</TableHead>
-                  <TableHead className="text-center w-32">ברירת מחדל - פרמיום</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedModules.map((setting) => {
-                  const Icon = moduleIcons[setting.module_name] || Settings;
-                  const color = moduleColors[setting.module_name] || "text-primary";
+          {/* Category Cards */}
+          <div className="space-y-4">
+            {MODULE_CATEGORIES.map((category) => {
+              const CategoryIcon = category.icon;
+              const categoryModules = category.modules
+                .map(m => settings[m])
+                .filter(Boolean);
 
-                  return (
-                    <TableRow key={setting.module_name}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg bg-muted flex items-center justify-center`}>
-                            <Icon className={`w-4 h-4 ${color}`} />
+              if (categoryModules.length === 0) return null;
+
+              return (
+                <div 
+                  key={category.key} 
+                  className="border rounded-lg overflow-hidden animate-fade-in"
+                >
+                  {/* Category Header */}
+                  <div className="bg-muted/50 px-4 py-3 border-b flex items-center gap-2">
+                    <CategoryIcon className="w-4 h-4 text-primary" />
+                    <span className="font-medium">{category.label}</span>
+                    <Badge variant="secondary" className="mr-auto text-xs">
+                      {categoryModules.length} מודולים
+                    </Badge>
+                  </div>
+
+                  {/* Modules Grid */}
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {categoryModules.map((setting) => {
+                      const Icon = moduleIcons[setting.module_name] || Settings;
+                      const color = moduleColors[setting.module_name] || "text-primary";
+
+                      return (
+                        <div 
+                          key={setting.module_name}
+                          className={`p-4 rounded-lg border bg-card transition-all ${
+                            !setting.is_globally_enabled ? 'opacity-50' : ''
+                          }`}
+                        >
+                          {/* Module Header */}
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                              <Icon className={`w-5 h-5 ${color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{setting.display_name}</p>
+                              <p className="text-xs text-muted-foreground">{setting.module_name}</p>
+                            </div>
+                            {setting.module_name === "agency" && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                על
+                              </Badge>
+                            )}
                           </div>
-                          <div>
-                            <p className="font-medium">{setting.display_name}</p>
-                            <p className="text-xs text-muted-foreground">{setting.module_name}</p>
+
+                          {/* Switches */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">גלובלי</span>
+                              <Switch
+                                checked={setting.is_globally_enabled}
+                                onCheckedChange={(v) => handleToggle(setting.module_name, "is_globally_enabled", v)}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">בסיסי</span>
+                              <Switch
+                                checked={setting.default_for_basic}
+                                onCheckedChange={(v) => handleToggle(setting.module_name, "default_for_basic", v)}
+                                disabled={!setting.is_globally_enabled}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">פרמיום</span>
+                              <Switch
+                                checked={setting.default_for_premium}
+                                onCheckedChange={(v) => handleToggle(setting.module_name, "default_for_premium", v)}
+                                disabled={!setting.is_globally_enabled}
+                              />
+                            </div>
                           </div>
-                          {setting.module_name === "agency" && (
-                            <Badge variant="outline" className="text-xs">
-                              חשבון על בלבד
-                            </Badge>
-                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={setting.is_globally_enabled}
-                            onCheckedChange={(v) => handleToggle(setting.module_name, "is_globally_enabled", v)}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={setting.default_for_basic}
-                            onCheckedChange={(v) => handleToggle(setting.module_name, "default_for_basic", v)}
-                            disabled={!setting.is_globally_enabled}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={setting.default_for_premium}
-                            onCheckedChange={(v) => handleToggle(setting.module_name, "default_for_premium", v)}
-                            disabled={!setting.is_globally_enabled}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="bg-muted/30 rounded-lg p-4 text-sm space-y-2">
             <p className="font-medium">הסבר:</p>
             <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-              <li><strong>פעיל גלובלית:</strong> אם כבוי - המודול לא יהיה זמין לאף לקוח</li>
-              <li><strong>ברירת מחדל לבסיסי:</strong> האם לקוח בסיסי יקבל גישה כברירת מחדל</li>
-              <li><strong>ברירת מחדל לפרמיום:</strong> האם לקוח פרמיום יקבל גישה כברירת מחדל</li>
+              <li><strong>גלובלי:</strong> אם כבוי - המודול לא יהיה זמין לאף לקוח</li>
+              <li><strong>בסיסי:</strong> האם לקוח בסיסי יקבל גישה כברירת מחדל</li>
+              <li><strong>פרמיום:</strong> האם לקוח פרמיום יקבל גישה כברירת מחדל</li>
             </ul>
           </div>
         </div>
