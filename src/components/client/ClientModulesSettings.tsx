@@ -164,6 +164,8 @@ interface TeamAIPermission {
   max_daily_requests: number;
 }
 
+type ModulesOrder = Record<string, number>;
+
 export function ClientModulesSettings({
   clientId,
   modules: initialModules,
@@ -172,11 +174,40 @@ export function ClientModulesSettings({
   const queryClient = useQueryClient();
   const [modules, setModules] = useState<ClientModules>(initialModules);
   const [syncFrequency, setSyncFrequency] = useState(initialSyncFrequency);
+  const [modulesOrder, setModulesOrder] = useState<ModulesOrder>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [expandedAIModules, setExpandedAIModules] = useState<Set<string>>(new Set());
   const [aiSettings, setAiSettings] = useState<Record<string, AIModuleSetting>>({});
   const [teamAIPermissions, setTeamAIPermissions] = useState<Record<string, TeamAIPermission>>({});
   const [showTeamPermissions, setShowTeamPermissions] = useState(false);
+  const [showOrderSettings, setShowOrderSettings] = useState(false);
+
+  // Fetch client data including modules_order
+  const { data: clientSettings } = useQuery({
+    queryKey: ['client-settings', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('modules_order')
+        .eq('id', clientId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch global module settings for default order
+  const { data: globalSettings = [] } = useQuery({
+    queryKey: ['global-module-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('global_module_settings')
+        .select('module_name, sort_order')
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Fetch AI module settings
   const { data: aiModuleSettings } = useQuery({
@@ -222,6 +253,13 @@ export function ClientModulesSettings({
     setSyncFrequency(initialSyncFrequency);
   }, [initialModules, initialSyncFrequency]);
 
+  // Initialize modules order from client settings
+  useEffect(() => {
+    if (clientSettings?.modules_order) {
+      setModulesOrder(clientSettings.modules_order as ModulesOrder);
+    }
+  }, [clientSettings]);
+
   useEffect(() => {
     if (aiModuleSettings) {
       const settingsMap: Record<string, AIModuleSetting> = {};
@@ -257,9 +295,18 @@ export function ClientModulesSettings({
   const updateMutation = useMutation({
     mutationFn: async () => {
       const modulesJson = modules as unknown as Record<string, boolean>;
+      
+      // Filter out empty order values
+      const filteredOrder = Object.fromEntries(
+        Object.entries(modulesOrder).filter(([_, v]) => v !== undefined && v !== null)
+      );
+      
       const { error } = await supabase
         .from("clients")
-        .update({ modules_enabled: modulesJson })
+        .update({ 
+          modules_enabled: modulesJson,
+          modules_order: filteredOrder 
+        })
         .eq("id", clientId);
       if (error) throw error;
 
@@ -388,6 +435,25 @@ export function ClientModulesSettings({
       }
       return newSet;
     });
+  };
+
+  const handleOrderChange = (moduleName: string, order: number | null) => {
+    setModulesOrder(prev => {
+      if (order === null) {
+        const { [moduleName]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [moduleName]: order };
+    });
+    setHasChanges(true);
+  };
+
+  const getEffectiveOrder = (moduleName: string): number => {
+    if (modulesOrder[moduleName] !== undefined) {
+      return modulesOrder[moduleName];
+    }
+    const globalSetting = globalSettings.find(g => g.module_name === moduleName);
+    return globalSetting?.sort_order ?? 999;
   };
 
   const handleTeamPermissionToggle = (teamMemberId: string, moduleName: string, canUse: boolean) => {
@@ -520,6 +586,19 @@ export function ClientModulesSettings({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={modulesOrder[key] ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleOrderChange(key, val ? parseInt(val) : null);
+                              }}
+                              placeholder={String(getEffectiveOrder(key))}
+                              className="w-14 h-8 text-xs text-center"
+                              min={1}
+                              max={99}
+                              title="סדר תצוגה"
+                            />
                             {hasAI && isModuleEnabled && (
                               <Button
                                 variant="ghost"

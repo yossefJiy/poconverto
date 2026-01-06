@@ -2276,6 +2276,7 @@ export type Database = {
           linkedin_url: string | null
           logo_url: string | null
           modules_enabled: Json | null
+          modules_order: Json | null
           name: string
           shopify_email: string | null
           tiktok_url: string | null
@@ -2301,6 +2302,7 @@ export type Database = {
           linkedin_url?: string | null
           logo_url?: string | null
           modules_enabled?: Json | null
+          modules_order?: Json | null
           name: string
           shopify_email?: string | null
           tiktok_url?: string | null
@@ -2326,6 +2328,7 @@ export type Database = {
           linkedin_url?: string | null
           logo_url?: string | null
           modules_enabled?: Json | null
+          modules_order?: Json | null
           name?: string
           shopify_email?: string | null
           tiktok_url?: string | null
