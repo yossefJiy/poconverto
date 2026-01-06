@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.studio-dialog]
 verify_jwt = false
+
+[functions.send-studio-summary]
+verify_jwt = false
