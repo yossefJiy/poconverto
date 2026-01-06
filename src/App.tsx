@@ -59,6 +59,7 @@ import Programmatic from "./pages/Programmatic";
 import ABTests from "./pages/ABTests";
 import GoogleShopping from "./pages/GoogleShopping";
 import AIInsights from "./pages/AIInsights";
+import SystemPlanning from "./pages/SystemPlanning";
 
 const queryClient = new QueryClient();
 
@@ -339,6 +340,13 @@ const App = () => (
                 <SimulationProtectedRoute moduleKey="ai_agent">
                   <DomainErrorBoundary domain="ai">
                     <AIInsights />
+                  </DomainErrorBoundary>
+                </SimulationProtectedRoute>
+              } />
+              <Route path="/system-planning" element={
+                <SimulationProtectedRoute>
+                  <DomainErrorBoundary domain="planning">
+                    <SystemPlanning />
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />

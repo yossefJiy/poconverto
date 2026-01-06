@@ -137,3 +137,9 @@ verify_jwt = false
 
 [functions.send-studio-summary]
 verify_jwt = false
+
+[functions.planning-dialogue]
+verify_jwt = false
+
+[functions.planning-summary]
+verify_jwt = false

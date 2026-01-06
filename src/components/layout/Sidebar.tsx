@@ -159,6 +159,7 @@ const settingsItems = [
   { icon: HeartPulse, label: "בריאות קוד", path: "/code-health", adminOnly: true },
   { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
   { icon: BarChart3, label: "קרדיטים", path: "/credits", adminOnly: true },
+  { icon: Bot, label: "אפיון מערכות", path: "/system-planning", adminOnly: true },
 ];
 
 
