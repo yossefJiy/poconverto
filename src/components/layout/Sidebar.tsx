@@ -285,18 +285,15 @@ export function Sidebar() {
           </Link>
         )}
 
-        {visibleCategories.map((category) => {
+        {visibleCategories.map((category, catIndex) => {
           const categoryStartIndex = animationIndex;
           animationIndex += category.items.length;
 
           return (
-            <div key={category.key} className="space-y-1">
-              {/* Category Header */}
-              {!isCollapsed && (
-                <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                  <category.icon className="w-3.5 h-3.5" />
-                  {category.label}
-                </div>
+            <div key={category.key}>
+              {/* Divider between categories (except first) */}
+              {catIndex > 0 && (
+                <div className="my-2 mx-3 border-t border-sidebar-border/50" />
               )}
               
               {/* Category Items */}
