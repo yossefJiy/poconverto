@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.claude-studio-advisor]
 verify_jwt = false
+
+[functions.studio-dialog]
+verify_jwt = false
