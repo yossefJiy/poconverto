@@ -169,11 +169,13 @@ export function RoleSimulatorMenu() {
             return (
               <DropdownMenuItem
                 key={role}
-                onClick={() => {
+                onSelect={(e) => {
                   if (isActualRole && !isSimulating) return;
 
-                  // פותחים את הדיאלוג אחרי שהדרופדאון מסיים להיסגר ולהחזיר פוקוס,
-                  // כדי שלא ייווצר "focusOutside" שסוגר את הדיאלוג מיד.
+                  // חשוב: אם נותנים ל־Dropdown להיסגר "כרגיל", הוא מפרק את העץ (unmount)
+                  // ולכן גם ה־Dialog נעלם מיד. מונעים את הסגירה האוטומטית ואז פותחים Dialog.
+                  e.preventDefault();
+
                   setTimeout(() => {
                     if (isClientRoleType) {
                       handleClientRoleSelect(role);
