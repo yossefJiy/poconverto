@@ -64,32 +64,88 @@ interface MenuItem {
   moduleKey?: keyof ClientModules;
 }
 
+interface MenuCategory {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: MenuItem[];
+}
+
 // Agency menu is separate - only for master account
 const agencyItem: MenuItem = { icon: LayoutGrid, label: "סוכנות", path: "/agency" };
 
-const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
-  { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "projects" },
-  { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
-  { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
-  { icon: ShoppingBag, label: "Google Shopping", path: "/google-shopping", moduleKey: "google_shopping" },
-  { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
-  { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "kpis" },
-  { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "competitors" },
-  { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "social" },
-  { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "content_studio" },
-  { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
-  { icon: Megaphone, label: "פרוגרמטי", path: "/programmatic", moduleKey: "programmatic" },
-  { icon: Target, label: "A/B Tests", path: "/ab-tests", moduleKey: "ab_tests" },
-  { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
-  { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
-  { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
-  { icon: ClipboardCheck, label: "אישורים", path: "/approvals", moduleKey: "approvals" },
-  { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
-  { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
-  { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
-  { icon: Bot, label: "AI Insights", path: "/ai-insights", moduleKey: "ai_insights" },
-  { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
+const menuCategories: MenuCategory[] = [
+  {
+    key: "core",
+    label: "ליבה",
+    icon: LayoutDashboard,
+    items: [
+      { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
+      { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "projects" },
+      { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
+      { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
+    ],
+  },
+  {
+    key: "marketing",
+    label: "שיווק",
+    icon: Target,
+    items: [
+      { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
+      { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "kpis" },
+      { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "competitors" },
+      { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "social" },
+      { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "content_studio" },
+    ],
+  },
+  {
+    key: "campaigns",
+    label: "קמפיינים",
+    icon: Megaphone,
+    items: [
+      { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
+      { icon: Network, label: "פרוגרמטי", path: "/programmatic", moduleKey: "programmatic" },
+      { icon: Target, label: "A/B Tests", path: "/ab-tests", moduleKey: "ab_tests" },
+    ],
+  },
+  {
+    key: "ecommerce",
+    label: "איקומרס",
+    icon: ShoppingBag,
+    items: [
+      { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
+      { icon: ShoppingBag, label: "Google Shopping", path: "/google-shopping", moduleKey: "google_shopping" },
+    ],
+  },
+  {
+    key: "data",
+    label: "נתונים",
+    icon: BarChart3,
+    items: [
+      { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
+      { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
+      { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
+    ],
+  },
+  {
+    key: "ai",
+    label: "AI",
+    icon: Bot,
+    items: [
+      { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
+      { icon: Bot, label: "AI Insights", path: "/ai-insights", moduleKey: "ai_insights" },
+    ],
+  },
+  {
+    key: "business",
+    label: "עסקי",
+    icon: Receipt,
+    items: [
+      { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
+      { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
+      { icon: ClipboardCheck, label: "אישורים", path: "/approvals", moduleKey: "approvals" },
+    ],
+  },
 ];
 
 const settingsItems = [
@@ -141,17 +197,22 @@ export function Sidebar() {
     return role ? labels[role] || role : "משתמש";
   };
 
-  // Filter menu items based on enabled modules
-  const visibleMenuItems = menuItems.filter(item => {
-    if (!item.moduleKey) return true;
-    return isModuleEnabled(item.moduleKey);
-  });
+  // Filter categories based on enabled modules
+  const visibleCategories = menuCategories.map(category => ({
+    ...category,
+    items: category.items.filter(item => {
+      if (!item.moduleKey) return true;
+      return isModuleEnabled(item.moduleKey);
+    }),
+  })).filter(category => category.items.length > 0);
 
   // Show agency only if admin + not simulating + (no client selected OR master account)
   const showAgencyItem = isAdmin && !isSimulating && (!selectedClient || isMasterAccount);
 
   // Display role - show effective role if simulating
   const displayRole = isSimulating ? effectiveRole : role;
+
+  let animationIndex = 0;
 
   return (
     <aside 
@@ -197,7 +258,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+      <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
         {/* Agency item - only for master account / admin */}
         {showAgencyItem && (
           <Link
@@ -224,34 +285,55 @@ export function Sidebar() {
           </Link>
         )}
 
-        {visibleMenuItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
+        {visibleCategories.map((category) => {
+          const categoryStartIndex = animationIndex;
+          animationIndex += category.items.length;
+
           return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                "opacity-0 animate-slide-right",
-                isActive 
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-              style={{ animationDelay: `${(showAgencyItem ? index + 1 : index) * 0.05}s`, animationFillMode: "forwards" }}
-            >
-              <div className="relative">
-                <item.icon className={cn(
-                  "w-5 h-5 transition-transform duration-200 shrink-0",
-                  isActive && "scale-110"
-                )} />
-              </div>
+            <div key={category.key} className="space-y-1">
+              {/* Category Header */}
               {!isCollapsed && (
-                <span className="font-medium flex-1">{item.label}</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
+                  <category.icon className="w-3.5 h-3.5" />
+                  {category.label}
+                </div>
               )}
-              {isActive && (
-                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
-              )}
-            </Link>
+              
+              {/* Category Items */}
+              {category.items.map((item, index) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                      "opacity-0 animate-slide-right",
+                      isActive 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    )}
+                    style={{ 
+                      animationDelay: `${(showAgencyItem ? categoryStartIndex + index + 1 : categoryStartIndex + index) * 0.03}s`, 
+                      animationFillMode: "forwards" 
+                    }}
+                  >
+                    <div className="relative">
+                      <item.icon className={cn(
+                        "w-5 h-5 transition-transform duration-200 shrink-0",
+                        isActive && "scale-110"
+                      )} />
+                    </div>
+                    {!isCollapsed && (
+                      <span className="font-medium flex-1 text-sm">{item.label}</span>
+                    )}
+                    {isActive && (
+                      <div className="absolute right-0 w-1 h-5 bg-primary rounded-l-full" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
 
