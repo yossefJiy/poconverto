@@ -3761,6 +3761,178 @@ export type Database = {
           },
         ]
       }
+      planning_dialogue_parts: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          key_points: Json | null
+          model_used: string | null
+          part_number: number
+          prompt: string
+          response: string | null
+          session_id: string
+          status: string
+          title: string
+          tokens_used: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          key_points?: Json | null
+          model_used?: string | null
+          part_number: number
+          prompt: string
+          response?: string | null
+          session_id: string
+          status?: string
+          title: string
+          tokens_used?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          key_points?: Json | null
+          model_used?: string | null
+          part_number?: number
+          prompt?: string
+          response?: string | null
+          session_id?: string
+          status?: string
+          title?: string
+          tokens_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_dialogue_parts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "planning_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_exports: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          export_type: string
+          id: string
+          recipient_email: string | null
+          sent_at: string | null
+          session_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          export_type: string
+          id?: string
+          recipient_email?: string | null
+          sent_at?: string | null
+          session_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          export_type?: string
+          id?: string
+          recipient_email?: string | null
+          sent_at?: string | null
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_exports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "planning_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          session_type: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          session_type?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          session_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parts: Json
+          sort_order: number | null
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parts?: Json
+          sort_order?: number | null
+          template_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parts?: Json
+          sort_order?: number | null
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_tracking: {
         Row: {
           client_id: string | null
