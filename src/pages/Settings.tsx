@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   Users,
   UserCircle,
-  Bot
+  Bot,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,13 @@ import { EmailTestingSection } from "@/components/admin/EmailTestingSection";
 import { ClientContactsManager } from "@/components/client/ClientContactsManager";
 import { ClientTeamManager } from "@/components/client/ClientTeamManager";
 import { AICapabilityUsageStats } from "@/components/ai/AICapabilityUsageStats";
+import { GlobalModulesManager } from "@/components/admin/GlobalModulesManager";
 
 const settingsSections = [
   { id: "profile", icon: User, title: "פרופיל", description: "ניהול פרטים אישיים" },
   { id: "notifications", icon: Bell, title: "התראות", description: "הגדרת התראות ועדכונים" },
   { id: "appearance", icon: Palette, title: "מראה", description: "התאמה אישית של הממשק" },
+  { id: "modules", icon: LayoutGrid, title: "מודולים גלובליים", description: "נעילה ופתיחה גלובלית", adminOnly: true },
   { id: "users", icon: Shield, title: "משתמשים מורשים", description: "ניהול גישה למערכת", adminOnly: true },
   { id: "team", icon: Users, title: "צוות עובדים", description: "צוות משויך ללקוח", requiresClient: true },
   { id: "contacts", icon: UserCircle, title: "אנשי קשר", description: "אנשי קשר של הלקוח", requiresClient: true },
@@ -173,6 +176,12 @@ export default function Settings() {
                     <Switch defaultChecked />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeSection === "modules" && isAdmin && (
+              <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <GlobalModulesManager />
               </div>
             )}
 

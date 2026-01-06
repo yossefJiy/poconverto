@@ -386,11 +386,11 @@ export function ClientModulesSettings({
           </Select>
         </div>
 
-        {/* Module Toggles */}
+        {/* Module Toggles - Grid in triplets */}
         <div className="space-y-4">
           <h4 className="font-medium text-sm text-muted-foreground">מודולים זמינים</h4>
           
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {moduleConfig.map(({ key, label, icon: Icon, color, bgColor, description, hasAI }) => {
               const isModuleEnabled = modules[key as keyof ClientModules];
               const aiSetting = aiSettings[key];
