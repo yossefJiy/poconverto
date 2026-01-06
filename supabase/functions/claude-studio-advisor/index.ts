@@ -6,6 +6,123 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Dialog parts - each builds on previous context
+const dialogParts = [
+  {
+    id: "intro",
+    title: "רקע והקדמה",
+    prompt: `אני בונה מערכת "סטודיו תוכן" (Content Studio) עבור סוכנות שיווק דיגיטלי.
+
+הסטודיו אמור להיות סביבה ויזואלית ופסיכולוגית נוחה ומזמינה ליצירת תוכן - כרגע כתוב ובהמשך גם ויזואלי, עם חיבור ל-AI.
+
+סוגי התוכן שצריך לתמוך:
+• אסטרטגיה: מיתוג, בריפים, אסטרטגיות שיווק, מחקר קהלים ומתחרים
+• פרסום ממומן: Meta, TikTok, Google (Search/YouTube/Display/PMAX), Taboola, Outbrain
+• תוכן אורגני: מאמרי SEO/AEO, תוכן לאתרים
+• תקשורת ישירה: Email, SMS, אוטומציות WhatsApp, עגלות נטושות
+• קריאייטיב: תסריטים, קופי לתמונות ווידאו
+
+**שאלה 1**: איך לעצב את הממשק כך שיהיה מזמין ונוח ליצירה? מה הפסיכולוגיה והעקרונות? תן לי המלצות קונקרטיות לעיצוב, צבעים, Layout, אנימציות.`
+  },
+  {
+    id: "components",
+    title: "מבנה קומפוננטות תוכן",
+    prompt: `תודה על התשובה המפורטת לגבי העיצוב.
+
+**שאלה 2**: מה המבנה המומלץ לקומפוננטות תוכן? תן לי סכמה מפורטת של:
+- השדות שצריכים להיות בכל קומפוננטת תוכן (מודעה, מאמר, דיוור וכו')
+- ההירררכיה בין קומפוננטות
+- כיצד לארגן Templates לפי פלטפורמה וסוג תוכן
+- מהם השדות הספציפיים לכל פלטפורמה (Meta, Google, TikTok וכו')`
+  },
+  {
+    id: "campaigns",
+    title: "ארכיטקטורת קמפיינים",
+    prompt: `מעולה, עכשיו אני מבין טוב יותר את מבנה הקומפוננטות.
+
+**שאלה 3**: איך לארגן את הקשר בין קמפיין/פרויקט לנכסים השונים?
+
+דוגמה: קמפיין סוף שנה - מגדירים נושא וקריאייטיב מרכזי, והמערכת מייצרת קומפוננטות תוכן לכל הנכסים בו-זמנית.
+
+תאר לי:
+- המודל הנכון לניהול קמפיינים
+- איך לקשר בין קמפיין לקומפוננטות התוכן השונות
+- איך לנהל גרסאות (A/B testing)
+- איך לשייך לפרויקטים ומשימות במערכת`
+  },
+  {
+    id: "ai_models",
+    title: "המלצות מודלי AI",
+    prompt: `תודה רבה על ההסבר על ארכיטקטורת הקמפיינים.
+
+**שאלה 4 - חשוב מאוד**: לכל סוג תוכן וקומפוננטה - איזה מודל AI כדאי להשתמש?
+
+התייחס לכל אחד מהבאים:
+1. כתיבת מודעות (Meta, Google, TikTok)
+2. מאמרי SEO ו-AEO
+3. תוכן לאתרים
+4. דיוורים ו-SMS
+5. תסריטים לוידאו
+6. קופי לקריאייטיב ויזואלי
+7. ניתוח מתחרים וקהלים
+8. יצירת תמונות
+9. יצירת וידאו
+
+למודלים האפשריים:
+- Claude (Anthropic) - הגרסאות השונות
+- GPT-4/GPT-5 (OpenAI)
+- Gemini (Google)
+- DALL-E, Midjourney, Stable Diffusion
+- מודלים לוידאו
+
+הסבר למה כל מודל מתאים לכל משימה.`
+  },
+  {
+    id: "flow_features",
+    title: "Flow עבודה ופיצ'רים",
+    prompt: `מעולה, עכשיו יש לי תמונה ברורה על מודלי ה-AI.
+
+**שאלה 5 - אחרונה**: 
+
+א) תאר לי את ה-Flow האידיאלי מרגע שמשתמש רוצה ליצור תוכן ועד שהוא מייצא אותו לפלטפורמות.
+
+ב) מה הפיצ'רים החיוניים שחייבים להיות ביום 1? מה אפשר לדחות לפאזות הבאות?
+
+ג) אילו אינטגרציות (API) עם פלטפורמות הפרסום חיוניות?
+
+ד) סיכום והמלצות סופיות לפרויקט.`
+  }
+];
+
+async function callClaude(
+  apiKey: string, 
+  messages: { role: string; content: string }[]
+): Promise<string> {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://jiy.co.il",
+      "X-Title": "JIY Content Studio Advisor",
+    },
+    body: JSON.stringify({
+      model: "anthropic/claude-opus-4.5",
+      messages,
+      max_tokens: 4000,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -15,203 +132,99 @@ serve(async (req) => {
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-    if (!OPENROUTER_API_KEY) {
-      throw new Error("OPENROUTER_API_KEY is not configured");
-    }
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
-    }
+    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
+    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
 
     const resend = new Resend(RESEND_API_KEY);
-
-    console.log("[Claude Studio Advisor] Starting consultation with Claude Opus 4.5...");
-
-    // The comprehensive prompt in Hebrew
-    const systemPrompt = `אתה יועץ UX, אסטרטגיית תוכן ומומחה AI לסוכנויות שיווק דיגיטלי. 
-אתה נדרש לתת תשובה מקיפה, מפורטת ומעשית.
-השב בעברית בלבד.`;
-
-    const userPrompt = `אני בונה מערכת "סטודיו תוכן" (Content Studio) עבור סוכנות שיווק דיגיטלי.
-
-## הרקע והחזון
-
-הסטודיו אמור להיות מקום שבו אני מייצר תוכן - כרגע כתוב ובהמשך גם ויזואלי, עם חיבור למערכות וכלים, במיוחד AI.
-
-אני צריך ליצור **סביבה ויזואלית ופסיכולוגית נוחה ומזמינה ליצירת תוכן**.
-
-## סוגי התוכן שצריך לתמוך:
-
-### אסטרטגיה ומחקר:
-- מיתוג ובריפים
-- אסטרטגיות שיווק
-- מחקר קהלי יעד
-- מחקר מתחרים
-- ניתוח מידע
-
-### פרסום ממומן:
-- **Meta** (Facebook, Instagram) - כל סוגי המודעות
-- **TikTok** - מודעות וידאו ותמונה
-- **Google** על כל גווניו:
-  - Search
-  - YouTube
-  - Display
-  - Performance Max (PMAX)
-- **Taboola**
-- **Outbrain**
-
-### תוכן אורגני וקידום:
-- מאמרים לקידום למנועי חיפוש (SEO)
-- מאמרים למנועי AI (AEO/GEO)
-- כתיבת תוכן לאתרים
-
-### תקשורת ישירה:
-- דיוורים (Email Marketing)
-- SMS
-- פלואו לאוטומציות WhatsApp או כל פלטפורמה אחרת
-- עגלות נטושות (Abandoned Cart)
-
-### קריאייטיב:
-- כתיבת תסריטים
-- קופי לתוכן ויזואלי (תמונות, וידאו)
-
-## דרישות מפתח:
-
-### 1. התאמה לפלטפורמות
-כל התוכן צריך להיות מחובר ומתעדכן לפי הפרמטרים, הבקשות, השדות והפלייסמנטים של כל מערכת שיווק.
-
-### 2. יצירת קמפיין מאוחדת
-כמו קמפיין שעשינו לדרורי לסוף השנה - מגדירים את הנושא ואת הקריאייטיב, והמערכת מייצרת קומפוננטות תוכן לכל הנכסים בו-זמנית.
-לאחר מכן ניתן:
-- למשוך מה שנכון
-- לתקן ידנית
-- לתקן עם כלי AI
-
-### 3. שיוך לפרויקטים
-קומפוננטות תוכן צריכות להיות משויכות למשימה או/ו פרויקט.
-
-## השאלות שלי אליך:
-
-### 1. עיצוב הממשק
-איך לעצב את הממשק כך שיהיה מזמין ונוח ליצירה? מה הפסיכולוגיה והעקרונות? תן לי המלצות קונקרטיות לעיצוב, צבעים, Layout, אנימציות.
-
-### 2. מבנה קומפוננטות
-מה המבנה המומלץ לקומפוננטות תוכן? תן לי סכמה מפורטת של:
-- השדות שצריכים להיות בכל קומפוננטה
-- ההירררכיה בין קומפוננטות
-- כיצד לארגן Templates
-
-### 3. ארכיטקטורת קמפיינים
-איך לארגן את הקשר בין קמפיין/פרויקט לנכסים שונים? מה המודל הנכון לניהול?
-
-### 4. המלצות מודלי AI
-**חשוב מאוד**: לכל סוג תוכן וקומפוננטה - איזה מודל AI כדאי להשתמש?
-התייחס למודלים הבאים ותסביר למה:
-- Claude (Anthropic) - הגרסאות השונות
-- GPT-4/GPT-5 (OpenAI)
-- Gemini (Google)
-- מודלים מיוחדים לתמונות (DALL-E, Midjourney, Stable Diffusion)
-- מודלים לוידאו
-
-### 5. Flow עבודה אידיאלי
-תאר לי את ה-Flow האידיאלי מרגע שמשתמש רוצה ליצור תוכן ועד שהוא מייצא אותו לפלטפורמות.
-
-### 6. פיצ'רים חיוניים
-מה הפיצ'רים החיוניים שחייבים להיות ביום 1? מה אפשר לדחות לפאזות הבאות?
-
-### 7. אינטגרציות
-אילו אינטגרציות חיוניות (API) עם פלטפורמות הפרסום?
-
-אנא תן תשובה מקיפה ומפורטת עם דוגמאות קונקרטיות.`;
-
-    // Call Claude Opus 4.5 via OpenRouter
-    console.log("[Claude Studio Advisor] Calling OpenRouter with Claude Opus 4.5...");
     
-    const claudeResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://jiy.co.il",
-        "X-Title": "JIY Content Studio Advisor",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-opus-4.5",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 12000,
-        temperature: 0.7,
-      }),
-    });
+    // Check if specific part requested
+    const body = await req.json().catch(() => ({}));
+    const requestedPart = body.part;
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      console.error("[Claude Studio Advisor] OpenRouter error:", claudeResponse.status, errorText);
-      throw new Error(`OpenRouter API error: ${claudeResponse.status} - ${errorText}`);
-    }
+    console.log(`[Claude Studio Advisor] Starting dialog consultation...`);
 
-    const claudeData = await claudeResponse.json();
-    const fullResponse = claudeData.choices?.[0]?.message?.content || "";
-    
-    console.log("[Claude Studio Advisor] Received response, length:", fullResponse.length);
+    const systemPrompt = `אתה יועץ UX, אסטרטגיית תוכן ומומחה AI לסוכנויות שיווק דיגיטלי.
+אתה נדרש לתת תשובות מקיפות, מפורטות ומעשיות עם דוגמאות קונקרטיות.
+השב בעברית בלבד.
+השתמש בכותרות, רשימות וארגון ברור.`;
 
-    // Extract key points for chat summary
-    const extractKeyPoints = (text: string) => {
-      const sections = text.split(/^#{1,3}\s+/m).filter(Boolean);
-      const keyPoints: string[] = [];
+    const conversationHistory: { role: string; content: string }[] = [
+      { role: "system", content: systemPrompt }
+    ];
+
+    const allResponses: { id: string; title: string; response: string }[] = [];
+    const keyPointsAll: string[] = [];
+    const aiModelsRecommendations: { contentType: string; model: string; reason: string }[] = [];
+
+    // Run through all dialog parts
+    for (const part of dialogParts) {
+      // If specific part requested and not this one, skip
+      if (requestedPart && part.id !== requestedPart && allResponses.length > 0) {
+        continue;
+      }
+
+      console.log(`[Claude Studio Advisor] Part ${part.id}: ${part.title}...`);
+
+      // Add user message
+      conversationHistory.push({ role: "user", content: part.prompt });
+
+      // Call Claude
+      const response = await callClaude(OPENROUTER_API_KEY, conversationHistory);
       
-      // Get first sentence or line from each major section
-      sections.slice(0, 7).forEach(section => {
-        const lines = section.split('\n').filter(l => l.trim());
-        if (lines.length > 0) {
-          const title = lines[0].replace(/[*#]/g, '').trim();
-          if (title.length > 10 && title.length < 150) {
-            keyPoints.push(title);
+      console.log(`[Claude Studio Advisor] Got response for ${part.id}, length: ${response.length}`);
+
+      // Add assistant response to history
+      conversationHistory.push({ role: "assistant", content: response });
+
+      // Store response
+      allResponses.push({
+        id: part.id,
+        title: part.title,
+        response
+      });
+
+      // Extract key points from this response
+      const lines = response.split('\n').filter(l => l.trim());
+      const headers = lines.filter(l => l.startsWith('#') || l.startsWith('**'));
+      keyPointsAll.push(...headers.slice(0, 3).map(h => h.replace(/[#*]/g, '').trim()));
+
+      // Extract AI model recommendations if this is the AI models part
+      if (part.id === "ai_models") {
+        const modelMatches = [
+          { pattern: /מודעות.*?Claude|Claude.*?מודעות/i, type: "מודעות ממומנות", model: "Claude" },
+          { pattern: /SEO.*?GPT|GPT.*?SEO|מאמרים.*?GPT/i, type: "מאמרי SEO", model: "GPT-4/5" },
+          { pattern: /Gemini.*?ניתוח|ניתוח.*?Gemini/i, type: "ניתוח נתונים", model: "Gemini" },
+          { pattern: /DALL-E|Midjourney/i, type: "יצירת תמונות", model: "DALL-E / Midjourney" },
+        ];
+        
+        for (const m of modelMatches) {
+          if (m.pattern.test(response)) {
+            aiModelsRecommendations.push({ 
+              contentType: m.type, 
+              model: m.model,
+              reason: "מומלץ על ידי Claude"
+            });
           }
         }
-      });
-      
-      return keyPoints;
-    };
-
-    // Extract AI model recommendations
-    const extractAIModels = (text: string) => {
-      const models: { contentType: string; model: string; reason: string }[] = [];
-      
-      // Look for patterns mentioning models with context
-      const modelPatterns = [
-        { pattern: /Claude[^.]*מודעות|מודעות[^.]*Claude/gi, type: "מודעות ממומנות" },
-        { pattern: /GPT[^.]*מאמרים|מאמרים[^.]*GPT/gi, type: "מאמרים" },
-        { pattern: /Gemini[^.]*ניתוח|ניתוח[^.]*Gemini/gi, type: "ניתוח מידע" },
-        { pattern: /DALL-E|Midjourney|Stable Diffusion/gi, type: "תמונות" },
-      ];
-      
-      // Simple extraction based on common patterns
-      if (text.includes("Claude") && text.includes("קופי")) {
-        models.push({ contentType: "קופי ומודעות", model: "Claude", reason: "יכולות כתיבה מתקדמות" });
       }
-      if (text.includes("GPT") && (text.includes("מאמר") || text.includes("SEO"))) {
-        models.push({ contentType: "מאמרים ו-SEO", model: "GPT-4/5", reason: "אופטימיזציה למנועי חיפוש" });
-      }
-      if (text.includes("Gemini") && text.includes("ניתוח")) {
-        models.push({ contentType: "ניתוח נתונים", model: "Gemini", reason: "עיבוד מידע מהיר" });
-      }
-      if (text.includes("DALL-E") || text.includes("Midjourney")) {
-        models.push({ contentType: "יצירת תמונות", model: "DALL-E / Midjourney", reason: "איכות ויזואלית" });
-      }
-      
-      return models;
-    };
 
-    const keyPoints = extractKeyPoints(fullResponse);
-    const aiModels = extractAIModels(fullResponse);
+      // If specific part requested, stop after it
+      if (requestedPart && part.id === requestedPart) {
+        break;
+      }
+    }
 
-    // Generate summary
-    const summary = fullResponse.substring(0, 500).replace(/\n/g, ' ').trim() + "...";
+    // Build full email content
+    const fullContent = allResponses.map(r => `
+## ${r.title}
 
-    // Send full email
-    console.log("[Claude Studio Advisor] Sending email with full response...");
+${r.response}
+
+---
+`).join('\n\n');
+
+    // Send email with all responses
+    console.log("[Claude Studio Advisor] Sending complete email...");
     
     const emailHtml = `
 <!DOCTYPE html>
@@ -247,35 +260,32 @@ serve(async (req) => {
       font-size: 28px; 
       font-weight: 700;
     }
-    .header p { 
-      margin: 0; 
-      opacity: 0.9; 
-      font-size: 16px;
-    }
     .content { 
       padding: 40px; 
     }
-    .section { 
-      margin-bottom: 30px; 
-      padding: 25px;
+    .part { 
+      margin-bottom: 40px; 
+      padding: 30px;
       background: #334155;
       border-radius: 12px;
       border-right: 4px solid #7c3aed;
     }
+    .part-title {
+      color: #a78bfa;
+      font-size: 22px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
     h2 { 
-      color: #a78bfa; 
-      font-size: 22px; 
-      margin-top: 30px;
+      color: #60a5fa; 
+      font-size: 20px; 
+      margin-top: 25px;
       margin-bottom: 15px;
     }
     h3 { 
-      color: #60a5fa; 
-      font-size: 18px;
+      color: #38bdf8; 
+      font-size: 17px;
       margin-top: 20px;
-    }
-    h4 {
-      color: #38bdf8;
-      font-size: 16px;
     }
     p { 
       color: #cbd5e1; 
@@ -294,19 +304,6 @@ serve(async (req) => {
       border-radius: 4px; 
       font-family: 'Courier New', monospace;
       color: #f472b6;
-    }
-    pre {
-      background: #0f172a;
-      padding: 20px;
-      border-radius: 8px;
-      overflow-x: auto;
-      color: #e2e8f0;
-    }
-    .highlight {
-      background: linear-gradient(90deg, rgba(124, 58, 237, 0.2), transparent);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
     }
     strong { 
       color: #f8fafc; 
@@ -328,69 +325,63 @@ serve(async (req) => {
       font-size: 12px;
       margin-left: 8px;
     }
-    .model-tag {
-      display: inline-block;
-      background: #0ea5e9;
-      color: white;
-      padding: 3px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      margin: 2px;
-    }
     hr {
       border: none;
       border-top: 1px solid #475569;
       margin: 30px 0;
     }
-    blockquote {
-      border-right: 3px solid #7c3aed;
-      padding-right: 15px;
-      margin-right: 0;
-      color: #94a3b8;
-      font-style: italic;
+    .toc {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
+    .toc-title {
+      color: #a78bfa;
+      font-weight: bold;
+      margin-bottom: 15px;
     }
-    th, td {
-      padding: 12px;
-      text-align: right;
-      border: 1px solid #475569;
-    }
-    th {
-      background: #475569;
-      color: #f8fafc;
-    }
-    td {
-      background: #334155;
+    .toc a {
+      color: #60a5fa;
+      text-decoration: none;
+      display: block;
+      padding: 5px 0;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎨 ייעוץ Content Studio מ-Claude Opus 4.5</h1>
-      <p>תשובה מקיפה לתכנון ועיצוב מערכת הסטודיו</p>
+      <h1>🎨 ייעוץ מקיף לסטודיו התוכן</h1>
+      <p>דיאלוג מלא עם Claude Opus 4.5</p>
       <p style="margin-top: 15px; font-size: 13px; opacity: 0.7;">
         נוצר ב: ${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}
-        <span class="badge">Claude Opus 4.5</span>
+        <span class="badge">${allResponses.length} חלקים</span>
       </p>
     </div>
     <div class="content">
-      ${fullResponse
-        .replace(/^#{1,6}\s+(.+)$/gm, (_match: string, title: string) => `<h2>${title}</h2>`)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`(.+?)`/g, '<code>$1</code>')
-        .replace(/^\* (.+)$/gm, '<li>$1</li>')
-        .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-        .replace(/\n\n/g, '</p><p>')
-      }
+      <div class="toc">
+        <div class="toc-title">📑 תוכן העניינים</div>
+        ${allResponses.map((r, i) => `<a href="#part-${r.id}">${i + 1}. ${r.title}</a>`).join('')}
+      </div>
+      
+      ${allResponses.map((r, i) => `
+        <div class="part" id="part-${r.id}">
+          <div class="part-title">חלק ${i + 1}: ${r.title}</div>
+          ${r.response
+            .replace(/^#{1,6}\s+(.+)$/gm, '<h2>$1</h2>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/`(.+?)`/g, '<code>$1</code>')
+            .replace(/^\* (.+)$/gm, '<li>$1</li>')
+            .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>')
+          }
+        </div>
+      `).join('')}
     </div>
     <div class="footer">
       <p>📧 מייל זה נשלח אוטומטית ממערכת JIY Content Studio</p>
-      <p>המודל: anthropic/claude-opus-4.5 via OpenRouter</p>
+      <p>המודל: anthropic/claude-opus-4.5 via OpenRouter | ${allResponses.length} חלקי דיאלוג</p>
     </div>
   </div>
 </body>
@@ -399,26 +390,33 @@ serve(async (req) => {
     const emailResponse = await resend.emails.send({
       from: "JIY Studio <onboarding@resend.dev>",
       to: ["yossef@jiy.co.il"],
-      subject: "🎨 ייעוץ מקיף לסטודיו התוכן - Claude Opus 4.5",
+      subject: `🎨 ייעוץ מקיף לסטודיו התוכן - ${allResponses.length} חלקים`,
       html: emailHtml,
     });
 
     console.log("[Claude Studio Advisor] Email sent:", emailResponse);
 
-    // Return summary to chat
-    const chatResponse = {
+    // Build summary for chat
+    const summary = allResponses.length > 0 
+      ? allResponses[0].response.substring(0, 300).replace(/\n/g, ' ').trim() + "..."
+      : "לא התקבלה תשובה";
+
+    return new Response(JSON.stringify({
       success: true,
+      partsCompleted: allResponses.length,
+      parts: allResponses.map(r => ({
+        id: r.id,
+        title: r.title,
+        preview: r.response.substring(0, 200) + "..."
+      })),
+      keyPoints: keyPointsAll.slice(0, 10),
+      aiModelsRecommendations,
       summary,
-      keyPoints,
-      aiModelsRecommendations: aiModels,
       emailSent: true,
       emailId: emailResponse?.data?.id,
       model: "anthropic/claude-opus-4.5",
-      responseLength: fullResponse.length,
       timestamp: new Date().toISOString(),
-    };
-
-    return new Response(JSON.stringify(chatResponse), {
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
