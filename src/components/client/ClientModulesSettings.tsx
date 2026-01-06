@@ -182,13 +182,13 @@ export function ClientModulesSettings({
   const [showTeamPermissions, setShowTeamPermissions] = useState(false);
   const [showOrderSettings, setShowOrderSettings] = useState(false);
 
-  // Fetch client data including modules_order
+  // Fetch client data including modules_order and account_type
   const { data: clientSettings } = useQuery({
     queryKey: ['client-settings', clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('modules_order')
+        .select('modules_order, modules_enabled, account_type')
         .eq('id', clientId)
         .single();
       if (error) throw error;
@@ -196,13 +196,13 @@ export function ClientModulesSettings({
     },
   });
 
-  // Fetch global module settings for default order
+  // Fetch global module settings for defaults and order
   const { data: globalSettings = [] } = useQuery({
     queryKey: ['global-module-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('global_module_settings')
-        .select('module_name, sort_order')
+        .select('module_name, is_globally_enabled, default_for_basic, default_for_premium, sort_order')
         .order('sort_order', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -248,10 +248,44 @@ export function ClientModulesSettings({
     },
   });
 
+  // Initialize modules from global defaults + client overrides
   useEffect(() => {
-    setModules(initialModules);
-    setSyncFrequency(initialSyncFrequency);
-  }, [initialModules, initialSyncFrequency]);
+    if (globalSettings.length > 0 && clientSettings) {
+      const isPremium = clientSettings.account_type === 'premium_client';
+      const clientModules = clientSettings.modules_enabled as Record<string, boolean> | null;
+      
+      const computedModules: Record<string, boolean> = {};
+      
+      for (const key of Object.keys(moduleConfig)) {
+        const globalSetting = globalSettings.find(g => g.module_name === key);
+        
+        if (globalSetting) {
+          if (!globalSetting.is_globally_enabled) {
+            computedModules[key] = false;
+          } else {
+            // Check if client has explicit setting
+            if (clientModules && key in clientModules) {
+              computedModules[key] = clientModules[key];
+            } else {
+              // Use tier default
+              computedModules[key] = isPremium 
+                ? globalSetting.default_for_premium 
+                : globalSetting.default_for_basic;
+            }
+          }
+        } else {
+          // No global setting - use client value or initialModules
+          if (clientModules && key in clientModules) {
+            computedModules[key] = clientModules[key];
+          } else {
+            computedModules[key] = initialModules[key as keyof ClientModules] ?? true;
+          }
+        }
+      }
+      
+      setModules(computedModules as unknown as ClientModules);
+    }
+  }, [globalSettings, clientSettings, initialModules]);
 
   // Initialize modules order from client settings
   useEffect(() => {
