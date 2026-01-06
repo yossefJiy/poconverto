@@ -6,36 +6,56 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface ClientModules {
   dashboard: boolean;
+  projects: boolean;
   analytics: boolean;
   ecommerce: boolean;
+  google_shopping: boolean;
   marketing: boolean;
+  kpis: boolean;
+  competitors: boolean;
+  social: boolean;
+  content_studio: boolean;
   campaigns: boolean;
+  programmatic: boolean;
+  ab_tests: boolean;
   tasks: boolean;
+  leads: boolean;
+  billing: boolean;
+  approvals: boolean;
   team: boolean;
   features: boolean;
   insights: boolean;
   ai_agent: boolean;
+  ai_insights: boolean;
   reports: boolean;
-  leads: boolean;
-  billing: boolean;
-  approvals: boolean;
+  agency: boolean;
 }
 
 const defaultModules: ClientModules = {
   dashboard: true,
+  projects: true,
   analytics: true,
   ecommerce: false,
+  google_shopping: false,
   marketing: true,
+  kpis: true,
+  competitors: false,
+  social: true,
+  content_studio: true,
   campaigns: true,
+  programmatic: false,
+  ab_tests: false,
   tasks: true,
+  leads: true,
+  billing: true,
+  approvals: true,
   team: true,
   features: true,
   insights: true,
   ai_agent: true,
+  ai_insights: false,
   reports: true,
-  leads: true,
-  billing: true,
-  approvals: true,
+  agency: false,
 };
 
 export function useClientModules() {
