@@ -16,11 +16,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, Check, Building2, User } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ROLE_ICONS: Record<AppRole, string> = {
   super_admin: '👑',
@@ -35,6 +42,9 @@ const ROLE_ICONS: Record<AppRole, string> = {
 
 const CLIENT_ROLES: AppRole[] = ['premium_client', 'basic_client'];
 
+type ClientSimple = { id: string; name: string };
+type ContactSimple = { id: string; name: string; role: string | null };
+
 export function RoleSimulatorMenu() {
   const { role: actualRole } = useAuth();
   const { 
@@ -46,19 +56,11 @@ export function RoleSimulatorMenu() {
     stopSimulation 
   } = useRoleSimulation();
 
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [showReasonDialog, setShowReasonDialog] = useState(false);
-  const [pendingSimulation, setPendingSimulation] = useState<{
-    role: AppRole;
-    clientId?: string;
-    contactId?: string;
-    clientName?: string;
-    contactName?: string;
-  } | null>(null);
+  const [showClientDialog, setShowClientDialog] = useState(false);
+  const [pendingRole, setPendingRole] = useState<AppRole | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [reason, setReason] = useState('');
-
-  type ClientSimple = { id: string; name: string };
-  type ContactSimple = { id: string; name: string; role: string | null };
 
   // Fetch clients for simulation
   const { data: clientsData } = useQuery({
@@ -96,45 +98,55 @@ export function RoleSimulatorMenu() {
   });
   const contacts = contactsData ?? [];
 
+  // Reset contact when client changes
+  useEffect(() => {
+    setSelectedContactId('');
+  }, [selectedClientId]);
+
   if (!canSimulate) return null;
 
-  const handleNonClientRoleSelect = (role: AppRole) => {
-    setPendingSimulation({ role });
-    setShowReasonDialog(true);
+  const handleClientRoleSelect = (role: AppRole) => {
+    setPendingRole(role);
+    setSelectedClientId('');
+    setSelectedContactId('');
+    setReason('');
+    setShowClientDialog(true);
   };
 
-
-  const handleContactSelect = (role: AppRole, clientId: string, contactId: string | null, contactName: string | null) => {
-    const client = clients.find(c => c.id === clientId);
-    setPendingSimulation({
-      role,
-      clientId,
-      contactId: contactId || undefined,
-      clientName: client?.name,
-      contactName: contactName || undefined,
-    });
-    setShowReasonDialog(true);
+  const handleNonClientRoleSelect = (role: AppRole) => {
+    setPendingRole(role);
+    setSelectedClientId('');
+    setSelectedContactId('');
+    setReason('');
+    setShowClientDialog(true);
   };
 
   const confirmSimulation = async () => {
-    if (!pendingSimulation) return;
+    if (!pendingRole) return;
     
-    await startSimulation(pendingSimulation.role, {
-      clientId: pendingSimulation.clientId,
-      contactId: pendingSimulation.contactId,
+    const client = clients.find(c => c.id === selectedClientId);
+    const contact = contacts.find(c => c.id === selectedContactId);
+    
+    await startSimulation(pendingRole, {
+      clientId: selectedClientId || undefined,
+      contactId: selectedContactId || undefined,
       reason: reason || undefined,
     });
     
-    setShowReasonDialog(false);
-    setPendingSimulation(null);
+    setShowClientDialog(false);
+    setPendingRole(null);
+    setSelectedClientId('');
+    setSelectedContactId('');
     setReason('');
-    
-    setSelectedClientId(null);
   };
 
   const handleStopSimulation = async () => {
     await stopSimulation();
   };
+
+  const isClientRole = pendingRole && CLIENT_ROLES.includes(pendingRole);
+  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const selectedContact = contacts.find(c => c.id === selectedContactId);
 
   return (
     <>
@@ -151,76 +163,18 @@ export function RoleSimulatorMenu() {
           {availableRoles.map((role) => {
             const isActualRole = role === actualRole;
             const isCurrentSimulated = role === simulatedRole;
-            const isClientRole = CLIENT_ROLES.includes(role);
+            const isClientRoleType = CLIENT_ROLES.includes(role);
             
-            if (isClientRole) {
-              return (
-                <DropdownMenuSub key={role}>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer">
-                    <span>{ROLE_ICONS[role]}</span>
-                    <span className="flex-1">{ROLE_LABELS[role]}</span>
-                    {isCurrentSimulated && (
-                      <Check className="w-4 h-4 text-blue-500" />
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 max-h-[300px] overflow-y-auto">
-                    {clients.map((client) => (
-                      <DropdownMenuSub
-                        key={client.id}
-                        onOpenChange={(open) => {
-                          if (open) setSelectedClientId(client.id);
-                        }}
-                      >
-                        <DropdownMenuSubTrigger
-                          className="flex items-center gap-2 cursor-pointer"
-                          onPointerMove={() => setSelectedClientId(client.id)}
-                          onFocus={() => setSelectedClientId(client.id)}
-                        >
-                          <Building2 className="w-4 h-4" />
-                          <span className="truncate flex-1">{client.name}</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-52 max-h-[250px] overflow-y-auto">
-                          <DropdownMenuItem
-                            onClick={() => handleContactSelect(role, client.id, null, null)}
-                            className="flex items-center gap-2 cursor-pointer"
-                          >
-                            <User className="w-4 h-4 opacity-50" />
-                            <span>כללי (ללא איש קשר)</span>
-                          </DropdownMenuItem>
-                          {selectedClientId === client.id && contacts.length > 0 && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {contacts.map((contact) => (
-                                <DropdownMenuItem
-                                  key={contact.id}
-                                  onClick={() => handleContactSelect(role, client.id, contact.id, contact.name)}
-                                  className="flex items-center gap-2 cursor-pointer"
-                                >
-                                  <User className="w-4 h-4" />
-                                  <span className="truncate flex-1">{contact.name}</span>
-                                  {contact.role && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {contact.role}
-                                    </span>
-                                  )}
-                                </DropdownMenuItem>
-                              ))}
-                            </>
-                          )}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              );
-            }
-
             return (
               <DropdownMenuItem
                 key={role}
                 onClick={() => {
                   if (isActualRole && !isSimulating) return;
-                  handleNonClientRoleSelect(role);
+                  if (isClientRoleType) {
+                    handleClientRoleSelect(role);
+                  } else {
+                    handleNonClientRoleSelect(role);
+                  }
                 }}
                 className="flex items-center gap-2 cursor-pointer"
               >
@@ -254,37 +208,68 @@ export function RoleSimulatorMenu() {
         </DropdownMenuSubContent>
       </DropdownMenuSub>
 
-      <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
-        <DialogContent className="sm:max-w-[400px]">
+      <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle>התחלת סימולציה</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                אתה עומד לצפות במערכת כ:
-              </p>
-              <div className="p-3 bg-muted rounded-lg space-y-1">
-                <div className="flex items-center gap-2">
-                  <span>{pendingSimulation?.role && ROLE_ICONS[pendingSimulation.role]}</span>
-                  <span className="font-medium">
-                    {pendingSimulation?.role && ROLE_LABELS[pendingSimulation.role]}
-                  </span>
-                </div>
-                {pendingSimulation?.clientName && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Building2 className="h-3 w-3" />
-                    {pendingSimulation.clientName}
-                  </div>
-                )}
-                {pendingSimulation?.contactName && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <User className="h-3 w-3" />
-                    {pendingSimulation.contactName}
-                  </div>
-                )}
+            {/* Role display */}
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{pendingRole && ROLE_ICONS[pendingRole]}</span>
+                <span className="font-medium text-lg">
+                  {pendingRole && ROLE_LABELS[pendingRole]}
+                </span>
               </div>
             </div>
+
+            {/* Client selection - only for client roles */}
+            {isClientRole && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  בחר לקוח
+                </Label>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר לקוח..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Contact selection - only when client is selected */}
+            {isClientRole && selectedClientId && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  בחר איש קשר (אופציונלי)
+                </Label>
+                <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="כללי (ללא איש קשר)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">כללי (ללא איש קשר)</SelectItem>
+                    {contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.name} {contact.role && `(${contact.role})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Reason input */}
             <div className="space-y-2">
               <Label htmlFor="reason">סיבת הסימולציה (אופציונלי)</Label>
               <Input
@@ -294,12 +279,38 @@ export function RoleSimulatorMenu() {
                 onChange={(e) => setReason(e.target.value)}
               />
             </div>
+
+            {/* Summary */}
+            {(selectedClient || selectedContact) && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">
+                  תראה את המערכת כ:
+                </p>
+                <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                  {selectedClient && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3 w-3" />
+                      {selectedClient.name}
+                    </div>
+                  )}
+                  {selectedContact && (
+                    <div className="flex items-center gap-2">
+                      <User className="h-3 w-3" />
+                      {selectedContact.name}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReasonDialog(false)}>
+            <Button variant="outline" onClick={() => setShowClientDialog(false)}>
               ביטול
             </Button>
-            <Button onClick={confirmSimulation}>
+            <Button 
+              onClick={confirmSimulation}
+              disabled={isClientRole && !selectedClientId}
+            >
               התחל סימולציה
             </Button>
           </DialogFooter>
