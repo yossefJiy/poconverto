@@ -31,6 +31,13 @@ export interface ClientModules {
   agency: boolean;
 }
 
+interface GlobalModuleSetting {
+  module_name: string;
+  is_globally_enabled: boolean;
+  default_for_basic: boolean;
+  default_for_premium: boolean;
+}
+
 const defaultModules: ClientModules = {
   dashboard: true,
   projects: true,
@@ -69,25 +76,72 @@ export function useClientModules() {
     ? simulatedClientId 
     : selectedClient?.id;
 
+  // Fetch global module settings
+  const { data: globalSettings = [] } = useQuery({
+    queryKey: ["global-module-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("global_module_settings")
+        .select("module_name, is_globally_enabled, default_for_basic, default_for_premium");
+      
+      if (error) throw error;
+      return data as GlobalModuleSetting[];
+    },
+    refetchInterval: 60000,
+  });
+
   const { data: modules = defaultModules, isLoading } = useQuery({
-    queryKey: ["client-modules", activeClientId, isSimulating],
+    queryKey: ["client-modules", activeClientId, isSimulating, globalSettings],
     queryFn: async () => {
       if (!activeClientId) return defaultModules;
       
-      const { data, error } = await supabase
+      // Fetch client data including account_type
+      const { data: clientData, error } = await supabase
         .from("clients")
-        .select("modules_enabled")
+        .select("modules_enabled, account_type")
         .eq("id", activeClientId)
         .single();
       
       if (error) throw error;
-      const modulesData = data?.modules_enabled as Record<string, boolean> | null;
-      return modulesData ? { ...defaultModules, ...modulesData } : defaultModules;
+      
+      const clientModules = clientData?.modules_enabled as Record<string, boolean> | null;
+      const accountType = clientData?.account_type || "basic_client";
+      const isPremium = accountType === "premium_client";
+      
+      // Build final modules based on hierarchy:
+      // 1. If global is OFF → module is disabled (overrides everything)
+      // 2. If global is ON → start with default for account type, then client settings can ADD modules
+      const finalModules: Record<string, boolean> = { ...defaultModules };
+      
+      for (const key of Object.keys(defaultModules) as (keyof ClientModules)[]) {
+        const globalSetting = globalSettings.find(g => g.module_name === key);
+        
+        if (globalSetting) {
+          if (!globalSetting.is_globally_enabled) {
+            // Global is OFF → force disabled
+            finalModules[key] = false;
+          } else {
+            // Global is ON → use tier default, but client can add
+            const tierDefault = isPremium 
+              ? globalSetting.default_for_premium 
+              : globalSetting.default_for_basic;
+            
+            // Client settings can enable modules beyond tier default
+            const clientValue = clientModules?.[key];
+            finalModules[key] = clientValue === true || tierDefault;
+          }
+        } else {
+          // No global setting exists, use client setting or default
+          if (clientModules && key in clientModules) {
+            finalModules[key] = clientModules[key];
+          }
+        }
+      }
+      
+      return finalModules as unknown as ClientModules;
     },
     enabled: !!activeClientId,
-    // Refetch every 30 seconds to keep permissions dynamic
     refetchInterval: 30000,
-    // Also refetch when window regains focus
     refetchOnWindowFocus: true,
   });
 
