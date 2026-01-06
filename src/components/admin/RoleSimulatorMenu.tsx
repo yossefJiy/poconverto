@@ -71,7 +71,6 @@ export function RoleSimulatorMenu() {
       const response = await (supabase as any)
         .from('clients')
         .select('id, name')
-        .eq('is_deleted', false)
         .order('name');
       if (response.error) throw response.error;
       return (response.data ?? []) as ClientSimple[];
