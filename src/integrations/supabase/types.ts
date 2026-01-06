@@ -2259,6 +2259,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          account_type: string | null
           avg_profit_margin: number | null
           created_at: string
           deleted_at: string | null
@@ -2283,6 +2284,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          account_type?: string | null
           avg_profit_margin?: number | null
           created_at?: string
           deleted_at?: string | null
@@ -2307,6 +2309,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          account_type?: string | null
           avg_profit_margin?: number | null
           created_at?: string
           deleted_at?: string | null
@@ -2968,6 +2971,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      global_module_settings: {
+        Row: {
+          created_at: string | null
+          default_for_basic: boolean | null
+          default_for_premium: boolean | null
+          display_name: string
+          id: string
+          is_globally_enabled: boolean | null
+          module_name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_for_basic?: boolean | null
+          default_for_premium?: boolean | null
+          display_name: string
+          id?: string
+          is_globally_enabled?: boolean | null
+          module_name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_for_basic?: boolean | null
+          default_for_premium?: boolean | null
+          display_name?: string
+          id?: string
+          is_globally_enabled?: boolean | null
+          module_name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       hashtag_groups: {
         Row: {

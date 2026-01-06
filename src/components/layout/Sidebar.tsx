@@ -64,8 +64,10 @@ interface MenuItem {
   moduleKey?: keyof ClientModules;
 }
 
+// Agency menu is separate - only for master account
+const agencyItem: MenuItem = { icon: LayoutGrid, label: "סוכנות", path: "/agency" };
+
 const menuItems: MenuItem[] = [
-  { icon: LayoutGrid, label: "סוכנות", path: "/agency", moduleKey: "dashboard" },
   { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
   { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "tasks" },
   { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
@@ -115,6 +117,8 @@ export function Sidebar() {
   const { isSimulating, effectiveRole } = useRoleSimulation();
   const [roleSimDialogOpen, setRoleSimDialogOpen] = useState(false);
 
+  // Check if selected client is master account
+  const isMasterAccount = (selectedClient as any)?.is_master_account === true;
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth", { replace: true });
@@ -142,6 +146,9 @@ export function Sidebar() {
     if (!item.moduleKey) return true;
     return isModuleEnabled(item.moduleKey);
   });
+
+  // Show agency only if admin + not simulating + (no client selected OR master account)
+  const showAgencyItem = isAdmin && !isSimulating && (!selectedClient || isMasterAccount);
 
   // Display role - show effective role if simulating
   const displayRole = isSimulating ? effectiveRole : role;
@@ -191,6 +198,32 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        {/* Agency item - only for master account / admin */}
+        {showAgencyItem && (
+          <Link
+            to={agencyItem.path}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+              "opacity-0 animate-slide-right",
+              location.pathname === agencyItem.path
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            )}
+            style={{ animationDelay: "0s", animationFillMode: "forwards" }}
+          >
+            <agencyItem.icon className={cn(
+              "w-5 h-5 transition-transform duration-200 shrink-0",
+              location.pathname === agencyItem.path && "scale-110"
+            )} />
+            {!isCollapsed && (
+              <span className="font-medium flex-1">{agencyItem.label}</span>
+            )}
+            {location.pathname === agencyItem.path && (
+              <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
+            )}
+          </Link>
+        )}
+
         {visibleMenuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
@@ -204,7 +237,7 @@ export function Sidebar() {
                   ? "bg-primary/10 text-primary" 
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
-              style={{ animationDelay: `${index * 0.05}s`, animationFillMode: "forwards" }}
+              style={{ animationDelay: `${(showAgencyItem ? index + 1 : index) * 0.05}s`, animationFillMode: "forwards" }}
             >
               <div className="relative">
                 <item.icon className={cn(
