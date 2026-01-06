@@ -71,8 +71,9 @@ interface MenuCategory {
   items: MenuItem[];
 }
 
-// Agency menu is separate - only for master account
+// Admin-only menu items - only for master account
 const agencyItem: MenuItem = { icon: LayoutGrid, label: "סוכנות", path: "/agency" };
+const planningItem: MenuItem = { icon: Bot, label: "אפיון מערכות", path: "/system-planning" };
 
 const menuCategories: MenuCategory[] = [
   {
@@ -159,7 +160,6 @@ const settingsItems = [
   { icon: HeartPulse, label: "בריאות קוד", path: "/code-health", adminOnly: true },
   { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
   { icon: BarChart3, label: "קרדיטים", path: "/credits", adminOnly: true },
-  { icon: Bot, label: "אפיון מערכות", path: "/system-planning", adminOnly: true },
 ];
 
 
@@ -264,30 +264,54 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
-        {/* Agency item - only for master account / admin */}
+        {/* Admin items - only for master account / admin */}
         {showAgencyItem && (
-          <Link
-            to={agencyItem.path}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-              "opacity-0 animate-slide-right",
-              location.pathname === agencyItem.path
-                ? "bg-primary/10 text-primary" 
-                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            )}
-            style={{ animationDelay: "0s", animationFillMode: "forwards" }}
-          >
-            <agencyItem.icon className={cn(
-              "w-5 h-5 transition-transform duration-200 shrink-0",
-              location.pathname === agencyItem.path && "scale-110"
-            )} />
-            {!isCollapsed && (
-              <span className="font-medium flex-1">{agencyItem.label}</span>
-            )}
-            {location.pathname === agencyItem.path && (
-              <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
-            )}
-          </Link>
+          <>
+            <Link
+              to={agencyItem.path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                "opacity-0 animate-slide-right",
+                location.pathname === agencyItem.path
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              )}
+              style={{ animationDelay: "0s", animationFillMode: "forwards" }}
+            >
+              <agencyItem.icon className={cn(
+                "w-5 h-5 transition-transform duration-200 shrink-0",
+                location.pathname === agencyItem.path && "scale-110"
+              )} />
+              {!isCollapsed && (
+                <span className="font-medium flex-1">{agencyItem.label}</span>
+              )}
+              {location.pathname === agencyItem.path && (
+                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
+              )}
+            </Link>
+            <Link
+              to={planningItem.path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                "opacity-0 animate-slide-right",
+                location.pathname === planningItem.path
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              )}
+              style={{ animationDelay: "0.03s", animationFillMode: "forwards" }}
+            >
+              <planningItem.icon className={cn(
+                "w-5 h-5 transition-transform duration-200 shrink-0",
+                location.pathname === planningItem.path && "scale-110"
+              )} />
+              {!isCollapsed && (
+                <span className="font-medium flex-1">{planningItem.label}</span>
+              )}
+              {location.pathname === planningItem.path && (
+                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
+              )}
+            </Link>
+          </>
         )}
 
         {visibleMenuItems.map((item, index) => {
