@@ -27,6 +27,16 @@ import {
   ChevronDown,
   ChevronUp,
   UserCheck,
+  FolderKanban,
+  Crosshair,
+  UserSearch,
+  Share2,
+  Palette,
+  Zap,
+  FlaskConical,
+  ShoppingCart,
+  ClipboardCheck,
+  LayoutGrid,
 } from "lucide-react";
 import { 
   Select,
@@ -47,20 +57,37 @@ interface ClientModulesSettingsProps {
 }
 
 const moduleConfig = [
-  { key: "dashboard", label: "דשבורד", icon: LayoutDashboard, color: "text-blue-500", bgColor: "bg-blue-500/20", description: "מסך סיכום ראשי", hasAI: false },
-  { key: "analytics", label: "אנליטיקס", icon: BarChart3, color: "text-green-500", bgColor: "bg-green-500/20", description: "נתונים מ-Google Analytics", hasAI: true },
-  { key: "ecommerce", label: "איקומרס", icon: ShoppingBag, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "חנות, מלאי והזמנות מ-Shopify", hasAI: true },
-  { key: "marketing", label: "שיווק", icon: Target, color: "text-pink-500", bgColor: "bg-pink-500/20", description: "פרסונות, מסרים ומטרות", hasAI: true },
-  { key: "campaigns", label: "קמפיינים", icon: Megaphone, color: "text-orange-500", bgColor: "bg-orange-500/20", description: "ניהול קמפיינים פרסומיים", hasAI: true },
-  { key: "tasks", label: "משימות", icon: CheckSquare, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "רשימת משימות וניהול פרויקטים", hasAI: true },
-  { key: "team", label: "צוות משויך", icon: Users, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "חברי צוות המשויכים ללקוח", hasAI: false },
-  { key: "insights", label: "תובנות", icon: TrendingUp, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניתוח ביצועים והיסטוריה", hasAI: true },
-  { key: "ai_agent", label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות", hasAI: true },
-  { key: "features", label: "בקשות פיצ'רים", icon: Lightbulb, color: "text-amber-500", bgColor: "bg-amber-500/20", description: "ניהול בקשות פיצ'רים מלקוחות", hasAI: false },
-  { key: "reports", label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות", hasAI: true },
-  { key: "leads", label: "לידים", icon: UserCheck, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "ניהול לידים ופניות", hasAI: true },
-  { key: "billing", label: "חיובים", icon: FileText, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "חשבוניות והצעות מחיר", hasAI: false },
-  { key: "approvals", label: "אישורים", icon: Shield, color: "text-sky-500", bgColor: "bg-sky-500/20", description: "תהליכי אישור ואותוריזציה", hasAI: false },
+  // ליבה
+  { key: "dashboard", label: "דשבורד", icon: LayoutDashboard, color: "text-blue-500", bgColor: "bg-blue-500/20", description: "מסך סיכום ראשי", hasAI: false, category: "core" },
+  { key: "projects", label: "פרויקטים", icon: FolderKanban, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "ניהול פרויקטים", hasAI: false, category: "core" },
+  { key: "tasks", label: "משימות", icon: CheckSquare, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "רשימת משימות וניהול פרויקטים", hasAI: true, category: "core" },
+  { key: "team", label: "צוות משויך", icon: Users, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "חברי צוות המשויכים ללקוח", hasAI: false, category: "core" },
+  // מרקטינג
+  { key: "marketing", label: "שיווק", icon: Target, color: "text-pink-500", bgColor: "bg-pink-500/20", description: "פרסונות, מסרים ומטרות", hasAI: true, category: "marketing" },
+  { key: "kpis", label: "יעדים", icon: Crosshair, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "מעקב יעדים ו-KPIs", hasAI: false, category: "marketing" },
+  { key: "competitors", label: "מתחרים", icon: UserSearch, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "ניתוח מתחרים", hasAI: true, category: "marketing" },
+  { key: "social", label: "סושיאל", icon: Share2, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניהול רשתות חברתיות", hasAI: true, category: "marketing" },
+  { key: "content_studio", label: "סטודיו תוכן", icon: Palette, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "יצירה ועריכת תוכן", hasAI: true, category: "marketing" },
+  // קמפיינים
+  { key: "campaigns", label: "קמפיינים", icon: Megaphone, color: "text-orange-500", bgColor: "bg-orange-500/20", description: "ניהול קמפיינים פרסומיים", hasAI: true, category: "campaigns" },
+  { key: "programmatic", label: "פרוגרמטי", icon: Zap, color: "text-lime-500", bgColor: "bg-lime-500/20", description: "פרסום פרוגרמטי", hasAI: true, category: "campaigns" },
+  { key: "ab_tests", label: "A/B Tests", icon: FlaskConical, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "בדיקות A/B", hasAI: true, category: "campaigns" },
+  // איקומרס
+  { key: "ecommerce", label: "איקומרס", icon: ShoppingBag, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "חנות, מלאי והזמנות מ-Shopify", hasAI: true, category: "ecommerce" },
+  { key: "google_shopping", label: "Google Shopping", icon: ShoppingCart, color: "text-red-500", bgColor: "bg-red-500/20", description: "ניהול Google Shopping", hasAI: true, category: "ecommerce" },
+  // נתונים
+  { key: "analytics", label: "אנליטיקס", icon: BarChart3, color: "text-green-500", bgColor: "bg-green-500/20", description: "נתונים מ-Google Analytics", hasAI: true, category: "data" },
+  { key: "insights", label: "תובנות", icon: TrendingUp, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניתוח ביצועים והיסטוריה", hasAI: true, category: "data" },
+  { key: "reports", label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות", hasAI: true, category: "data" },
+  // AI
+  { key: "ai_agent", label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות", hasAI: true, category: "ai" },
+  { key: "ai_insights", label: "AI Insights", icon: Bot, color: "text-violet-400", bgColor: "bg-violet-400/20", description: "תובנות מבוססות AI", hasAI: true, category: "ai" },
+  // עסקי
+  { key: "leads", label: "לידים", icon: UserCheck, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "ניהול לידים ופניות", hasAI: true, category: "business" },
+  { key: "billing", label: "חיובים", icon: FileText, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "חשבוניות והצעות מחיר", hasAI: false, category: "business" },
+  { key: "approvals", label: "אישורים", icon: ClipboardCheck, color: "text-sky-500", bgColor: "bg-sky-500/20", description: "תהליכי אישור ואותוריזציה", hasAI: false, category: "business" },
+  // סוכנות (master only)
+  { key: "agency", label: "סוכנות", icon: LayoutGrid, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500/20", description: "ניהול סוכנות (מאסטר בלבד)", hasAI: false, category: "agency" },
 ] as const;
 
 // AI Capabilities that can be toggled per module
