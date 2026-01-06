@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -51,6 +52,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ClientSwitcher } from "./ClientSwitcher";
 import { RoleSimulatorMenu } from "@/components/admin/RoleSimulatorMenu";
+import { RoleSimulatorDialog } from "@/components/admin/RoleSimulatorDialog";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 import byJiyLogo from "@/assets/by-jiy-logo.svg";
@@ -111,6 +113,7 @@ export function Sidebar() {
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
   const { stats: codeHealthStats } = useCodeHealth();
   const { isSimulating, effectiveRole } = useRoleSimulation();
+  const [roleSimDialogOpen, setRoleSimDialogOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -327,7 +330,7 @@ export function Sidebar() {
               </DropdownMenuItem>
               
               {/* Role Simulator Menu */}
-              <RoleSimulatorMenu />
+              <RoleSimulatorMenu onOpenDialog={() => setRoleSimDialogOpen(true)} />
               
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -341,6 +344,7 @@ export function Sidebar() {
           </DropdownMenu>
         </div>
       </div>
+      <RoleSimulatorDialog open={roleSimDialogOpen} onOpenChange={setRoleSimDialogOpen} />
     </aside>
   );
 }
