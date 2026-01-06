@@ -171,11 +171,16 @@ export function RoleSimulatorMenu() {
                 key={role}
                 onClick={() => {
                   if (isActualRole && !isSimulating) return;
-                  if (isClientRoleType) {
-                    handleClientRoleSelect(role);
-                  } else {
-                    handleNonClientRoleSelect(role);
-                  }
+
+                  // פותחים את הדיאלוג אחרי שהדרופדאון מסיים להיסגר ולהחזיר פוקוס,
+                  // כדי שלא ייווצר "focusOutside" שסוגר את הדיאלוג מיד.
+                  setTimeout(() => {
+                    if (isClientRoleType) {
+                      handleClientRoleSelect(role);
+                    } else {
+                      handleNonClientRoleSelect(role);
+                    }
+                  }, 0);
                 }}
                 className="flex items-center gap-2 cursor-pointer"
               >
