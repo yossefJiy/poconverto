@@ -168,7 +168,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
-  const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
+  const { isModuleEnabled, selectedClient, isAdmin, modulesOrder } = useClientModules();
   const { stats: codeHealthStats } = useCodeHealth();
   const { isSimulating, effectiveRole } = useRoleSimulation();
   const [roleSimDialogOpen, setRoleSimDialogOpen] = useState(false);
@@ -197,14 +197,18 @@ export function Sidebar() {
     return role ? labels[role] || role : "משתמש";
   };
 
-  // Filter categories based on enabled modules
-  const visibleCategories = menuCategories.map(category => ({
-    ...category,
-    items: category.items.filter(item => {
+  // Get all visible menu items and sort by order
+  const allMenuItems = menuCategories.flatMap(cat => cat.items);
+  const visibleMenuItems = allMenuItems
+    .filter(item => {
       if (!item.moduleKey) return true;
       return isModuleEnabled(item.moduleKey);
-    }),
-  })).filter(category => category.items.length > 0);
+    })
+    .sort((a, b) => {
+      const orderA = a.moduleKey ? (modulesOrder[a.moduleKey] ?? 999) : 999;
+      const orderB = b.moduleKey ? (modulesOrder[b.moduleKey] ?? 999) : 999;
+      return orderA - orderB;
+    });
 
   // Show agency only if admin + not simulating + (no client selected OR master account)
   const showAgencyItem = isAdmin && !isSimulating && (!selectedClient || isMasterAccount);
@@ -212,7 +216,7 @@ export function Sidebar() {
   // Display role - show effective role if simulating
   const displayRole = isSimulating ? effectiveRole : role;
 
-  let animationIndex = 0;
+  
 
   return (
     <aside 
@@ -285,52 +289,37 @@ export function Sidebar() {
           </Link>
         )}
 
-        {visibleCategories.map((category, catIndex) => {
-          const categoryStartIndex = animationIndex;
-          animationIndex += category.items.length;
-
+        {visibleMenuItems.map((item, index) => {
+          const isActive = location.pathname === item.path;
           return (
-            <div key={category.key}>
-              {/* Divider between categories (except first) */}
-              {catIndex > 0 && (
-                <div className="my-2 mx-3 border-t border-sidebar-border/50" />
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                "opacity-0 animate-slide-right",
+                isActive 
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
-              
-              {/* Category Items */}
-              {category.items.map((item, index) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
-                      "opacity-0 animate-slide-right",
-                      isActive 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                    )}
-                    style={{ 
-                      animationDelay: `${(showAgencyItem ? categoryStartIndex + index + 1 : categoryStartIndex + index) * 0.03}s`, 
-                      animationFillMode: "forwards" 
-                    }}
-                  >
-                    <div className="relative">
-                      <item.icon className={cn(
-                        "w-5 h-5 transition-transform duration-200 shrink-0",
-                        isActive && "scale-110"
-                      )} />
-                    </div>
-                    {!isCollapsed && (
-                      <span className="font-medium flex-1 text-sm">{item.label}</span>
-                    )}
-                    {isActive && (
-                      <div className="absolute right-0 w-1 h-5 bg-primary rounded-l-full" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+              style={{ 
+                animationDelay: `${(showAgencyItem ? index + 1 : index) * 0.03}s`, 
+                animationFillMode: "forwards" 
+              }}
+            >
+              <div className="relative">
+                <item.icon className={cn(
+                  "w-5 h-5 transition-transform duration-200 shrink-0",
+                  isActive && "scale-110"
+                )} />
+              </div>
+              {!isCollapsed && (
+                <span className="font-medium flex-1 text-sm">{item.label}</span>
+              )}
+              {isActive && (
+                <div className="absolute right-0 w-1 h-5 bg-primary rounded-l-full" />
+              )}
+            </Link>
           );
         })}
 

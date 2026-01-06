@@ -36,7 +36,10 @@ interface GlobalModuleSetting {
   is_globally_enabled: boolean;
   default_for_basic: boolean;
   default_for_premium: boolean;
+  sort_order: number;
 }
+
+export type ModulesOrder = Record<string, number>;
 
 const defaultModules: ClientModules = {
   dashboard: true,
@@ -82,7 +85,8 @@ export function useClientModules() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("global_module_settings")
-        .select("module_name, is_globally_enabled, default_for_basic, default_for_premium");
+        .select("module_name, is_globally_enabled, default_for_basic, default_for_premium, sort_order")
+        .order("sort_order", { ascending: true });
       
       if (error) throw error;
       return data as GlobalModuleSetting[];
@@ -90,60 +94,79 @@ export function useClientModules() {
     refetchInterval: 60000,
   });
 
-  const { data: modules = defaultModules, isLoading } = useQuery({
-    queryKey: ["client-modules", activeClientId, isSimulating, globalSettings],
+  const { data: clientData, isLoading } = useQuery({
+    queryKey: ["client-modules-data", activeClientId, isSimulating],
     queryFn: async () => {
-      if (!activeClientId) return defaultModules;
+      if (!activeClientId) return null;
       
-      // Fetch client data including account_type
-      const { data: clientData, error } = await supabase
+      const { data, error } = await supabase
         .from("clients")
-        .select("modules_enabled, account_type")
+        .select("modules_enabled, account_type, modules_order")
         .eq("id", activeClientId)
         .single();
       
       if (error) throw error;
-      
-      const clientModules = clientData?.modules_enabled as Record<string, boolean> | null;
-      const accountType = clientData?.account_type || "basic_client";
-      const isPremium = accountType === "premium_client";
-      
-      // Build final modules based on hierarchy:
-      // 1. If global is OFF → module is disabled (overrides everything)
-      // 2. If global is ON → start with default for account type, then client settings can ADD modules
-      const finalModules: Record<string, boolean> = { ...defaultModules };
-      
-      for (const key of Object.keys(defaultModules) as (keyof ClientModules)[]) {
-        const globalSetting = globalSettings.find(g => g.module_name === key);
-        
-        if (globalSetting) {
-          if (!globalSetting.is_globally_enabled) {
-            // Global is OFF → force disabled
-            finalModules[key] = false;
-          } else {
-            // Global is ON → use tier default, but client can add
-            const tierDefault = isPremium 
-              ? globalSetting.default_for_premium 
-              : globalSetting.default_for_basic;
-            
-            // Client settings can enable modules beyond tier default
-            const clientValue = clientModules?.[key];
-            finalModules[key] = clientValue === true || tierDefault;
-          }
-        } else {
-          // No global setting exists, use client setting or default
-          if (clientModules && key in clientModules) {
-            finalModules[key] = clientModules[key];
-          }
-        }
-      }
-      
-      return finalModules as unknown as ClientModules;
+      return data;
     },
     enabled: !!activeClientId,
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
+
+  // Compute modules based on global settings and client data
+  const modules = (() => {
+    if (!clientData) return defaultModules;
+    
+    const clientModules = clientData.modules_enabled as Record<string, boolean> | null;
+    const accountType = clientData.account_type || "basic_client";
+    const isPremium = accountType === "premium_client";
+    
+    const finalModules: Record<string, boolean> = { ...defaultModules };
+    
+    for (const key of Object.keys(defaultModules) as (keyof ClientModules)[]) {
+      const globalSetting = globalSettings.find(g => g.module_name === key);
+      
+      if (globalSetting) {
+        if (!globalSetting.is_globally_enabled) {
+          finalModules[key] = false;
+        } else {
+          const tierDefault = isPremium 
+            ? globalSetting.default_for_premium 
+            : globalSetting.default_for_basic;
+          const clientValue = clientModules?.[key];
+          finalModules[key] = clientValue === true || tierDefault;
+        }
+      } else {
+        if (clientModules && key in clientModules) {
+          finalModules[key] = clientModules[key];
+        }
+      }
+    }
+    
+    return finalModules as unknown as ClientModules;
+  })();
+
+  // Compute module order: client order overrides global order
+  const modulesOrder: ModulesOrder = (() => {
+    const order: ModulesOrder = {};
+    
+    // Start with global order
+    globalSettings.forEach(g => {
+      order[g.module_name] = g.sort_order;
+    });
+    
+    // Override with client order if exists
+    if (clientData?.modules_order) {
+      const clientOrder = clientData.modules_order as Record<string, number>;
+      Object.entries(clientOrder).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          order[key] = value;
+        }
+      });
+    }
+    
+    return order;
+  })();
 
   const updateModulesMutation = useMutation({
     mutationFn: async (newModules: Partial<ClientModules>) => {
@@ -160,7 +183,7 @@ export function useClientModules() {
       return updatedModules;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-modules", selectedClient?.id] });
+      queryClient.invalidateQueries({ queryKey: ["client-modules-data", selectedClient?.id] });
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
     },
   });
@@ -178,6 +201,8 @@ export function useClientModules() {
 
   return {
     modules,
+    modulesOrder,
+    globalSettings,
     isLoading,
     isModuleEnabled,
     updateModules: updateModulesMutation.mutate,
