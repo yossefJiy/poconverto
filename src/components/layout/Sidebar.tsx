@@ -316,7 +316,7 @@ export function Sidebar() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuContent forceMount align="end" side="top" className="w-56">
               <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

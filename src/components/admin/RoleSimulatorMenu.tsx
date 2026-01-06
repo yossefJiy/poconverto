@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
@@ -209,9 +210,12 @@ export function RoleSimulatorMenu() {
       </DropdownMenuSub>
 
       <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent dir="rtl" className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle>התחלת סימולציה</DialogTitle>
+            <DialogDescription>
+              בחר תפקיד, ובתפקידי לקוח גם לקוח (ואופציונלית איש קשר) כדי לדמות הרשאות.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Role display */}
