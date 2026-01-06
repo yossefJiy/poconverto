@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { useAuth, type AppRole, ROLE_LABELS } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { ClientModules } from './useClientModules';
 
 interface SimulationOptions {
   clientId?: string;
@@ -16,6 +17,9 @@ interface RoleSimulationContextType {
   availableRoles: AppRole[];
   simulatedClientId: string | null;
   simulatedContactId: string | null;
+  simulatedClientName: string | null;
+  simulatedContactName: string | null;
+  simulatedModules: ClientModules | null;
   startSimulation: (role: AppRole, options?: SimulationOptions) => Promise<void>;
   stopSimulation: (reason?: string) => Promise<void>;
 }
@@ -34,11 +38,78 @@ const ROLE_HIERARCHY: AppRole[] = [
   'demo'
 ];
 
+const defaultModules: ClientModules = {
+  dashboard: true,
+  analytics: true,
+  ecommerce: false,
+  marketing: true,
+  campaigns: true,
+  tasks: true,
+  team: true,
+  features: true,
+  insights: true,
+  ai_agent: true,
+  reports: true,
+  leads: true,
+  billing: true,
+  approvals: true,
+};
+
 export function RoleSimulationProvider({ children }: { children: ReactNode }) {
   const { role: actualRole, user } = useAuth();
   const [simulatedRole, setSimulatedRole] = useState<AppRole | null>(null);
   const [simulatedClientId, setSimulatedClientId] = useState<string | null>(null);
   const [simulatedContactId, setSimulatedContactId] = useState<string | null>(null);
+  const [simulatedClientName, setSimulatedClientName] = useState<string | null>(null);
+  const [simulatedContactName, setSimulatedContactName] = useState<string | null>(null);
+  const [simulatedModules, setSimulatedModules] = useState<ClientModules | null>(null);
+
+  // Fetch client name and modules when simulation starts
+  useEffect(() => {
+    if (!simulatedClientId) {
+      setSimulatedClientName(null);
+      setSimulatedModules(null);
+      return;
+    }
+
+    const fetchClientData = async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('name, modules_enabled')
+        .eq('id', simulatedClientId)
+        .single();
+      
+      if (data) {
+        setSimulatedClientName(data.name);
+        const modulesData = data.modules_enabled as Record<string, boolean> | null;
+        setSimulatedModules(modulesData ? { ...defaultModules, ...modulesData } : defaultModules);
+      }
+    };
+
+    fetchClientData();
+  }, [simulatedClientId]);
+
+  // Fetch contact name when simulation starts
+  useEffect(() => {
+    if (!simulatedContactId) {
+      setSimulatedContactName(null);
+      return;
+    }
+
+    const fetchContactData = async () => {
+      const { data } = await supabase
+        .from('client_contacts')
+        .select('name')
+        .eq('id', simulatedContactId)
+        .single();
+      
+      if (data) {
+        setSimulatedContactName(data.name);
+      }
+    };
+
+    fetchContactData();
+  }, [simulatedContactId]);
 
   // Only super_admin and admin can simulate roles
   const canSimulate = actualRole === 'super_admin' || actualRole === 'admin';
@@ -96,6 +167,9 @@ export function RoleSimulationProvider({ children }: { children: ReactNode }) {
     setSimulatedRole(null);
     setSimulatedClientId(null);
     setSimulatedContactId(null);
+    setSimulatedClientName(null);
+    setSimulatedContactName(null);
+    setSimulatedModules(null);
   }, [simulatedRole, actualRole, logSimulationAction]);
 
   const effectiveRole = simulatedRole || actualRole;
@@ -109,6 +183,9 @@ export function RoleSimulationProvider({ children }: { children: ReactNode }) {
       availableRoles,
       simulatedClientId,
       simulatedContactId,
+      simulatedClientName,
+      simulatedContactName,
+      simulatedModules,
       startSimulation,
       stopSimulation,
     }}>
