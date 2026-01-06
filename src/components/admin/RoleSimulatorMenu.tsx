@@ -46,7 +46,6 @@ export function RoleSimulatorMenu() {
     stopSimulation 
   } = useRoleSimulation();
 
-  const [selectedRoleForClient, setSelectedRoleForClient] = useState<AppRole | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [showReasonDialog, setShowReasonDialog] = useState(false);
   const [pendingSimulation, setPendingSimulation] = useState<{
@@ -69,7 +68,8 @@ export function RoleSimulatorMenu() {
       const response = await (supabase as any)
         .from('clients')
         .select('id, name')
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .order('name');
       if (response.error) throw response.error;
       return (response.data ?? []) as ClientSimple[];
     },
@@ -87,7 +87,8 @@ export function RoleSimulatorMenu() {
         .from('client_contacts')
         .select('id, name, role')
         .eq('client_id', selectedClientId)
-        .eq('has_portal_access', true);
+        .eq('has_portal_access', true)
+        .order('name');
       if (response.error) throw response.error;
       return (response.data ?? []) as ContactSimple[];
     },
@@ -102,9 +103,6 @@ export function RoleSimulatorMenu() {
     setShowReasonDialog(true);
   };
 
-  const handleClientSelect = (clientId: string) => {
-    setSelectedClientId(clientId);
-  };
 
   const handleContactSelect = (role: AppRole, clientId: string, contactId: string | null, contactName: string | null) => {
     const client = clients.find(c => c.id === clientId);
@@ -130,7 +128,7 @@ export function RoleSimulatorMenu() {
     setShowReasonDialog(false);
     setPendingSimulation(null);
     setReason('');
-    setSelectedRoleForClient(null);
+    
     setSelectedClientId(null);
   };
 
@@ -158,10 +156,7 @@ export function RoleSimulatorMenu() {
             if (isClientRole) {
               return (
                 <DropdownMenuSub key={role}>
-                  <DropdownMenuSubTrigger 
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => setSelectedRoleForClient(role)}
-                  >
+                  <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer">
                     <span>{ROLE_ICONS[role]}</span>
                     <span className="flex-1">{ROLE_LABELS[role]}</span>
                     {isCurrentSimulated && (
@@ -170,10 +165,16 @@ export function RoleSimulatorMenu() {
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-56 max-h-[300px] overflow-y-auto">
                     {clients.map((client) => (
-                      <DropdownMenuSub key={client.id}>
-                        <DropdownMenuSubTrigger 
+                      <DropdownMenuSub
+                        key={client.id}
+                        onOpenChange={(open) => {
+                          if (open) setSelectedClientId(client.id);
+                        }}
+                      >
+                        <DropdownMenuSubTrigger
                           className="flex items-center gap-2 cursor-pointer"
-                          onClick={() => handleClientSelect(client.id)}
+                          onPointerMove={() => setSelectedClientId(client.id)}
+                          onFocus={() => setSelectedClientId(client.id)}
                         >
                           <Building2 className="w-4 h-4" />
                           <span className="truncate flex-1">{client.name}</span>
