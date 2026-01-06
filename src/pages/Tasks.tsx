@@ -368,7 +368,7 @@ const CollapsibleField = ({ label, icon, isExpanded, onToggle, hasValue, childre
     queryFn: async () => {
       let query = supabase
         .from("tasks")
-        .select("*, clients(name, is_master_account), projects:projects!tasks_project_id_fkey(id, name, color)")
+        .select("*, clients!tasks_client_id_fkey(name, is_master_account), projects:projects!tasks_project_id_fkey(id, name, color)")
         .order("due_date", { ascending: true, nullsFirst: false })
         .order("scheduled_time", { ascending: true, nullsFirst: false });
       
