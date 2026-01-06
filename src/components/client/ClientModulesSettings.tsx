@@ -56,39 +56,90 @@ interface ClientModulesSettingsProps {
   syncFrequency?: string;
 }
 
-const moduleConfig = [
-  // ליבה
-  { key: "dashboard", label: "דשבורד", icon: LayoutDashboard, color: "text-blue-500", bgColor: "bg-blue-500/20", description: "מסך סיכום ראשי", hasAI: false, category: "core" },
-  { key: "projects", label: "פרויקטים", icon: FolderKanban, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "ניהול פרויקטים", hasAI: false, category: "core" },
-  { key: "tasks", label: "משימות", icon: CheckSquare, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "רשימת משימות וניהול פרויקטים", hasAI: true, category: "core" },
-  { key: "team", label: "צוות משויך", icon: Users, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "חברי צוות המשויכים ללקוח", hasAI: false, category: "core" },
-  // מרקטינג
-  { key: "marketing", label: "שיווק", icon: Target, color: "text-pink-500", bgColor: "bg-pink-500/20", description: "פרסונות, מסרים ומטרות", hasAI: true, category: "marketing" },
-  { key: "kpis", label: "יעדים", icon: Crosshair, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "מעקב יעדים ו-KPIs", hasAI: false, category: "marketing" },
-  { key: "competitors", label: "מתחרים", icon: UserSearch, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "ניתוח מתחרים", hasAI: true, category: "marketing" },
-  { key: "social", label: "סושיאל", icon: Share2, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניהול רשתות חברתיות", hasAI: true, category: "marketing" },
-  { key: "content_studio", label: "סטודיו תוכן", icon: Palette, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "יצירה ועריכת תוכן", hasAI: true, category: "marketing" },
-  // קמפיינים
-  { key: "campaigns", label: "קמפיינים", icon: Megaphone, color: "text-orange-500", bgColor: "bg-orange-500/20", description: "ניהול קמפיינים פרסומיים", hasAI: true, category: "campaigns" },
-  { key: "programmatic", label: "פרוגרמטי", icon: Zap, color: "text-lime-500", bgColor: "bg-lime-500/20", description: "פרסום פרוגרמטי", hasAI: true, category: "campaigns" },
-  { key: "ab_tests", label: "A/B Tests", icon: FlaskConical, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "בדיקות A/B", hasAI: true, category: "campaigns" },
-  // איקומרס
-  { key: "ecommerce", label: "איקומרס", icon: ShoppingBag, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "חנות, מלאי והזמנות מ-Shopify", hasAI: true, category: "ecommerce" },
-  { key: "google_shopping", label: "Google Shopping", icon: ShoppingCart, color: "text-red-500", bgColor: "bg-red-500/20", description: "ניהול Google Shopping", hasAI: true, category: "ecommerce" },
-  // נתונים
-  { key: "analytics", label: "אנליטיקס", icon: BarChart3, color: "text-green-500", bgColor: "bg-green-500/20", description: "נתונים מ-Google Analytics", hasAI: true, category: "data" },
-  { key: "insights", label: "תובנות", icon: TrendingUp, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניתוח ביצועים והיסטוריה", hasAI: true, category: "data" },
-  { key: "reports", label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות", hasAI: true, category: "data" },
-  // AI
-  { key: "ai_agent", label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות", hasAI: true, category: "ai" },
-  { key: "ai_insights", label: "AI Insights", icon: Bot, color: "text-violet-400", bgColor: "bg-violet-400/20", description: "תובנות מבוססות AI", hasAI: true, category: "ai" },
-  // עסקי
-  { key: "leads", label: "לידים", icon: UserCheck, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "ניהול לידים ופניות", hasAI: true, category: "business" },
-  { key: "billing", label: "חיובים", icon: FileText, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "חשבוניות והצעות מחיר", hasAI: false, category: "business" },
-  { key: "approvals", label: "אישורים", icon: ClipboardCheck, color: "text-sky-500", bgColor: "bg-sky-500/20", description: "תהליכי אישור ואותוריזציה", hasAI: false, category: "business" },
-  // סוכנות (master only)
-  { key: "agency", label: "סוכנות", icon: LayoutGrid, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500/20", description: "ניהול סוכנות (מאסטר בלבד)", hasAI: false, category: "agency" },
+const MODULE_CATEGORIES = [
+  {
+    key: "core",
+    label: "ליבה",
+    icon: LayoutDashboard,
+    modules: ["dashboard", "projects", "tasks", "team"],
+  },
+  {
+    key: "marketing",
+    label: "שיווק",
+    icon: Target,
+    modules: ["marketing", "kpis", "competitors", "social", "content_studio"],
+  },
+  {
+    key: "campaigns",
+    label: "קמפיינים",
+    icon: Megaphone,
+    modules: ["campaigns", "programmatic", "ab_tests"],
+  },
+  {
+    key: "ecommerce",
+    label: "איקומרס",
+    icon: ShoppingCart,
+    modules: ["ecommerce", "google_shopping"],
+  },
+  {
+    key: "data",
+    label: "נתונים",
+    icon: BarChart3,
+    modules: ["analytics", "insights", "reports"],
+  },
+  {
+    key: "ai",
+    label: "AI",
+    icon: Bot,
+    modules: ["ai_agent", "ai_insights"],
+  },
+  {
+    key: "business",
+    label: "עסקי",
+    icon: FileText,
+    modules: ["leads", "billing", "approvals"],
+  },
+  {
+    key: "agency",
+    label: "סוכנות",
+    icon: LayoutGrid,
+    modules: ["agency"],
+  },
 ] as const;
+
+const moduleConfig: Record<string, { label: string; icon: any; color: string; bgColor: string; description: string; hasAI: boolean }> = {
+  // ליבה
+  dashboard: { label: "דשבורד", icon: LayoutDashboard, color: "text-blue-500", bgColor: "bg-blue-500/20", description: "מסך סיכום ראשי", hasAI: false },
+  projects: { label: "פרויקטים", icon: FolderKanban, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "ניהול פרויקטים", hasAI: false },
+  tasks: { label: "משימות", icon: CheckSquare, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "רשימת משימות וניהול פרויקטים", hasAI: true },
+  team: { label: "צוות משויך", icon: Users, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "חברי צוות המשויכים ללקוח", hasAI: false },
+  // מרקטינג
+  marketing: { label: "שיווק", icon: Target, color: "text-pink-500", bgColor: "bg-pink-500/20", description: "פרסונות, מסרים ומטרות", hasAI: true },
+  kpis: { label: "יעדים", icon: Crosshair, color: "text-yellow-500", bgColor: "bg-yellow-500/20", description: "מעקב יעדים ו-KPIs", hasAI: false },
+  competitors: { label: "מתחרים", icon: UserSearch, color: "text-cyan-500", bgColor: "bg-cyan-500/20", description: "ניתוח מתחרים", hasAI: true },
+  social: { label: "סושיאל", icon: Share2, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניהול רשתות חברתיות", hasAI: true },
+  content_studio: { label: "סטודיו תוכן", icon: Palette, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "יצירה ועריכת תוכן", hasAI: true },
+  // קמפיינים
+  campaigns: { label: "קמפיינים", icon: Megaphone, color: "text-orange-500", bgColor: "bg-orange-500/20", description: "ניהול קמפיינים פרסומיים", hasAI: true },
+  programmatic: { label: "פרוגרמטי", icon: Zap, color: "text-lime-500", bgColor: "bg-lime-500/20", description: "פרסום פרוגרמטי", hasAI: true },
+  ab_tests: { label: "A/B Tests", icon: FlaskConical, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "בדיקות A/B", hasAI: true },
+  // איקומרס
+  ecommerce: { label: "איקומרס", icon: ShoppingBag, color: "text-purple-500", bgColor: "bg-purple-500/20", description: "חנות, מלאי והזמנות מ-Shopify", hasAI: true },
+  google_shopping: { label: "Google Shopping", icon: ShoppingCart, color: "text-red-500", bgColor: "bg-red-500/20", description: "ניהול Google Shopping", hasAI: true },
+  // נתונים
+  analytics: { label: "אנליטיקס", icon: BarChart3, color: "text-green-500", bgColor: "bg-green-500/20", description: "נתונים מ-Google Analytics", hasAI: true },
+  insights: { label: "תובנות", icon: TrendingUp, color: "text-indigo-500", bgColor: "bg-indigo-500/20", description: "ניתוח ביצועים והיסטוריה", hasAI: true },
+  reports: { label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות", hasAI: true },
+  // AI
+  ai_agent: { label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות", hasAI: true },
+  ai_insights: { label: "AI Insights", icon: Bot, color: "text-violet-400", bgColor: "bg-violet-400/20", description: "תובנות מבוססות AI", hasAI: true },
+  // עסקי
+  leads: { label: "לידים", icon: UserCheck, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "ניהול לידים ופניות", hasAI: true },
+  billing: { label: "חיובים", icon: FileText, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "חשבוניות והצעות מחיר", hasAI: false },
+  approvals: { label: "אישורים", icon: ClipboardCheck, color: "text-sky-500", bgColor: "bg-sky-500/20", description: "תהליכי אישור ואותוריזציה", hasAI: false },
+  // סוכנות (master only)
+  agency: { label: "סוכנות", icon: LayoutGrid, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500/20", description: "ניהול סוכנות (מאסטר בלבד)", hasAI: false },
+};
 
 // AI Capabilities that can be toggled per module
 const aiCapabilities = [
@@ -413,107 +464,127 @@ export function ClientModulesSettings({
           </Select>
         </div>
 
-        {/* Module Toggles - Grid in triplets */}
-        <div className="space-y-4">
+        {/* Module Toggles - Grouped by Category */}
+        <div className="space-y-6">
           <h4 className="font-medium text-sm text-muted-foreground">מודולים זמינים</h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {moduleConfig.map(({ key, label, icon: Icon, color, bgColor, description, hasAI }) => {
-              const isModuleEnabled = modules[key as keyof ClientModules];
-              const aiSetting = aiSettings[key];
-              const isAIEnabled = aiSetting?.is_enabled ?? true;
-              const isExpanded = expandedAIModules.has(key);
+          {MODULE_CATEGORIES.map((category) => {
+            const CategoryIcon = category.icon;
+            const categoryModules = category.modules.filter(key => moduleConfig[key]);
+            if (categoryModules.length === 0) return null;
 
-              return (
-                <div 
-                  key={key}
-                  className="rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors overflow-hidden"
-                >
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${color}`} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`module-${key}`} className="font-medium cursor-pointer">
-                            {label}
-                          </Label>
-                          {hasAI && isModuleEnabled && (
-                            <Badge variant={isAIEnabled ? "default" : "secondary"} className="text-xs">
-                              <Sparkles className="w-3 h-3 ml-1" />
-                              AI
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {hasAI && isModuleEnabled && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleAIExpansion(key)}
-                          className="text-muted-foreground"
-                        >
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </Button>
-                      )}
-                      <Switch
-                        id={`module-${key}`}
-                        checked={isModuleEnabled}
-                        onCheckedChange={(v) => handleModuleToggle(key as keyof ClientModules, v)}
-                        disabled={key === "dashboard"}
-                      />
-                    </div>
-                  </div>
+            return (
+              <div key={category.key} className="space-y-3">
+                {/* Category Header */}
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <CategoryIcon className="w-4 h-4" />
+                  {category.label}
+                </div>
 
-                  {/* AI Settings Expansion */}
-                  {hasAI && isModuleEnabled && isExpanded && (
-                    <div className="border-t border-border/50 p-4 bg-muted/30 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-medium">הגדרות AI למודול</span>
-                        </div>
-                        <Switch
-                          checked={isAIEnabled}
-                          onCheckedChange={(v) => handleAIToggle(key, v)}
-                        />
-                      </div>
+                {/* Category Modules Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {categoryModules.map((key) => {
+                    const config = moduleConfig[key];
+                    if (!config) return null;
+                    const { label, icon: Icon, color, bgColor, description, hasAI } = config;
+                    const isModuleEnabled = modules[key as keyof ClientModules];
+                    const aiSetting = aiSettings[key];
+                    const isAIEnabled = aiSetting?.is_enabled ?? true;
+                    const isExpanded = expandedAIModules.has(key);
 
-                      {isAIEnabled && (
-                        <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground">יכולות מאושרות:</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {aiCapabilities.map(cap => (
-                              <label
-                                key={cap.key}
-                                className="flex items-center gap-2 p-2 rounded-md bg-background/50 cursor-pointer hover:bg-background/80"
+                    return (
+                      <div 
+                        key={key}
+                        className="rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center`}>
+                              <Icon className={`w-5 h-5 ${color}`} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`module-${key}`} className="font-medium cursor-pointer">
+                                  {label}
+                                </Label>
+                                {hasAI && isModuleEnabled && (
+                                  <Badge variant={isAIEnabled ? "default" : "secondary"} className="text-xs">
+                                    <Sparkles className="w-3 h-3 ml-1" />
+                                    AI
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {description}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {hasAI && isModuleEnabled && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleAIExpansion(key)}
+                                className="text-muted-foreground"
                               >
-                                <Switch
-                                  checked={aiSetting?.allowed_capabilities?.includes(cap.key) ?? false}
-                                  onCheckedChange={(v) => handleCapabilityToggle(key, cap.key, v)}
-                                  className="scale-75"
-                                />
-                                <div>
-                                  <span className="text-sm">{cap.label}</span>
-                                  <p className="text-xs text-muted-foreground">{cap.description}</p>
-                                </div>
-                              </label>
-                            ))}
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </Button>
+                            )}
+                            <Switch
+                              id={`module-${key}`}
+                              checked={isModuleEnabled}
+                              onCheckedChange={(v) => handleModuleToggle(key as keyof ClientModules, v)}
+                              disabled={key === "dashboard"}
+                            />
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {/* AI Settings Expansion */}
+                        {hasAI && isModuleEnabled && isExpanded && (
+                          <div className="border-t border-border/50 p-4 bg-muted/30 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-primary" />
+                                <span className="text-sm font-medium">הגדרות AI למודול</span>
+                              </div>
+                              <Switch
+                                checked={isAIEnabled}
+                                onCheckedChange={(v) => handleAIToggle(key, v)}
+                              />
+                            </div>
+
+                            {isAIEnabled && (
+                              <div className="space-y-2">
+                                <p className="text-xs text-muted-foreground">יכולות מאושרות:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {aiCapabilities.map(cap => (
+                                    <label
+                                      key={cap.key}
+                                      className="flex items-center gap-2 p-2 rounded-md bg-background/50 cursor-pointer hover:bg-background/80"
+                                    >
+                                      <Switch
+                                        checked={aiSetting?.allowed_capabilities?.includes(cap.key) ?? false}
+                                        onCheckedChange={(v) => handleCapabilityToggle(key, cap.key, v)}
+                                        className="scale-75"
+                                      />
+                                      <div>
+                                        <span className="text-sm">{cap.label}</span>
+                                        <p className="text-xs text-muted-foreground">{cap.description}</p>
+                                      </div>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Team AI Permissions Section */}
@@ -551,7 +622,7 @@ export function ClientModulesSettings({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {moduleConfig.filter(m => m.hasAI).map(({ key, label }) => {
+                        {Object.entries(moduleConfig).filter(([_, m]) => m.hasAI).map(([key, config]) => {
                           const permKey = `${team.id}_${key}`;
                           const perm = teamAIPermissions[permKey];
                           const canUse = perm?.can_use_ai ?? true;
@@ -567,7 +638,7 @@ export function ClientModulesSettings({
                                   onCheckedChange={(v) => handleTeamPermissionToggle(team.id, key, v)}
                                   className="scale-75"
                                 />
-                                <span className="text-sm">{label}</span>
+                                <span className="text-sm">{config.label}</span>
                               </div>
                               {canUse && (
                                 <Input
