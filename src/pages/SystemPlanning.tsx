@@ -8,14 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Bot, 
-  Play, 
   PlayCircle, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
   Send,
   Mail,
   RotateCcw,
@@ -24,13 +19,19 @@ import {
   FileText,
   Plus,
   History,
-  Settings,
-  Sparkles
+  Sparkles,
+  Edit
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
+import { 
+  SessionHistory, 
+  TemplateEditor, 
+  DialogueStepAccordion,
+  TokenMeter 
+} from "@/components/planning";
 
 interface DialoguePart {
   id: number;
@@ -46,6 +47,8 @@ interface PlanningTemplate {
   name: string;
   description: string;
   template_type: string;
+  system_prompt?: string;
+  background_context?: string;
   parts: { title: string; prompt: string }[];
 }
 
@@ -77,8 +80,13 @@ const SystemPlanning = () => {
   const [customMessage, setCustomMessage] = useState("");
   const [emailAddress, setEmailAddress] = useState("yossef@jiy.co.il");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [totalTokensUsed, setTotalTokensUsed] = useState(0);
+  const [estimatedSavings, setEstimatedSavings] = useState(0);
   
-  // Check if user is admin
+  // Template editor state
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<PlanningTemplate | null>(null);
+  
   const isAdmin = role === 'super_admin' || role === 'admin';
 
   useEffect(() => {
@@ -98,14 +106,17 @@ const SystemPlanning = () => {
     if (data) {
       setTemplates(data.map(t => ({
         ...t,
-        parts: t.parts as { title: string; prompt: string }[]
+        parts: t.parts as { title: string; prompt: string }[],
+        system_prompt: t.system_prompt || undefined,
+        background_context: t.background_context || undefined
       })));
       
-      // Select first template by default
       if (data.length > 0 && !selectedTemplate) {
         const template = {
           ...data[0],
-          parts: data[0].parts as { title: string; prompt: string }[]
+          parts: data[0].parts as { title: string; prompt: string }[],
+          system_prompt: data[0].system_prompt || undefined,
+          background_context: data[0].background_context || undefined
         };
         setSelectedTemplate(template);
         initializeDialogueParts(template);
@@ -134,6 +145,8 @@ const SystemPlanning = () => {
     })));
     setConversationHistory([]);
     setCurrentSessionId(null);
+    setTotalTokensUsed(0);
+    setEstimatedSavings(0);
   };
 
   const createSession = async (template: PlanningTemplate): Promise<string | null> => {
@@ -155,13 +168,43 @@ const SystemPlanning = () => {
     return data.id;
   };
 
-  const runSinglePart = async (partIndex: number) => {
+  // Build optimized context for the API
+  const buildOptimizedContext = () => {
+    // Extract key points from completed parts
+    const keyPoints = dialogueParts
+      .filter(p => p.status === 'completed' && p.keyPoints && p.keyPoints.length > 0)
+      .map(p => ({
+        partId: p.id,
+        points: p.keyPoints || []
+      }));
+
+    // Get previous questions (all completed parts)
+    const previousQuestions = dialogueParts
+      .filter(p => p.status === 'completed')
+      .map(p => ({
+        partId: p.id,
+        title: p.title,
+        prompt: p.prompt
+      }));
+
+    // Get last 2 messages
+    const recentMessages = conversationHistory.slice(-4);
+
+    return {
+      systemPrompt: selectedTemplate?.system_prompt,
+      backgroundContext: selectedTemplate?.background_context,
+      keyPoints,
+      previousQuestions,
+      recentMessages
+    };
+  };
+
+  const runSinglePart = async (partIndex: number, customPrompt?: string) => {
     if (!selectedTemplate) return;
     
     const part = dialogueParts[partIndex];
     if (!part) return;
 
-    // Create session if not exists
     let sessionId = currentSessionId;
     if (!sessionId) {
       sessionId = await createSession(selectedTemplate);
@@ -177,11 +220,8 @@ const SystemPlanning = () => {
       i === partIndex ? { ...p, status: 'running' } : p
     ));
 
-    // Build context from previous responses
-    const previousContext = conversationHistory
-      .filter(msg => msg.role === 'assistant' && msg.partId && msg.partId < part.id)
-      .map(msg => msg.content)
-      .join('\n\n---\n\n');
+    const optimizedContext = buildOptimizedContext();
+    const promptToUse = customPrompt || part.prompt;
 
     try {
       const response = await supabase.functions.invoke('planning-dialogue', {
@@ -189,26 +229,28 @@ const SystemPlanning = () => {
           sessionId,
           partNumber: part.id,
           title: part.title,
-          prompt: part.prompt,
-          previousContext
+          prompt: promptToUse,
+          type: 'structured',
+          ...optimizedContext
         }
       });
 
       if (response.error) throw response.error;
 
-      const { answer, keyPoints } = response.data;
+      const { answer, keyPoints, tokensUsed, estimatedSavings: savings } = response.data;
 
-      // Update dialogue part
       setDialogueParts(prev => prev.map((p, i) => 
         i === partIndex ? { ...p, status: 'completed', response: answer, keyPoints } : p
       ));
 
-      // Add to conversation history
       setConversationHistory(prev => [
         ...prev,
-        { role: 'user', content: `**${part.title}**\n\n${part.prompt}`, partId: part.id },
+        { role: 'user', content: `**${part.title}**\n\n${promptToUse}`, partId: part.id },
         { role: 'assistant', content: answer, partId: part.id, keyPoints }
       ]);
+
+      setTotalTokensUsed(prev => prev + (tokensUsed || 0));
+      setEstimatedSavings(prev => prev + (savings || 0));
 
       toast.success(`${part.title} הושלם`);
     } catch (error) {
@@ -229,7 +271,6 @@ const SystemPlanning = () => {
     for (let i = 0; i < dialogueParts.length; i++) {
       if (dialogueParts[i].status !== 'completed') {
         await runSinglePart(i);
-        // Small delay between parts
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
@@ -245,6 +286,14 @@ const SystemPlanning = () => {
     }
   };
 
+  const startNewSession = () => {
+    if (selectedTemplate) {
+      initializeDialogueParts(selectedTemplate);
+      setActiveTab("dialogue");
+      toast.info("שיחה חדשה נוצרה");
+    }
+  };
+
   const sendCustomMessage = async () => {
     if (!customMessage.trim() || !currentSessionId) return;
 
@@ -256,6 +305,8 @@ const SystemPlanning = () => {
       { role: 'user', content: userMessage }
     ]);
 
+    const optimizedContext = buildOptimizedContext();
+
     try {
       const response = await supabase.functions.invoke('planning-dialogue', {
         body: {
@@ -263,19 +314,22 @@ const SystemPlanning = () => {
           partNumber: 0,
           title: 'שאלה חופשית',
           prompt: userMessage,
-          previousContext: conversationHistory
-            .filter(msg => msg.role === 'assistant')
-            .map(msg => msg.content)
-            .join('\n\n')
+          type: 'freeform',
+          ...optimizedContext
         }
       });
 
       if (response.error) throw response.error;
 
+      const { tokensUsed, estimatedSavings: savings } = response.data;
+
       setConversationHistory(prev => [
         ...prev,
         { role: 'assistant', content: response.data.answer }
       ]);
+
+      setTotalTokensUsed(prev => prev + (tokensUsed || 0));
+      setEstimatedSavings(prev => prev + (savings || 0));
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("שגיאה בשליחת ההודעה");
@@ -313,22 +367,24 @@ const SystemPlanning = () => {
     initializeDialogueParts(template);
   };
 
-  const getStatusIcon = (status: DialoguePart['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'running':
-        return <Loader2 className="h-5 w-5 text-primary animate-spin" />;
-      case 'error':
-        return <AlertCircle className="h-5 w-5 text-destructive" />;
-      default:
-        return <Clock className="h-5 w-5 text-muted-foreground" />;
-    }
+  const handleEditTemplate = (template: PlanningTemplate) => {
+    setEditingTemplate(template);
+    setIsEditorOpen(true);
+  };
+
+  const handleAddTemplate = () => {
+    setEditingTemplate(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleSessionSelect = async (sessionId: string) => {
+    // Load session data and display
+    toast.info("טעינת מפגש...");
+    // TODO: Implement session loading
   };
 
   const completedParts = dialogueParts.filter(p => p.status === 'completed').length;
 
-  // Redirect non-admins
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -337,10 +393,16 @@ const SystemPlanning = () => {
     <MainLayout>
       <DomainErrorBoundary domain="planning">
         <div className="container mx-auto p-6 space-y-6" dir="rtl">
-          <PageHeader
-            title="אפיון ותכנון מערכות"
-            description="דיאלוג מובנה עם AI לתכנון אתרים ואפליקציות"
-          />
+          <div className="flex items-center justify-between">
+            <PageHeader
+              title="אפיון ותכנון מערכות"
+              description="דיאלוג מובנה עם AI לתכנון אתרים ואפליקציות"
+            />
+            <Button onClick={startNewSession} className="gap-2">
+              <Plus className="h-4 w-4" />
+              שיחה חדשה
+            </Button>
+          </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3 max-w-md">
@@ -367,7 +429,7 @@ const SystemPlanning = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-primary" />
-                        חלקי הדיאלוג
+                        שלבי הדיאלוג
                       </CardTitle>
                       <Badge variant="outline">
                         {completedParts}/{dialogueParts.length}
@@ -378,45 +440,12 @@ const SystemPlanning = () => {
                     )}
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {dialogueParts.map((part, index) => (
-                      <div
-                        key={part.id}
-                        className={`p-3 rounded-lg border transition-colors ${
-                          part.status === 'completed' 
-                            ? 'bg-green-50 border-green-200 dark:bg-green-950/20' 
-                            : part.status === 'running'
-                            ? 'bg-primary/10 border-primary'
-                            : 'bg-muted/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(part.status)}
-                            <span className="font-medium text-sm">{part.title}</span>
-                          </div>
-                          {part.status !== 'completed' && part.status !== 'running' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => runSinglePart(index)}
-                              disabled={isRunning}
-                            >
-                              <Play className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        {part.keyPoints && part.keyPoints.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {part.keyPoints.slice(0, 2).map((point, i) => (
-                              <div key={i} className="text-xs text-muted-foreground flex items-start gap-1">
-                                <span>•</span>
-                                <span className="line-clamp-1">{point}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    <DialogueStepAccordion
+                      parts={dialogueParts}
+                      onRunPart={runSinglePart}
+                      isRunning={isRunning}
+                      currentPartIndex={currentPartIndex}
+                    />
 
                     <div className="flex gap-2 pt-3">
                       <Button 
@@ -435,6 +464,12 @@ const SystemPlanning = () => {
                         <RotateCcw className="h-4 w-4" />
                       </Button>
                     </div>
+
+                    {/* Token Meter */}
+                    <TokenMeter 
+                      tokensUsed={totalTokensUsed} 
+                      estimatedSavings={estimatedSavings}
+                    />
 
                     {/* Email Summary */}
                     <div className="pt-3 border-t space-y-2">
@@ -546,15 +581,33 @@ const SystemPlanning = () => {
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
                     }`}
-                    onClick={() => selectTemplate(template)}
                   >
-                    <CardHeader>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription>{template.description}</CardDescription>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1" onClick={() => selectTemplate(template)}>
+                          <CardTitle className="text-lg">{template.name}</CardTitle>
+                          <CardDescription>{template.description}</CardDescription>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditTemplate(template);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent onClick={() => selectTemplate(template)}>
                       <div className="space-y-2">
-                        <Badge variant="secondary">{template.parts.length} חלקים</Badge>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary">{template.parts.length} חלקים</Badge>
+                          {template.system_prompt && (
+                            <Badge variant="outline" className="text-xs">+ System Prompt</Badge>
+                          )}
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           {template.parts.slice(0, 3).map((part, i) => (
                             <div key={i} className="truncate">• {part.title}</div>
@@ -569,7 +622,10 @@ const SystemPlanning = () => {
                 ))}
 
                 {/* Add Template Card */}
-                <Card className="cursor-pointer border-dashed hover:border-primary transition-colors">
+                <Card 
+                  className="cursor-pointer border-dashed hover:border-primary transition-colors"
+                  onClick={handleAddTemplate}
+                >
                   <CardContent className="flex items-center justify-center h-full min-h-[200px]">
                     <div className="text-center text-muted-foreground">
                       <Plus className="h-8 w-8 mx-auto mb-2" />
@@ -582,43 +638,22 @@ const SystemPlanning = () => {
 
             {/* History Tab */}
             <TabsContent value="history" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>מפגשי תכנון קודמים</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {sessions.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>אין מפגשים קודמים</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {sessions.map((session) => (
-                        <div 
-                          key={session.id}
-                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          <div>
-                            <p className="font-medium">{session.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(session.created_at).toLocaleDateString('he-IL')}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={session.status === 'completed' ? 'default' : 'secondary'}>
-                              {session.status === 'completed' ? 'הושלם' : 'בתהליך'}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <SessionHistory 
+                sessions={sessions}
+                onSessionSelect={handleSessionSelect}
+                onSessionsChange={loadSessions}
+              />
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Template Editor Dialog */}
+        <TemplateEditor
+          open={isEditorOpen}
+          onOpenChange={setIsEditorOpen}
+          template={editingTemplate}
+          onSave={loadTemplates}
+        />
       </DomainErrorBoundary>
     </MainLayout>
   );

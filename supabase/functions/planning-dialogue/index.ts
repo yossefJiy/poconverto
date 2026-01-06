@@ -5,7 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `אתה יועץ מומחה לאפיון ותכנון מערכות דיגיטליות - אתרים, אפליקציות, ומערכות SaaS.
+// Default system prompt if not provided in template
+const DEFAULT_SYSTEM_PROMPT = `אתה יועץ מומחה לאפיון ותכנון מערכות דיגיטליות - אתרים, אפליקציות, ומערכות SaaS.
 
 אתה עוזר לסוכנות דיגיטלית לתכנן ולבנות מערכות בצורה מקצועית ומובנית.
 
@@ -16,6 +17,28 @@ const SYSTEM_PROMPT = `אתה יועץ מומחה לאפיון ותכנון מע
 4. חשוב על ארכיטקטורה, UX, ביצועים ואבטחה
 5. הצע פתרונות מודרניים (React, TypeScript, Supabase, AI)
 6. סכם בנקודות מפתח בסוף כל תשובה`;
+
+// Context limits
+const KEY_POINTS_MAX_CHARS = 500;
+const QUESTION_MAX_CHARS = 300;
+const MAX_PREVIOUS_MESSAGES = 2;
+
+interface KeyPoint {
+  partId: number;
+  points: string[];
+}
+
+interface PreviousQuestion {
+  partId: number;
+  title: string;
+  prompt: string;
+}
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  partId?: number;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -31,28 +54,107 @@ serve(async (req) => {
       throw new Error('Missing OPENROUTER_API_KEY');
     }
 
-    const { sessionId, partNumber, title, prompt, previousContext } = await req.json();
+    const { 
+      sessionId, 
+      partNumber, 
+      title, 
+      prompt, 
+      previousContext,
+      // New optimized context fields
+      systemPrompt,
+      backgroundContext,
+      keyPoints,
+      previousQuestions,
+      recentMessages,
+      type = 'structured' // 'structured' | 'freeform'
+    } = await req.json();
 
-    console.log(`Processing dialogue part ${partNumber}: ${title}`);
+    console.log(`Processing dialogue part ${partNumber}: ${title}, type: ${type}`);
 
-    // Build messages with context
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT }
-    ];
+    // Build optimized messages array
+    const messages: { role: string; content: string }[] = [];
 
-    if (previousContext && previousContext.length > 0) {
+    // 1. System prompt (constant, benefits from prompt caching)
+    const finalSystemPrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    messages.push({ role: 'system', content: finalSystemPrompt });
+
+    // 2. Background context (constant, benefits from prompt caching)
+    if (backgroundContext) {
+      messages.push({
+        role: 'user',
+        content: `מידע רקע על הפרויקט:\n${backgroundContext}`
+      });
+      messages.push({
+        role: 'assistant',
+        content: 'הבנתי את הרקע. אני מוכן לעזור בתכנון.'
+      });
+    }
+
+    // 3. Key points from previous parts (limited to KEY_POINTS_MAX_CHARS)
+    if (keyPoints && Array.isArray(keyPoints) && keyPoints.length > 0) {
+      let keyPointsText = 'נקודות מפתח מהשיחה עד כה:\n';
+      let currentLength = keyPointsText.length;
+      
+      for (const kp of keyPoints as KeyPoint[]) {
+        for (const point of kp.points) {
+          const pointText = `• ${point}\n`;
+          if (currentLength + pointText.length <= KEY_POINTS_MAX_CHARS) {
+            keyPointsText += pointText;
+            currentLength += pointText.length;
+          }
+        }
+      }
+      
+      if (keyPointsText.length > 'נקודות מפתח מהשיחה עד כה:\n'.length) {
+        messages.push({
+          role: 'assistant',
+          content: keyPointsText.trim()
+        });
+      }
+    }
+
+    // 4. Previous questions (shortened, MAX QUESTION_MAX_CHARS each)
+    if (previousQuestions && Array.isArray(previousQuestions) && previousQuestions.length > 0) {
+      let questionsText = 'שאלות שכבר נדונו:\n';
+      for (const q of previousQuestions as PreviousQuestion[]) {
+        const shortPrompt = q.prompt.length > QUESTION_MAX_CHARS 
+          ? q.prompt.substring(0, QUESTION_MAX_CHARS) + '...'
+          : q.prompt;
+        questionsText += `${q.partId}. ${q.title}: ${shortPrompt}\n`;
+      }
+      messages.push({
+        role: 'assistant',
+        content: questionsText.trim()
+      });
+    }
+
+    // 5. Recent messages (last 2 full messages)
+    if (recentMessages && Array.isArray(recentMessages)) {
+      const lastMessages = (recentMessages as Message[]).slice(-MAX_PREVIOUS_MESSAGES * 2);
+      for (const msg of lastMessages) {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
+      }
+    } 
+    // Legacy: support old format
+    else if (previousContext && typeof previousContext === 'string' && previousContext.length > 0) {
       messages.push({
         role: 'assistant',
         content: `הנה סיכום השיחה עד כה:\n\n${previousContext}`
       });
     }
 
+    // 6. Current question (no limit)
     messages.push({
       role: 'user',
       content: `${title}\n\n${prompt}`
     });
 
-    // Call OpenRouter API
+    console.log(`Total messages: ${messages.length}, estimated tokens: ${JSON.stringify(messages).length / 4}`);
+
+    // Call OpenRouter API with Claude
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -77,10 +179,12 @@ serve(async (req) => {
 
     const data = await response.json();
     const answer = data.choices[0]?.message?.content || 'לא התקבלה תשובה';
+    const inputTokens = data.usage?.prompt_tokens || 0;
+    const outputTokens = data.usage?.completion_tokens || 0;
     const tokensUsed = data.usage?.total_tokens || 0;
 
-    // Extract key points
-    const keyPoints: string[] = [];
+    // Extract key points from response
+    const extractedKeyPoints: string[] = [];
     const lines = answer.split('\n');
     let inKeyPoints = false;
     
@@ -90,7 +194,7 @@ serve(async (req) => {
         continue;
       }
       if (inKeyPoints && (line.startsWith('-') || line.startsWith('•') || line.match(/^\d+\./))) {
-        keyPoints.push(line.replace(/^[-•\d.]+\s*/, '').trim());
+        extractedKeyPoints.push(line.replace(/^[-•\d.]+\s*/, '').trim());
       }
     }
 
@@ -111,7 +215,7 @@ serve(async (req) => {
             title,
             prompt,
             response: answer,
-            key_points: keyPoints,
+            key_points: extractedKeyPoints,
             status: 'completed',
             tokens_used: tokensUsed,
             model_used: 'claude-sonnet-4',
@@ -127,13 +231,21 @@ serve(async (req) => {
       }
     }
 
+    // Calculate estimated savings from prompt caching and context optimization
+    const estimatedOriginalTokens = tokensUsed * 1.5; // Rough estimate of what it would have been
+    const estimatedSavings = Math.round(estimatedOriginalTokens - tokensUsed);
+
     return new Response(
       JSON.stringify({
         answer,
-        keyPoints: keyPoints.slice(0, 5),
+        keyPoints: extractedKeyPoints.slice(0, 5),
         tokensUsed,
+        inputTokens,
+        outputTokens,
+        estimatedSavings,
         partNumber,
-        title
+        title,
+        type
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

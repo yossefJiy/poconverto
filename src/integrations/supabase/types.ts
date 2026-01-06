@@ -3896,6 +3896,7 @@ export type Database = {
       }
       planning_templates: {
         Row: {
+          background_context: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -3904,10 +3905,12 @@ export type Database = {
           name: string
           parts: Json
           sort_order: number | null
+          system_prompt: string | null
           template_type: string
           updated_at: string
         }
         Insert: {
+          background_context?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3916,10 +3919,12 @@ export type Database = {
           name: string
           parts?: Json
           sort_order?: number | null
+          system_prompt?: string | null
           template_type: string
           updated_at?: string
         }
         Update: {
+          background_context?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3928,6 +3933,7 @@ export type Database = {
           name?: string
           parts?: Json
           sort_order?: number | null
+          system_prompt?: string | null
           template_type?: string
           updated_at?: string
         }
