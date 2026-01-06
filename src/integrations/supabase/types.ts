@@ -4244,6 +4244,57 @@ export type Database = {
           },
         ]
       }
+      role_simulation_log: {
+        Row: {
+          action: string
+          actual_role: string
+          created_at: string | null
+          id: string
+          reason: string | null
+          simulated_client_id: string | null
+          simulated_contact_id: string | null
+          simulated_role: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actual_role: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          simulated_client_id?: string | null
+          simulated_contact_id?: string | null
+          simulated_role: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actual_role?: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          simulated_client_id?: string | null
+          simulated_contact_id?: string | null
+          simulated_role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_simulation_log_simulated_client_id_fkey"
+            columns: ["simulated_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_simulation_log_simulated_contact_id_fkey"
+            columns: ["simulated_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_reports: {
         Row: {
           client_id: string

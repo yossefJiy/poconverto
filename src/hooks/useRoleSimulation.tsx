@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { useAuth, type AppRole, ROLE_LABELS } from './useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+interface SimulationOptions {
+  clientId?: string;
+  contactId?: string;
+  reason?: string;
+}
 
 interface RoleSimulationContextType {
   simulatedRole: AppRole | null;
@@ -7,8 +14,10 @@ interface RoleSimulationContextType {
   isSimulating: boolean;
   canSimulate: boolean;
   availableRoles: AppRole[];
-  startSimulation: (role: AppRole) => void;
-  stopSimulation: () => void;
+  simulatedClientId: string | null;
+  simulatedContactId: string | null;
+  startSimulation: (role: AppRole, options?: SimulationOptions) => Promise<void>;
+  stopSimulation: (reason?: string) => Promise<void>;
 }
 
 const RoleSimulationContext = createContext<RoleSimulationContextType | undefined>(undefined);
@@ -26,8 +35,10 @@ const ROLE_HIERARCHY: AppRole[] = [
 ];
 
 export function RoleSimulationProvider({ children }: { children: ReactNode }) {
-  const { role: actualRole } = useAuth();
+  const { role: actualRole, user } = useAuth();
   const [simulatedRole, setSimulatedRole] = useState<AppRole | null>(null);
+  const [simulatedClientId, setSimulatedClientId] = useState<string | null>(null);
+  const [simulatedContactId, setSimulatedContactId] = useState<string | null>(null);
 
   // Only super_admin and admin can simulate roles
   const canSimulate = actualRole === 'super_admin' || actualRole === 'admin';
@@ -40,18 +51,52 @@ export function RoleSimulationProvider({ children }: { children: ReactNode }) {
     return roleIndex >= actualIndex; // Can only simulate same level or lower
   });
 
-  const startSimulation = useCallback((role: AppRole) => {
+  const logSimulationAction = useCallback(async (
+    action: 'start' | 'stop' | 'switch',
+    role: AppRole,
+    options?: SimulationOptions
+  ) => {
+    if (!user || !actualRole) return;
+    
+    try {
+      await supabase.from('role_simulation_log').insert({
+        user_id: user.id,
+        actual_role: actualRole,
+        simulated_role: role,
+        simulated_client_id: options?.clientId || null,
+        simulated_contact_id: options?.contactId || null,
+        action,
+        reason: options?.reason || null,
+      });
+    } catch (error) {
+      console.error('Failed to log simulation action:', error);
+    }
+  }, [user, actualRole]);
+
+  const startSimulation = useCallback(async (role: AppRole, options?: SimulationOptions) => {
     if (!canSimulate) return;
     
     // Verify the role is available for simulation
     if (!availableRoles.includes(role)) return;
     
+    const action = simulatedRole ? 'switch' : 'start';
+    
     setSimulatedRole(role);
-  }, [canSimulate, availableRoles]);
+    setSimulatedClientId(options?.clientId || null);
+    setSimulatedContactId(options?.contactId || null);
+    
+    await logSimulationAction(action, role, options);
+  }, [canSimulate, availableRoles, simulatedRole, logSimulationAction]);
 
-  const stopSimulation = useCallback(() => {
+  const stopSimulation = useCallback(async (reason?: string) => {
+    if (!simulatedRole || !actualRole) return;
+    
+    await logSimulationAction('stop', simulatedRole, { reason });
+    
     setSimulatedRole(null);
-  }, []);
+    setSimulatedClientId(null);
+    setSimulatedContactId(null);
+  }, [simulatedRole, actualRole, logSimulationAction]);
 
   const effectiveRole = simulatedRole || actualRole;
 
@@ -62,6 +107,8 @@ export function RoleSimulationProvider({ children }: { children: ReactNode }) {
       isSimulating: !!simulatedRole,
       canSimulate,
       availableRoles,
+      simulatedClientId,
+      simulatedContactId,
       startSimulation,
       stopSimulation,
     }}>
