@@ -222,8 +222,8 @@ export function Sidebar() {
           );
         })}
 
-        {/* Client Settings - Only for admins when client is selected */}
-        {selectedClient && isAdmin && (
+        {/* Client Settings - Only for admins when client is selected and NOT simulating */}
+        {selectedClient && isAdmin && !isSimulating && (
           <Link
             to="/clients"
             className={cn(
@@ -243,45 +243,47 @@ export function Sidebar() {
 
       {/* Bottom Section */}
       <div className="border-t border-sidebar-border shrink-0">
-        {/* Settings Dropdown */}
-        <div className="p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3 h-10",
-                  isCollapsed && "justify-center px-2",
-                  location.pathname === "/settings"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                )}
-              >
-                <Settings className="w-5 h-5 shrink-0" />
-                {!isCollapsed && <span className="font-medium">הגדרות</span>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-56">
-              <DropdownMenuLabel>הגדרות</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {settingsItems
-                .filter(item => !item.adminOnly || isAdmin)
-                .map((item) => (
-                <DropdownMenuItem key={item.label} asChild>
-                  <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
-                    <item.icon className="w-4 h-4" />
-                    <span className="flex-1">{item.label}</span>
-                    {item.path === "/code-health" && codeHealthStats && codeHealthStats.criticalCount > 0 && (
-                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                        {codeHealthStats.criticalCount}
-                      </Badge>
-                    )}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* Settings Dropdown - Hide when simulating */}
+        {!isSimulating && (
+          <div className="p-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-3 h-10",
+                    isCollapsed && "justify-center px-2",
+                    location.pathname === "/settings"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <Settings className="w-5 h-5 shrink-0" />
+                  {!isCollapsed && <span className="font-medium">הגדרות</span>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" className="w-56">
+                <DropdownMenuLabel>הגדרות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {settingsItems
+                  .filter(item => !item.adminOnly || isAdmin)
+                  .map((item) => (
+                  <DropdownMenuItem key={item.label} asChild>
+                    <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
+                      <item.icon className="w-4 h-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {item.path === "/code-health" && codeHealthStats && codeHealthStats.criticalCount > 0 && (
+                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                          {codeHealthStats.criticalCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
 
         {/* User Menu */}
         <div className="p-3 pt-0">

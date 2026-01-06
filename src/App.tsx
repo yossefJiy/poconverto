@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
 import { RoleSimulationProvider } from "@/hooks/useRoleSimulation";
-import { RoleSimulationBanner } from "@/components/admin/RoleSimulationBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SimulationProtectedRoute from "@/components/SimulationProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -71,7 +71,6 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <RoleSimulationBanner />
               <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
@@ -79,269 +78,269 @@ const App = () => (
               <Route path="/products/ecommerce" element={<ProductEcommerce />} />
               <Route path="/products/dashboard" element={<ProductDashboard />} />
               <Route path="/client/:clientId" element={<ClientDashboard />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<SimulationProtectedRoute><Dashboard /></SimulationProtectedRoute>} />
               <Route path="/clients" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="clients">
                     <ClientProfile />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/client-management" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="clients">
                     <ClientManagement />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/marketing" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="marketing">
                     <Marketing />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/campaigns" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="campaigns">
                   <DomainErrorBoundary domain="campaigns">
                     <Campaigns />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/tasks" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="tasks">
                   <DomainErrorBoundary domain="tasks">
                     <Tasks />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/team" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="team">
                   <DomainErrorBoundary domain="team">
                     <Team />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/settings" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="settings">
                     <Settings />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/credits" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="admin">
                     <CreditManagement />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
               <Route path="/analytics" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <Analytics />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/google-ads" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <GoogleAdsDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/shopify" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <ShopifyDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/facebook-ads" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <FacebookAdsDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/meta" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <MetaSummary />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/woocommerce" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <WooCommerceDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/analytics/google-analytics" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <GoogleAnalyticsDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/campaigns/:campaignId" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="campaigns">
                   <DomainErrorBoundary domain="campaigns">
                     <CampaignDetail />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/ecommerce" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="ecommerce">
                   <DomainErrorBoundary domain="ecommerce">
                     <Ecommerce />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/ai-agents" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="ai_agent">
                   <DomainErrorBoundary domain="ai">
                     <AIAgents />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/agent-alerts" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="ai_agent">
                   <DomainErrorBoundary domain="ai">
                     <AgentAlerts />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/insights" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="insights">
                   <DomainErrorBoundary domain="ai">
                     <ClientInsights />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
-              <Route path="/system-diagram" element={<SystemDiagram />} />
+              <Route path="/system-diagram" element={<SimulationProtectedRoute><SystemDiagram /></SimulationProtectedRoute>} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/status" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="admin">
                     <StatusPage />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/code-health" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="admin">
                     <CodeHealth />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/reports" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="reports">
                   <DomainErrorBoundary domain="reports">
                     <Reports />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/permissions" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="admin">
                     <Permissions />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/kpis" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="marketing">
                     <KPIDashboard />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/competitors" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="marketing">
                     <Competitors />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/social" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="social">
                     <SocialMedia />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/agency" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="agency">
                     <AgencyDashboard />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/projects" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="tasks">
                   <DomainErrorBoundary domain="projects">
                     <Projects />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/content-studio" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="content">
                     <ContentStudio />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/leads" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="leads">
                   <DomainErrorBoundary domain="leads">
                     <LeadManagement />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/billing" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="billing">
                   <DomainErrorBoundary domain="billing">
                     <BillingManagement />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/approvals" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="approvals">
                   <DomainErrorBoundary domain="approvals">
                     <ApprovalsDashboard />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/programmatic" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="campaigns">
                   <DomainErrorBoundary domain="campaigns">
                     <Programmatic />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/ab-tests" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="campaigns">
                   <DomainErrorBoundary domain="campaigns">
                     <ABTests />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/google-shopping" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="ecommerce">
                   <DomainErrorBoundary domain="ecommerce">
                     <GoogleShopping />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               <Route path="/ai-insights" element={
-                <ProtectedRoute>
+                <SimulationProtectedRoute moduleKey="ai_agent">
                   <DomainErrorBoundary domain="ai">
                     <AIInsights />
                   </DomainErrorBoundary>
-                </ProtectedRoute>
+                </SimulationProtectedRoute>
               } />
               
               <Route path="*" element={<NotFound />} />
