@@ -9,7 +9,8 @@ import {
   ContentEditor, 
   BrandAssetsManager, 
   AIContentGenerator,
-  DraftsManager 
+  DraftsManager,
+  ClaudeStudioChat
 } from '@/components/content';
 import { useClient } from '@/hooks/useClient';
 import { toast } from 'sonner';
@@ -18,7 +19,8 @@ import {
   Image, 
   FileText, 
   Sparkles, 
-  Edit3
+  Edit3,
+  Bot
 } from 'lucide-react';
 import type { MediaItem, ContentDraft, AIContentHistory, BrandAsset } from '@/api/content.api';
 
@@ -339,6 +341,10 @@ export default function ContentStudio() {
               <Sparkles className="h-4 w-4" />
               AI
             </TabsTrigger>
+            <TabsTrigger value="claude" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              Claude Studio
+            </TabsTrigger>
             <TabsTrigger value="brand" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               מותג
@@ -420,6 +426,10 @@ export default function ContentStudio() {
               onUpdate={handleUpdateAsset}
               onDelete={handleDeleteAsset}
             />
+          </TabsContent>
+
+          <TabsContent value="claude" className="mt-6">
+            <ClaudeStudioChat />
           </TabsContent>
         </Tabs>
       </div>
