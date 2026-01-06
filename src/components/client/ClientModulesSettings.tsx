@@ -58,6 +58,9 @@ const moduleConfig = [
   { key: "ai_agent", label: "סוכן AI", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/20", description: "עוזר AI חכם לתובנות והמלצות", hasAI: true },
   { key: "features", label: "בקשות פיצ'רים", icon: Lightbulb, color: "text-amber-500", bgColor: "bg-amber-500/20", description: "ניהול בקשות פיצ'רים מלקוחות", hasAI: false },
   { key: "reports", label: "דוחות", icon: FileText, color: "text-teal-500", bgColor: "bg-teal-500/20", description: "יצירת והפקת דוחות", hasAI: true },
+  { key: "leads", label: "לידים", icon: UserCheck, color: "text-rose-500", bgColor: "bg-rose-500/20", description: "ניהול לידים ופניות", hasAI: true },
+  { key: "billing", label: "חיובים", icon: FileText, color: "text-emerald-500", bgColor: "bg-emerald-500/20", description: "חשבוניות והצעות מחיר", hasAI: false },
+  { key: "approvals", label: "אישורים", icon: Shield, color: "text-sky-500", bgColor: "bg-sky-500/20", description: "תהליכי אישור ואותוריזציה", hasAI: false },
 ] as const;
 
 // AI Capabilities that can be toggled per module
