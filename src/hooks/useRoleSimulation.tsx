@@ -40,19 +40,29 @@ const ROLE_HIERARCHY: AppRole[] = [
 
 const defaultModules: ClientModules = {
   dashboard: true,
+  projects: true,
   analytics: true,
   ecommerce: false,
+  google_shopping: false,
   marketing: true,
+  kpis: true,
+  competitors: false,
+  social: true,
+  content_studio: true,
   campaigns: true,
+  programmatic: false,
+  ab_tests: false,
   tasks: true,
+  leads: true,
+  billing: true,
+  approvals: true,
   team: true,
   features: true,
   insights: true,
   ai_agent: true,
+  ai_insights: false,
   reports: true,
-  leads: true,
-  billing: true,
-  approvals: true,
+  agency: false,
 };
 
 export function RoleSimulationProvider({ children }: { children: ReactNode }) {
