@@ -28,7 +28,6 @@ import {
   LayoutGrid,
   UserSearch,
   Share2,
-  Eye,
   Receipt,
   ClipboardCheck,
   Contact,
@@ -37,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { useCodeHealth } from "@/hooks/useCodeHealth";
-import { useImpersonation } from "@/hooks/useImpersonation";
+import { useRoleSimulation } from "@/hooks/useRoleSimulation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +50,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ClientSwitcher } from "./ClientSwitcher";
-import { UserImpersonationSelector } from "@/components/admin/UserImpersonationSelector";
+import { RoleSimulatorMenu } from "@/components/admin/RoleSimulatorMenu";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 import byJiyLogo from "@/assets/by-jiy-logo.svg";
@@ -111,7 +110,7 @@ export function Sidebar() {
   const { user, signOut, role } = useAuth();
   const { isModuleEnabled, selectedClient, isAdmin } = useClientModules();
   const { stats: codeHealthStats } = useCodeHealth();
-  const { canImpersonate, isImpersonating } = useImpersonation();
+  const { isSimulating, effectiveRole } = useRoleSimulation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -140,6 +139,9 @@ export function Sidebar() {
     if (!item.moduleKey) return true;
     return isModuleEnabled(item.moduleKey);
   });
+
+  // Display role - show effective role if simulating
+  const displayRole = isSimulating ? effectiveRole : role;
 
   return (
     <aside 
@@ -182,11 +184,6 @@ export function Sidebar() {
       {/* Client Switcher */}
       <div className="p-3 border-b border-sidebar-border shrink-0">
         <ClientSwitcher collapsed={isCollapsed} />
-        {canImpersonate && !isImpersonating && !isCollapsed && (
-          <div className="mt-2">
-            <UserImpersonationSelector />
-          </div>
-        )}
       </div>
 
       {/* Navigation */}
@@ -291,11 +288,15 @@ export function Sidebar() {
                 variant="ghost"
                 className={cn(
                   "w-full justify-start gap-3 h-auto py-2",
-                  isCollapsed && "justify-center px-2"
+                  isCollapsed && "justify-center px-2",
+                  isSimulating && "ring-2 ring-blue-500 ring-offset-2 ring-offset-sidebar"
                 )}
               >
                 <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  <AvatarFallback className={cn(
+                    "text-sm",
+                    isSimulating ? "bg-blue-500/20 text-blue-500" : "bg-primary/20 text-primary"
+                  )}>
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -304,8 +305,12 @@ export function Sidebar() {
                     <span className="text-sm font-medium truncate max-w-[140px]">
                       {userEmail}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {getRoleLabel(role)}
+                    <span className={cn(
+                      "text-xs",
+                      isSimulating ? "text-blue-500" : "text-muted-foreground"
+                    )}>
+                      {getRoleLabel(displayRole)}
+                      {isSimulating && " (סימולציה)"}
                     </span>
                   </div>
                 )}
@@ -320,6 +325,10 @@ export function Sidebar() {
                   פרופיל
                 </Link>
               </DropdownMenuItem>
+              
+              {/* Role Simulator Menu */}
+              <RoleSimulatorMenu />
+              
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={handleSignOut}

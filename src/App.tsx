@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
-import { ImpersonationProvider } from "@/hooks/useImpersonation";
-import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
+import { RoleSimulationProvider } from "@/hooks/useRoleSimulation";
+import { RoleSimulationBanner } from "@/components/admin/RoleSimulationBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
@@ -66,12 +66,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <ClientProvider>
-        <ImpersonationProvider>
+        <RoleSimulationProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <ImpersonationBanner />
+              <RoleSimulationBanner />
               <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
@@ -348,7 +348,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-        </ImpersonationProvider>
+        </RoleSimulationProvider>
       </ClientProvider>
     </AuthProvider>
   </QueryClientProvider>
