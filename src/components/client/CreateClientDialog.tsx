@@ -1,7 +1,7 @@
 import { useState, forwardRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Crown, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useClient } from "@/hooks/useClient";
 import { DefaultModulesSelector, DefaultModules, defaultModulesConfig } from "./DefaultModulesSelector";
 
@@ -37,6 +44,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
     website: "",
     description: "",
     logo_url: "",
+    account_type: "basic" as "basic" | "premium",
   });
   
   const [modules, setModules] = useState<DefaultModules>(defaultModulesConfig);
@@ -49,6 +57,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
         website: form.website || null,
         description: form.description || null,
         logo_url: form.logo_url || null,
+        account_type: form.account_type,
         modules_enabled: JSON.parse(JSON.stringify(modules)),
       }]).select().single();
       if (error) throw error;
@@ -59,7 +68,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
       toast.success("הלקוח נוצר בהצלחה");
       setOpen(false);
-      setForm({ name: "", industry: "", website: "", description: "", logo_url: "" });
+      setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic" });
       setModules(defaultModulesConfig);
       setSelectedClient(data);
     },
@@ -89,13 +98,37 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
           <DialogTitle>יצירת לקוח חדש</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">שם הלקוח *</label>
-            <Input
-              placeholder="שם הלקוח"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">שם הלקוח *</label>
+              <Input
+                placeholder="שם הלקוח"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">סוג חשבון</label>
+              <Select value={form.account_type} onValueChange={(v: "basic" | "premium") => setForm({ ...form, account_type: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="basic">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      בסיסי
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="premium">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-yellow-500" />
+                      פרמיום
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium mb-2 block">תחום</label>

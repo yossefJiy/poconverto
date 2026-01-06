@@ -20,7 +20,9 @@ import {
   ExternalLink,
   Briefcase,
   TrendingUp,
-  Save
+  Save,
+  Crown,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 
 import { ClientModulesSettings } from "@/components/client/ClientModulesSettings";
@@ -69,6 +78,7 @@ interface ClientForm {
   jiy_commission_percent: number;
   google_ads_manager_url: string;
   facebook_ads_manager_url: string;
+  account_type: "basic" | "premium";
 }
 
 const emptyForm: ClientForm = {
@@ -86,6 +96,7 @@ const emptyForm: ClientForm = {
   jiy_commission_percent: 0,
   google_ads_manager_url: "",
   facebook_ads_manager_url: "",
+  account_type: "basic",
 };
 
 export default function ClientProfile() {
@@ -188,6 +199,7 @@ export default function ClientProfile() {
         jiy_commission_percent: data.jiy_commission_percent || 0,
         google_ads_manager_url: data.google_ads_manager_url || null,
         facebook_ads_manager_url: data.facebook_ads_manager_url || null,
+        account_type: data.account_type,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -217,6 +229,7 @@ export default function ClientProfile() {
         jiy_commission_percent: (clientData as any).jiy_commission_percent || 0,
         google_ads_manager_url: clientData.google_ads_manager_url || "",
         facebook_ads_manager_url: clientData.facebook_ads_manager_url || "",
+        account_type: (clientData as any).account_type || "basic",
       });
       setShowEditDialog(true);
     }
@@ -341,6 +354,19 @@ export default function ClientProfile() {
                 <Badge variant="secondary" className="mt-1">
                   <Briefcase className="w-3 h-3 ml-1" />
                   {clientData.industry}
+                </Badge>
+              )}
+              {(clientData as any)?.account_type && (
+                <Badge 
+                  variant={(clientData as any).account_type === "premium" ? "default" : "outline"} 
+                  className={`mt-1 mr-2 ${(clientData as any).account_type === "premium" ? "bg-yellow-500/20 text-yellow-600 border-yellow-500/30" : ""}`}
+                >
+                  {(clientData as any).account_type === "premium" ? (
+                    <Crown className="w-3 h-3 ml-1" />
+                  ) : (
+                    <User className="w-3 h-3 ml-1" />
+                  )}
+                  {(clientData as any).account_type === "premium" ? "פרמיום" : "בסיסי"}
                 </Badge>
               )}
               {clientData?.description && (
@@ -575,13 +601,37 @@ export default function ClientProfile() {
             <DialogTitle>עריכת פרטי לקוח</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">שם הלקוח *</label>
-              <Input
-                placeholder="שם הלקוח"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">שם הלקוח *</label>
+                <Input
+                  placeholder="שם הלקוח"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">סוג חשבון</label>
+                <Select value={form.account_type} onValueChange={(v: "basic" | "premium") => setForm({ ...form, account_type: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basic">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        בסיסי
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="premium">
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-yellow-500" />
+                        פרמיום
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">תחום</label>
