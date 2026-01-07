@@ -44,7 +44,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
     website: "",
     description: "",
     logo_url: "",
-    account_type: "basic" as "basic" | "premium",
+    account_type: "basic_client" as "basic_client" | "premium_client",
   });
   
   const [modules, setModules] = useState<DefaultModules>(defaultModulesConfig);
@@ -68,7 +68,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
       toast.success("הלקוח נוצר בהצלחה");
       setOpen(false);
-      setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic" });
+      setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic_client" });
       setModules(defaultModulesConfig);
       setSelectedClient(data);
     },
@@ -109,18 +109,18 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">סוג חשבון</label>
-              <Select value={form.account_type} onValueChange={(v: "basic" | "premium") => setForm({ ...form, account_type: v })}>
+              <Select value={form.account_type} onValueChange={(v: "basic_client" | "premium_client") => setForm({ ...form, account_type: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="basic">
+                  <SelectItem value="basic_client">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
                       בסיסי
                     </div>
                   </SelectItem>
-                  <SelectItem value="premium">
+                  <SelectItem value="premium_client">
                     <div className="flex items-center gap-2">
                       <Crown className="w-4 h-4 text-yellow-500" />
                       פרמיום
