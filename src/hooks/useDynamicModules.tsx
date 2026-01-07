@@ -89,13 +89,11 @@ export interface CreateModuleInput {
   allowed_roles?: string[];
 }
 
+// Hook for fetching all active modules
 export function useDynamicModules() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Fetch all active modules
-  const { data: modules, isLoading: modulesLoading } = useQuery({
+  return useQuery({
     queryKey: ['dynamic-modules'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -109,81 +107,92 @@ export function useDynamicModules() {
     },
     enabled: !!user
   });
+}
 
-  // Fetch module by slug
-  const useModule = (slug: string) => {
-    return useQuery({
-      queryKey: ['dynamic-module', slug],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('dynamic_modules')
-          .select('*')
-          .eq('slug', slug)
-          .eq('is_active', true)
-          .single();
-        
-        if (error) throw error;
-        return data as DynamicModule;
-      },
-      enabled: !!slug && !!user
-    });
-  };
+// Hook for fetching a single module by slug
+export function useDynamicModule(slug: string) {
+  const { user } = useAuth();
 
-  // Fetch templates for a module
-  const useModuleTemplates = (moduleId: string) => {
-    return useQuery({
-      queryKey: ['dynamic-module-templates', moduleId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('dynamic_module_templates')
-          .select('*')
-          .eq('module_id', moduleId)
-          .order('sort_order');
-        
-        if (error) throw error;
-        return data as DynamicModuleTemplate[];
-      },
-      enabled: !!moduleId
-    });
-  };
+  return useQuery({
+    queryKey: ['dynamic-module', slug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('dynamic_modules')
+        .select('*')
+        .eq('slug', slug)
+        .eq('is_active', true)
+        .single();
+      
+      if (error) throw error;
+      return data as DynamicModule;
+    },
+    enabled: !!slug && !!user
+  });
+}
 
-  // Fetch sessions for a module
-  const useModuleSessions = (moduleId: string) => {
-    return useQuery({
-      queryKey: ['dynamic-module-sessions', moduleId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('dynamic_module_sessions')
-          .select('*')
-          .eq('module_id', moduleId)
-          .eq('user_id', user?.id)
-          .neq('status', 'archived')
-          .order('updated_at', { ascending: false });
-        
-        if (error) throw error;
-        return data as DynamicModuleSession[];
-      },
-      enabled: !!moduleId && !!user
-    });
-  };
+// Hook for fetching templates for a module
+export function useModuleTemplates(moduleId: string | undefined) {
+  return useQuery({
+    queryKey: ['dynamic-module-templates', moduleId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('dynamic_module_templates')
+        .select('*')
+        .eq('module_id', moduleId!)
+        .order('sort_order');
+      
+      if (error) throw error;
+      return data as DynamicModuleTemplate[];
+    },
+    enabled: !!moduleId
+  });
+}
 
-  // Fetch messages for a session
-  const useSessionMessages = (sessionId: string) => {
-    return useQuery({
-      queryKey: ['dynamic-module-messages', sessionId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('dynamic_module_messages')
-          .select('*')
-          .eq('session_id', sessionId)
-          .order('created_at');
-        
-        if (error) throw error;
-        return data as DynamicModuleMessage[];
-      },
-      enabled: !!sessionId
-    });
-  };
+// Hook for fetching sessions for a module
+export function useModuleSessions(moduleId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['dynamic-module-sessions', moduleId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('dynamic_module_sessions')
+        .select('*')
+        .eq('module_id', moduleId!)
+        .eq('user_id', user?.id)
+        .neq('status', 'archived')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as DynamicModuleSession[];
+    },
+    enabled: !!moduleId && !!user
+  });
+}
+
+// Hook for fetching messages for a session
+export function useSessionMessages(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: ['dynamic-module-messages', sessionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('dynamic_module_messages')
+        .select('*')
+        .eq('session_id', sessionId!)
+        .order('created_at');
+      
+      if (error) throw error;
+      return data as DynamicModuleMessage[];
+    },
+    enabled: !!sessionId
+  });
+}
+
+// Hook for module mutations
+export function useDynamicModuleMutations() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Create module
   const createModule = useMutation({
@@ -334,12 +343,6 @@ export function useDynamicModules() {
   });
 
   return {
-    modules,
-    modulesLoading,
-    useModule,
-    useModuleTemplates,
-    useModuleSessions,
-    useSessionMessages,
     createModule,
     updateModule,
     deleteModule,

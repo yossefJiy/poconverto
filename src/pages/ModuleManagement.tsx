@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ModuleCreator } from '@/components/dynamic-modules/ModuleCreator';
-import { useDynamicModules } from '@/hooks/useDynamicModules';
+import { useDynamicModules, useDynamicModuleMutations } from '@/hooks/useDynamicModules';
 import { useAuth } from '@/hooks/useAuth';
 
 const categoryLabels: Record<string, string> = {
@@ -37,7 +37,8 @@ const categoryLabels: Record<string, string> = {
 export default function ModuleManagement() {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { modules, modulesLoading, deleteModule } = useDynamicModules();
+  const { data: modules, isLoading: modulesLoading } = useDynamicModules();
+  const { deleteModule } = useDynamicModuleMutations();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const isAdmin = role === 'super_admin' || role === 'admin';

@@ -21,7 +21,7 @@ interface ModuleAnalyticsDashboardProps {
 
 export function ModuleAnalyticsDashboard({ moduleId, clientId }: ModuleAnalyticsDashboardProps) {
   const [selectedModuleId, setSelectedModuleId] = useState(moduleId || 'all');
-  const { modules } = useDynamicModules();
+  const { data: modules } = useDynamicModules();
   
   const { 
     summary, 
