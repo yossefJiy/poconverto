@@ -2905,6 +2905,263 @@ export type Database = {
           },
         ]
       }
+      dynamic_module_messages: {
+        Row: {
+          ai_classified_type: string | null
+          content: string
+          created_at: string | null
+          error_message: string | null
+          estimated_cost: number | null
+          id: string
+          input_tokens: number | null
+          key_points: string[] | null
+          output_tokens: number | null
+          part_number: number | null
+          rating_feedback: string | null
+          response_time_ms: number | null
+          role: string
+          session_id: string | null
+          task_category: string | null
+          task_complexity: string | null
+          task_type: string | null
+          tokens_used: number | null
+          user_corrected_type: string | null
+          user_rating: number | null
+          was_successful: boolean | null
+        }
+        Insert: {
+          ai_classified_type?: string | null
+          content: string
+          created_at?: string | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          key_points?: string[] | null
+          output_tokens?: number | null
+          part_number?: number | null
+          rating_feedback?: string | null
+          response_time_ms?: number | null
+          role: string
+          session_id?: string | null
+          task_category?: string | null
+          task_complexity?: string | null
+          task_type?: string | null
+          tokens_used?: number | null
+          user_corrected_type?: string | null
+          user_rating?: number | null
+          was_successful?: boolean | null
+        }
+        Update: {
+          ai_classified_type?: string | null
+          content?: string
+          created_at?: string | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          key_points?: string[] | null
+          output_tokens?: number | null
+          part_number?: number | null
+          rating_feedback?: string | null
+          response_time_ms?: number | null
+          role?: string
+          session_id?: string | null
+          task_category?: string | null
+          task_complexity?: string | null
+          task_type?: string | null
+          tokens_used?: number | null
+          user_corrected_type?: string | null
+          user_rating?: number | null
+          was_successful?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_module_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_module_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_module_sessions: {
+        Row: {
+          client_id: string | null
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          module_id: string | null
+          status: string | null
+          template_id: string | null
+          title: string | null
+          total_cost: number | null
+          total_tokens: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          module_id?: string | null
+          status?: string | null
+          template_id?: string | null
+          title?: string | null
+          total_cost?: number | null
+          total_tokens?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          module_id?: string | null
+          status?: string | null
+          template_id?: string | null
+          title?: string | null
+          total_cost?: number | null
+          total_tokens?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_module_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_module_sessions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_module_sessions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_module_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_module_templates: {
+        Row: {
+          background_context: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          module_id: string | null
+          name: string
+          parts: Json
+          sort_order: number | null
+          system_prompt: string | null
+          template_type: string
+        }
+        Insert: {
+          background_context?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          module_id?: string | null
+          name: string
+          parts?: Json
+          sort_order?: number | null
+          system_prompt?: string | null
+          template_type?: string
+        }
+        Update: {
+          background_context?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          module_id?: string | null
+          name?: string
+          parts?: Json
+          sort_order?: number | null
+          system_prompt?: string | null
+          template_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_module_templates_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_modules: {
+        Row: {
+          ai_model: string
+          ai_provider: string
+          allowed_roles: string[] | null
+          category: string
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          sort_order: number | null
+          system_prompt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_model?: string
+          ai_provider?: string
+          allowed_roles?: string[] | null
+          category: string
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          sort_order?: number | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_model?: string
+          ai_provider?: string
+          allowed_roles?: string[] | null
+          category?: string
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          sort_order?: number | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       feature_requests: {
         Row: {
           archived_at: string | null
@@ -3660,6 +3917,172 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_usage_analytics: {
+        Row: {
+          action_type: string | null
+          ai_model: string
+          ai_provider: string
+          client_id: string | null
+          contact_id: string | null
+          created_at: string | null
+          error_message: string | null
+          estimated_cost: number | null
+          final_task_type: string | null
+          id: string
+          input_tokens: number | null
+          message_id: string | null
+          module_id: string | null
+          output_tokens: number | null
+          response_time_ms: number | null
+          session_id: string | null
+          task_category: string | null
+          task_complexity: string | null
+          task_type: string | null
+          total_tokens: number | null
+          user_id: string | null
+          user_rating: number | null
+          was_successful: boolean | null
+        }
+        Insert: {
+          action_type?: string | null
+          ai_model: string
+          ai_provider: string
+          client_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          final_task_type?: string | null
+          id?: string
+          input_tokens?: number | null
+          message_id?: string | null
+          module_id?: string | null
+          output_tokens?: number | null
+          response_time_ms?: number | null
+          session_id?: string | null
+          task_category?: string | null
+          task_complexity?: string | null
+          task_type?: string | null
+          total_tokens?: number | null
+          user_id?: string | null
+          user_rating?: number | null
+          was_successful?: boolean | null
+        }
+        Update: {
+          action_type?: string | null
+          ai_model?: string
+          ai_provider?: string
+          client_id?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          final_task_type?: string | null
+          id?: string
+          input_tokens?: number | null
+          message_id?: string | null
+          module_id?: string | null
+          output_tokens?: number | null
+          response_time_ms?: number | null
+          session_id?: string | null
+          task_category?: string | null
+          task_complexity?: string | null
+          task_type?: string | null
+          total_tokens?: number | null
+          user_id?: string | null
+          user_rating?: number | null
+          was_successful?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_usage_analytics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_usage_analytics_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_module_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_usage_analytics_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_usage_analytics_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_module_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_usage_limits: {
+        Row: {
+          allowed_models: string[] | null
+          created_at: string | null
+          daily_cost_limit: number | null
+          daily_requests_limit: number | null
+          daily_tokens_limit: number | null
+          id: string
+          is_active: boolean | null
+          limit_type: string
+          module_id: string | null
+          monthly_cost_limit: number | null
+          monthly_requests_limit: number | null
+          monthly_tokens_limit: number | null
+          target_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_models?: string[] | null
+          created_at?: string | null
+          daily_cost_limit?: number | null
+          daily_requests_limit?: number | null
+          daily_tokens_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          limit_type: string
+          module_id?: string | null
+          monthly_cost_limit?: number | null
+          monthly_requests_limit?: number | null
+          monthly_tokens_limit?: number | null
+          target_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_models?: string[] | null
+          created_at?: string | null
+          daily_cost_limit?: number | null
+          daily_requests_limit?: number | null
+          daily_tokens_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          limit_type?: string
+          module_id?: string | null
+          monthly_cost_limit?: number | null
+          monthly_requests_limit?: number | null
+          monthly_tokens_limit?: number | null
+          target_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_usage_limits_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -4653,6 +5076,50 @@ export type Database = {
         }
         Relationships: []
       }
+      sidebar_dynamic_items: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_visible: boolean | null
+          label: string
+          module_id: string | null
+          parent_category: string
+          path: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_visible?: boolean | null
+          label: string
+          module_id?: string | null
+          parent_category: string
+          path: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_visible?: boolean | null
+          label?: string
+          module_id?: string | null
+          parent_category?: string
+          path?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sidebar_dynamic_items_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_accounts: {
         Row: {
           access_token: string | null
@@ -5126,6 +5593,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_type_definitions: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          keywords: string[] | null
+          type_key: string
+          type_label_en: string
+          type_label_he: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          type_key: string
+          type_label_en: string
+          type_label_he: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          type_key?: string
+          type_label_en?: string
+          type_label_he?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {

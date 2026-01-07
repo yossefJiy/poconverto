@@ -60,6 +60,9 @@ import ABTests from "./pages/ABTests";
 import GoogleShopping from "./pages/GoogleShopping";
 import AIInsights from "./pages/AIInsights";
 import SystemPlanning from "./pages/SystemPlanning";
+import ModuleManagement from "./pages/ModuleManagement";
+import ModuleAnalytics from "./pages/ModuleAnalytics";
+import { DynamicModulePage } from "./components/dynamic-modules/DynamicModulePage";
 
 const queryClient = new QueryClient();
 
@@ -348,6 +351,21 @@ const App = () => (
                   <DomainErrorBoundary domain="planning">
                     <SystemPlanning />
                   </DomainErrorBoundary>
+                </SimulationProtectedRoute>
+              } />
+              <Route path="/module-management" element={
+                <SimulationProtectedRoute>
+                  <ModuleManagement />
+                </SimulationProtectedRoute>
+              } />
+              <Route path="/module-analytics" element={
+                <SimulationProtectedRoute>
+                  <ModuleAnalytics />
+                </SimulationProtectedRoute>
+              } />
+              <Route path="/modules/:slug" element={
+                <SimulationProtectedRoute>
+                  <DynamicModulePage />
                 </SimulationProtectedRoute>
               } />
               
