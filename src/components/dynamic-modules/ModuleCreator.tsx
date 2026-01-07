@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useDynamicModules } from '@/hooks/useDynamicModules';
+import { useDynamicModuleMutations } from '@/hooks/useDynamicModules';
 
 const moduleSchema = z.object({
   name: z.string().min(2, 'שם חייב להכיל לפחות 2 תווים'),
@@ -72,7 +72,7 @@ interface ModuleCreatorProps {
 
 export function ModuleCreator({ trigger, onSuccess }: ModuleCreatorProps) {
   const [open, setOpen] = useState(false);
-  const { createModule } = useDynamicModules();
+  const { createModule } = useDynamicModuleMutations();
 
   const {
     register,

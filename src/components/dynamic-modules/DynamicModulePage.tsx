@@ -8,8 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDynamicModules } from '@/hooks/useDynamicModules';
+import { 
+  useDynamicModule, 
+  useModuleTemplates, 
+  useModuleSessions, 
+  useSessionMessages,
+  useDynamicModuleMutations
+} from '@/hooks/useDynamicModules';
 import { useClient } from '@/hooks/useClient';
 import { RatingWidget } from './RatingWidget';
 import { TaskTypeSelector, ComplexityBadge } from './TaskTypeSelector';
@@ -18,19 +23,11 @@ import { cn } from '@/lib/utils';
 export function DynamicModulePage() {
   const { slug } = useParams<{ slug: string }>();
   const { selectedClient } = useClient();
-  const { 
-    useModule, 
-    useModuleTemplates, 
-    useModuleSessions, 
-    useSessionMessages, 
-    sendMessage,
-    rateMessage,
-    correctTaskType
-  } = useDynamicModules();
-
-  const { data: module, isLoading: moduleLoading } = useModule(slug || '');
-  const { data: templates } = useModuleTemplates(module?.id || '');
-  const { data: sessions } = useModuleSessions(module?.id || '');
+  
+  const { data: module, isLoading: moduleLoading } = useDynamicModule(slug || '');
+  const { data: templates } = useModuleTemplates(module?.id);
+  const { data: sessions } = useModuleSessions(module?.id);
+  const { sendMessage, rateMessage, correctTaskType } = useDynamicModuleMutations();
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -38,7 +35,7 @@ export function DynamicModulePage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages } = useSessionMessages(activeSessionId || '');
+  const { data: messages } = useSessionMessages(activeSessionId || undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
