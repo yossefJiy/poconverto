@@ -20,6 +20,7 @@ import {
   Network,
   HeartPulse,
   Bot,
+  Puzzle,
   TrendingUp,
   FileText,
   Shield,
@@ -135,6 +136,7 @@ const menuCategories: MenuCategory[] = [
     items: [
       { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
       { icon: Bot, label: "AI Insights", path: "/ai-insights", moduleKey: "ai_insights" },
+      { icon: BarChart3, label: "אנליטיקס מודולים", path: "/module-analytics" },
     ],
   },
   {
@@ -154,6 +156,7 @@ const settingsItems = [
   { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
   { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
+  { icon: Puzzle, label: "ניהול מודולים", path: "/module-management", adminOnly: true },
   { icon: Shield, label: "הרשאות", path: "/permissions", adminOnly: true },
   { icon: Building2, label: "ניהול לקוחות", path: "/client-management", adminOnly: true },
   { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
