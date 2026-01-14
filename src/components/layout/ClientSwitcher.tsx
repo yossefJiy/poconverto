@@ -130,12 +130,22 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
           />
         </button>
       )}
-      <div className={cn(
-        "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
-        isClientAgencyBrand(client) ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary"
-      )}>
-        {client.name.charAt(0)}
-      </div>
+      {client.logo_url ? (
+        <div className="w-8 h-8 rounded-lg bg-white border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+          <img 
+            src={client.logo_url} 
+            alt={client.name}
+            className="w-full h-full object-contain p-0.5"
+          />
+        </div>
+      ) : (
+        <div className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+          isClientAgencyBrand(client) ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary"
+        )}>
+          {client.name.charAt(0)}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{client.name}</p>
         {client.industry && (
@@ -292,9 +302,15 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
                       onClick={() => setSelectedClient(client)}
                       className="flex items-center gap-3 cursor-pointer bg-muted/30"
                     >
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 text-primary">
-                        <Crown className="w-4 h-4" />
-                      </div>
+                      {client.logo_url ? (
+                        <div className="w-8 h-8 rounded-lg bg-white border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                          <img src={client.logo_url} alt={client.name} className="w-full h-full object-contain p-0.5" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 text-primary">
+                          <Crown className="w-4 h-4" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{client.name}</p>
                         <p className="text-xs text-muted-foreground">חשבון על</p>

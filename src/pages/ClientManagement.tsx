@@ -343,12 +343,12 @@ export default function ClientManagement() {
                         <TableRow key={client.id}>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center overflow-hidden shadow-sm">
                                 {client.logo_url ? (
                                   <img 
                                     src={client.logo_url} 
                                     alt={client.name} 
-                                    className="w-8 h-8 rounded-full object-cover"
+                                    className="w-full h-full object-contain p-0.5"
                                   />
                                 ) : (
                                   <span className="text-lg font-bold text-primary">

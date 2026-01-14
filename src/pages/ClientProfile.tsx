@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/tabs";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import { ClientModulesSettings } from "@/components/client/ClientModulesSettings";
+import { ClientLogoUploader } from "@/components/client/ClientLogoUploader";
 import { Link } from "react-router-dom";
 
 // TikTok icon component
@@ -409,11 +410,13 @@ export default function ClientProfile() {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {clientData?.logo_url ? (
-              <img 
-                src={clientData.logo_url} 
-                alt={clientData.name}
-                className="w-16 h-16 rounded-xl object-cover shadow-lg"
-              />
+              <div className="w-16 h-16 rounded-xl bg-white border-2 border-border flex items-center justify-center overflow-hidden shadow-lg">
+                <img 
+                  src={clientData.logo_url} 
+                  alt={clientData.name}
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
             ) : (
               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-2xl shadow-lg">
                 {clientData?.name?.charAt(0) || "?"}
@@ -590,14 +593,16 @@ export default function ClientProfile() {
                       rows={3}
                     />
                   </div>
-                  <EditableField
-                    label="לוגו (URL)"
-                    value={form.logo_url}
-                    onChange={(v) => updateField("logo_url", v)}
-                    placeholder="https://example.com/logo.png"
-                    dir="ltr"
-                    icon={<Palette className="w-4 h-4" />}
-                  />
+                  
+                  {/* Logo Uploader */}
+                  {selectedClient && (
+                    <ClientLogoUploader
+                      clientId={selectedClient.id}
+                      currentLogoUrl={form.logo_url || null}
+                      onUploadComplete={(url) => updateField("logo_url", url)}
+                      onRemove={() => updateField("logo_url", "")}
+                    />
+                  )}
                 </CardContent>
               </Card>
 

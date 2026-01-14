@@ -73,11 +73,13 @@ export function ClientsSummaryGrid({ clients, tasks }: ClientsSummaryGridProps) 
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 {client.logo_url ? (
-                  <img 
-                    src={client.logo_url} 
-                    alt={client.name}
-                    className="w-10 h-10 rounded-lg object-cover"
-                  />
+                  <div className="w-10 h-10 rounded-lg bg-white border border-border flex items-center justify-center overflow-hidden shadow-sm">
+                    <img 
+                      src={client.logo_url} 
+                      alt={client.name}
+                      className="w-full h-full object-contain p-0.5"
+                    />
+                  </div>
                 ) : (
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-primary" />
