@@ -198,7 +198,9 @@ export default function CreditManagement() {
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
                                 {credit.clients?.logo_url ? (
-                                  <img src={credit.clients.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                  <div className="w-10 h-10 rounded-lg bg-white border border-border flex items-center justify-center overflow-hidden shadow-sm">
+                                    <img src={credit.clients.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
+                                  </div>
                                 ) : (
                                   <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                                     <Building2 className="w-5 h-5 text-primary" />
