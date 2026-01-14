@@ -2271,6 +2271,8 @@ export type Database = {
           industry: string | null
           instagram_url: string | null
           is_active: boolean | null
+          is_agency_brand: boolean | null
+          is_favorite: boolean | null
           is_master_account: boolean
           jiy_commission_percent: number | null
           linkedin_url: string | null
@@ -2297,6 +2299,8 @@ export type Database = {
           industry?: string | null
           instagram_url?: string | null
           is_active?: boolean | null
+          is_agency_brand?: boolean | null
+          is_favorite?: boolean | null
           is_master_account?: boolean
           jiy_commission_percent?: number | null
           linkedin_url?: string | null
@@ -2323,6 +2327,8 @@ export type Database = {
           industry?: string | null
           instagram_url?: string | null
           is_active?: boolean | null
+          is_agency_brand?: boolean | null
+          is_favorite?: boolean | null
           is_master_account?: boolean
           jiy_commission_percent?: number | null
           linkedin_url?: string | null

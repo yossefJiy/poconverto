@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown, Search, Eye } from "lucide-react";
+import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown, Search, Eye, Star } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
 import { useRoleSimulation } from "@/hooks/useRoleSimulation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
+import { toast } from "sonner";
 
 interface ClientSwitcherProps {
   collapsed?: boolean;
@@ -27,6 +28,7 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
   const { selectedClient, setSelectedClient, clients, isLoading } = useClient();
   const { isSimulating, simulatedClientName, simulatedContactName } = useRoleSimulation();
   const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
 
   // Check if selected client is the master account (JIY)
   const { data: masterClient } = useQuery({
@@ -41,18 +43,45 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
     },
   });
 
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async ({ clientId, isFavorite }: { clientId: string; isFavorite: boolean }) => {
+      const { error } = await supabase
+        .from("clients")
+        .update({ is_favorite: isFavorite })
+        .eq("id", clientId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: () => {
+      toast.error("שגיאה בעדכון מועדף");
+    },
+  });
+
   const isClientMasterAccount = (client: { id: string; is_master_account?: boolean }) => {
     return client.id === masterClient?.id || (client as any).is_master_account === true;
   };
 
-  // Separate regular clients and master accounts
-  const { regularClients, masterAccounts } = useMemo(() => {
+  const isClientAgencyBrand = (client: any) => {
+    return client.is_agency_brand === true;
+  };
+
+  // Separate favorites, regular clients, agency brands, and master accounts
+  const { favoriteClients, regularClients, agencyBrands, masterAccounts } = useMemo(() => {
+    const favorites: typeof clients = [];
     const regular: typeof clients = [];
+    const brands: typeof clients = [];
     const master: typeof clients = [];
     
     clients.forEach(client => {
       if (isClientMasterAccount(client)) {
         master.push(client);
+      } else if ((client as any).is_favorite) {
+        favorites.push(client);
+      } else if (isClientAgencyBrand(client)) {
+        brands.push(client);
       } else {
         regular.push(client);
       }
@@ -64,12 +93,60 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
       c.industry?.toLowerCase().includes(searchQuery.toLowerCase());
 
     return {
+      favoriteClients: favorites.filter(filterFn).sort((a, b) => a.name.localeCompare(b.name, 'he')),
       regularClients: regular.filter(filterFn).sort((a, b) => a.name.localeCompare(b.name, 'he')),
+      agencyBrands: brands.filter(filterFn).sort((a, b) => a.name.localeCompare(b.name, 'he')),
       masterAccounts: master.filter(filterFn),
     };
   }, [clients, searchQuery, masterClient]);
 
   const isSelectedMaster = selectedClient && isClientMasterAccount(selectedClient);
+
+  const handleToggleFavorite = (e: React.MouseEvent, clientId: string, currentFavorite: boolean) => {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleFavoriteMutation.mutate({ clientId, isFavorite: !currentFavorite });
+  };
+
+  // Render client item
+  const renderClientItem = (client: typeof clients[0], showFavoriteStar = true) => (
+    <DropdownMenuItem
+      key={client.id}
+      onClick={() => setSelectedClient(client)}
+      className="flex items-center gap-3 cursor-pointer group"
+    >
+      {showFavoriteStar && (
+        <button
+          onClick={(e) => handleToggleFavorite(e, client.id, (client as any).is_favorite || false)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Star 
+            className={cn(
+              "w-4 h-4",
+              (client as any).is_favorite 
+                ? "fill-yellow-400 text-yellow-400" 
+                : "text-muted-foreground hover:text-yellow-400"
+            )} 
+          />
+        </button>
+      )}
+      <div className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
+        isClientAgencyBrand(client) ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary"
+      )}>
+        {client.name.charAt(0)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{client.name}</p>
+        {client.industry && (
+          <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
+        )}
+      </div>
+      {selectedClient?.id === client.id && (
+        <Check className="w-4 h-4 text-primary shrink-0" />
+      )}
+    </DropdownMenuItem>
+  );
 
   // When simulating, show locked simulation display
   if (isSimulating && simulatedClientName) {
@@ -124,7 +201,7 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
     );
   }
 
-  // All clients shown with same style - master account at bottom
+  // All clients shown with same style - master account at top, then gold separator
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -162,7 +239,7 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
           {!collapsed && <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-64 max-h-[calc(100vh-200px)] overflow-hidden flex flex-col">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>לקוחות</span>
           {selectedClient && (
@@ -195,70 +272,87 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
           </div>
         </div>
         <DropdownMenuSeparator />
-        {clients.length === 0 ? (
-          <div className="px-2 py-4 text-sm text-center text-muted-foreground">
-            אין לקוחות עדיין
-          </div>
-        ) : (
-          <>
-            {/* Regular clients */}
-            <div className="max-h-48 overflow-y-auto">
-              {regularClients.map((client) => (
-                <DropdownMenuItem
-                  key={client.id}
-                  onClick={() => setSelectedClient(client)}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 bg-primary/10 text-primary">
-                    {client.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{client.name}</p>
-                    {client.industry && (
-                      <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
-                    )}
-                  </div>
-                  {selectedClient?.id === client.id && (
-                    <Check className="w-4 h-4 text-primary shrink-0" />
+        
+        <div className="flex-1 overflow-y-auto">
+          {clients.length === 0 ? (
+            <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+              אין לקוחות עדיין
+            </div>
+          ) : (
+            <>
+              {/* Master accounts section - at the top */}
+              {masterAccounts.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    חשבון סוכנות
+                  </DropdownMenuLabel>
+                  {masterAccounts.map((client) => (
+                    <DropdownMenuItem
+                      key={client.id}
+                      onClick={() => setSelectedClient(client)}
+                      className="flex items-center gap-3 cursor-pointer bg-muted/30"
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 text-primary">
+                        <Crown className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{client.name}</p>
+                        <p className="text-xs text-muted-foreground">חשבון על</p>
+                      </div>
+                      {selectedClient?.id === client.id && (
+                        <Check className="w-4 h-4 text-primary shrink-0" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  
+                  {/* Agency brands - below master account */}
+                  {agencyBrands.length > 0 && (
+                    <>
+                      <div className="px-2 py-1">
+                        <p className="text-[10px] text-muted-foreground/60">מותגי הסוכנות</p>
+                      </div>
+                      {agencyBrands.map((client) => renderClientItem(client, false))}
+                    </>
                   )}
-                </DropdownMenuItem>
-              ))}
-              {regularClients.length === 0 && searchQuery && (
+                  
+                  {/* Gold separator between agency and clients */}
+                  <div className="my-2 mx-2">
+                    <div className="h-[2px] bg-gradient-to-r from-transparent via-yellow-500/60 to-transparent" />
+                  </div>
+                </>
+              )}
+
+              {/* Favorite clients - at the top of search results */}
+              {favoriteClients.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    מועדפים
+                  </DropdownMenuLabel>
+                  {favoriteClients.map((client) => renderClientItem(client))}
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              {/* Regular clients */}
+              {regularClients.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    לקוחות
+                  </DropdownMenuLabel>
+                  {regularClients.map((client) => renderClientItem(client))}
+                </>
+              )}
+
+              {regularClients.length === 0 && favoriteClients.length === 0 && searchQuery && (
                 <div className="px-2 py-4 text-sm text-center text-muted-foreground">
                   לא נמצאו לקוחות
                 </div>
               )}
-            </div>
-            
-            {/* Master accounts section - at the bottom */}
-            {masterAccounts.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  חשבון סוכנות
-                </DropdownMenuLabel>
-                {masterAccounts.map((client) => (
-                  <DropdownMenuItem
-                    key={client.id}
-                    onClick={() => setSelectedClient(client)}
-                    className="flex items-center gap-3 cursor-pointer bg-muted/30"
-                  >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 text-primary">
-                      <Crown className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{client.name}</p>
-                      <p className="text-xs text-muted-foreground">חשבון על</p>
-                    </div>
-                    {selectedClient?.id === client.id && (
-                      <Check className="w-4 h-4 text-primary shrink-0" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
+        
         <DropdownMenuSeparator />
         <div className="p-1">
           <CreateClientDialog 
