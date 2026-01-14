@@ -1,10 +1,11 @@
 import { useState, forwardRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Loader2, Crown, User } from "lucide-react";
+import { Plus, Loader2, Crown, User, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -45,6 +46,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
     description: "",
     logo_url: "",
     account_type: "basic_client" as "basic_client" | "premium_client",
+    is_agency_brand: false,
   });
   
   const [modules, setModules] = useState<DefaultModules>(defaultModulesConfig);
@@ -58,6 +60,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
         description: form.description || null,
         logo_url: form.logo_url || null,
         account_type: form.account_type,
+        is_agency_brand: form.is_agency_brand,
         modules_enabled: JSON.parse(JSON.stringify(modules)),
       }]).select().single();
       if (error) throw error;
@@ -66,9 +69,10 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast.success("הלקוח נוצר בהצלחה");
       setOpen(false);
-      setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic_client" });
+      setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic_client", is_agency_brand: false });
       setModules(defaultModulesConfig);
       setSelectedClient(data);
     },
@@ -130,6 +134,25 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
               </Select>
             </div>
           </div>
+          
+          {/* Agency brand checkbox */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <Checkbox
+              id="is_agency_brand"
+              checked={form.is_agency_brand}
+              onCheckedChange={(checked) => setForm({ ...form, is_agency_brand: checked === true })}
+            />
+            <div className="flex items-center gap-2">
+              <Building className="w-4 h-4 text-primary" />
+              <label htmlFor="is_agency_brand" className="text-sm font-medium cursor-pointer">
+                מותג של הסוכנות
+              </label>
+            </div>
+            <span className="text-xs text-muted-foreground mr-auto">
+              יוצג מתחת לחשבון הסוכנות
+            </span>
+          </div>
+          
           <div>
             <label className="text-sm font-medium mb-2 block">תחום</label>
             <Input
