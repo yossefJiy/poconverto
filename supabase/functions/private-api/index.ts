@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     const type = url.searchParams.get('type');
 
     // Validate type parameter
-    const validTypes = ['clients', 'leads', 'tasks'];
+    const validTypes = ['clients', 'leads', 'tasks', 'contacts', 'team', 'projects'];
     if (!type || !validTypes.includes(type)) {
       return new Response(JSON.stringify({ 
         error: 'Invalid or missing type parameter',
@@ -58,11 +58,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Map type to table name and get query config
+    const getTableConfig = (t: string) => {
+      switch (t) {
+        case 'clients':
+          return { table: 'clients', orderBy: 'created_at', ascending: false };
+        case 'leads':
+          return { table: 'leads', orderBy: 'created_at', ascending: false };
+        case 'tasks':
+          return { table: 'tasks', orderBy: 'created_at', ascending: false };
+        case 'contacts':
+          return { table: 'client_contacts', orderBy: 'created_at', ascending: false };
+        case 'team':
+          return { table: 'team', orderBy: 'name', ascending: true };
+        case 'projects':
+          return { table: 'projects', orderBy: 'created_at', ascending: false };
+        default:
+          return { table: t, orderBy: 'created_at', ascending: false };
+      }
+    };
+
+    const tableConfig = getTableConfig(type);
+
     // GET - Read data from this project
     if (req.method === 'GET') {
-      console.log(`Fetching ${type} data...`);
+      console.log(`Fetching ${type} data from ${tableConfig.table}...`);
       
-      const { data, error } = await supabase.from(type).select('*');
+      const { data, error } = await supabase
+        .from(tableConfig.table)
+        .select('*')
+        .order(tableConfig.orderBy, { ascending: tableConfig.ascending });
       
       if (error) {
         console.error(`Error fetching ${type}:`, error);
@@ -91,10 +116,10 @@ Deno.serve(async (req) => {
         });
       }
       
-      console.log(`Upserting data to ${type}...`);
+      console.log(`Upserting data to ${tableConfig.table}...`);
       
       const { data: result, error } = await supabase
-        .from(type)
+        .from(tableConfig.table)
         .upsert(body.data, { onConflict: 'id' })
         .select();
       
