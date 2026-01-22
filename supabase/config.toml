@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.planning-summary]
 verify_jwt = false
+
+[functions.fetch-external]
+verify_jwt = false
