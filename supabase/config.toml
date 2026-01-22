@@ -146,3 +146,6 @@ verify_jwt = false
 
 [functions.fetch-external]
 verify_jwt = false
+
+[functions.private-api]
+verify_jwt = false
