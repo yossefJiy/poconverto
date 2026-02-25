@@ -6,14 +6,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
 import { RoleSimulationProvider } from "@/hooks/useRoleSimulation";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import SimulationProtectedRoute from "@/components/SimulationProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Marketing from "./pages/Marketing";
 import Campaigns from "./pages/Campaigns";
-import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import ProductLandingPages from "./pages/ProductLandingPages";
@@ -40,8 +38,6 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import StatusPage from "./pages/StatusPage";
 import CodeHealth from "./pages/CodeHealth";
-import AIAgents from "./pages/AIAgents";
-import AgentAlerts from "./pages/AgentAlerts";
 import ClientInsights from "./pages/ClientInsights";
 import Reports from "./pages/Reports";
 import Permissions from "./pages/Permissions";
@@ -51,10 +47,8 @@ import Competitors from "./pages/Competitors";
 import SocialMedia from "./pages/SocialMedia";
 import ContentStudio from "./pages/ContentStudio";
 import AgencyDashboard from "./pages/AgencyDashboard";
-import Projects from "./pages/Projects";
 import LeadManagement from "./pages/LeadManagement";
 import BillingManagement from "./pages/BillingManagement";
-import ApprovalsDashboard from "./pages/ApprovalsDashboard";
 import Programmatic from "./pages/Programmatic";
 import ABTests from "./pages/ABTests";
 import GoogleShopping from "./pages/GoogleShopping";
@@ -63,6 +57,7 @@ import SystemPlanning from "./pages/SystemPlanning";
 import ModuleManagement from "./pages/ModuleManagement";
 import ModuleAnalytics from "./pages/ModuleAnalytics";
 import { DynamicModulePage } from "./components/dynamic-modules/DynamicModulePage";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -108,13 +103,6 @@ const App = () => (
                 <SimulationProtectedRoute moduleKey="campaigns">
                   <DomainErrorBoundary domain="campaigns">
                     <Campaigns />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/tasks" element={
-                <SimulationProtectedRoute moduleKey="tasks">
-                  <DomainErrorBoundary domain="tasks">
-                    <Tasks />
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
@@ -203,20 +191,6 @@ const App = () => (
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
-              <Route path="/ai-agents" element={
-                <SimulationProtectedRoute moduleKey="ai_agent">
-                  <DomainErrorBoundary domain="ai">
-                    <AIAgents />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/agent-alerts" element={
-                <SimulationProtectedRoute moduleKey="ai_agent">
-                  <DomainErrorBoundary domain="ai">
-                    <AgentAlerts />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
               <Route path="/insights" element={
                 <SimulationProtectedRoute moduleKey="insights">
                   <DomainErrorBoundary domain="ai">
@@ -283,13 +257,6 @@ const App = () => (
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
-              <Route path="/projects" element={
-                <SimulationProtectedRoute moduleKey="tasks">
-                  <DomainErrorBoundary domain="projects">
-                    <Projects />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
               <Route path="/content-studio" element={
                 <SimulationProtectedRoute moduleKey="marketing">
                   <DomainErrorBoundary domain="content">
@@ -308,13 +275,6 @@ const App = () => (
                 <SimulationProtectedRoute moduleKey="billing">
                   <DomainErrorBoundary domain="billing">
                     <BillingManagement />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/approvals" element={
-                <SimulationProtectedRoute moduleKey="approvals">
-                  <DomainErrorBoundary domain="approvals">
-                    <ApprovalsDashboard />
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
@@ -340,7 +300,7 @@ const App = () => (
                 </SimulationProtectedRoute>
               } />
               <Route path="/ai-insights" element={
-                <SimulationProtectedRoute moduleKey="ai_agent">
+                <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="ai">
                     <AIInsights />
                   </DomainErrorBoundary>

@@ -2,8 +2,6 @@ import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
-import { GlobalAgentFAB } from "@/components/ai/GlobalAgentFAB";
-import { RealtimeNotificationsPanel } from "@/components/notifications/RealtimeNotificationsPanel";
 import { RoleSimulationBanner } from "@/components/admin/RoleSimulationBanner";
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { useRoleSimulation } from "@/hooks/useRoleSimulation";
@@ -32,15 +30,6 @@ function MainLayoutContent({ children }: MainLayoutProps) {
         </div>
       )}
       
-      {/* Top Bar with Notifications */}
-      <div className={cn(
-        "fixed left-0 z-40 h-14 flex items-center justify-end px-4 transition-all duration-300",
-        isCollapsed ? "right-20" : "right-64",
-        isSimulating ? "top-12" : "top-0"
-      )}>
-        <RealtimeNotificationsPanel />
-      </div>
-      
       <main className={cn(
         "min-h-screen transition-all duration-300",
         isCollapsed ? "mr-20" : "mr-64",
@@ -48,9 +37,6 @@ function MainLayoutContent({ children }: MainLayoutProps) {
       )}>
         {children}
       </main>
-      
-      {/* Global AI Agent FAB - appears on all pages */}
-      <GlobalAgentFAB />
       
       <SessionTimeoutDialog 
         open={showWarning} 
