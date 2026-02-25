@@ -41,6 +41,7 @@ Deno.serve(async (req: Request) => {
       contacts: 'client_contacts',
       team: 'team_members',
       campaigns: 'campaigns',
+      analytics_snapshots: 'analytics_snapshots',
     };
 
     if (req.method === 'POST') {
