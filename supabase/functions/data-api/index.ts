@@ -4,7 +4,8 @@ import { validateAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -13,7 +14,75 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authentication
+    const url = new URL(req.url);
+    const endpoint = url.pathname.split('/').pop();
+
+    // === BRIDGE ENDPOINT: API-key based auth for cross-project sync ===
+    if (endpoint === 'bridge' || url.searchParams.get('bridge') === 'true') {
+      const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key');
+      const expectedKey = Deno.env.get('PRIVATE_API_KEY');
+      
+      if (!expectedKey) {
+        return new Response(JSON.stringify({ error: 'PRIVATE_API_KEY not configured' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      if (!apiKey || apiKey !== expectedKey) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      const type = url.searchParams.get('type');
+      const tableMap: Record<string, string> = {
+        clients: 'clients',
+        leads: 'leads',
+        tasks: 'tasks',
+        contacts: 'client_contacts',
+        team: 'team',
+        projects: 'projects',
+      };
+
+      if (!type || !tableMap[type]) {
+        return new Response(JSON.stringify({ error: 'Invalid type', validTypes: Object.keys(tableMap) }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const table = tableMap[type];
+
+      if (req.method === 'GET') {
+        console.log(`[data-api/bridge] Fetching ${type}...`);
+        const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        console.log(`[data-api/bridge] Got ${data?.length || 0} ${type} records`);
+        return new Response(JSON.stringify({ success: true, data, count: data?.length || 0 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (req.method === 'POST') {
+        const body = await req.json();
+        if (!body.data) {
+          return new Response(JSON.stringify({ error: 'Missing data' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        const { data, error } = await supabase.from(table).upsert(body.data, { onConflict: 'id' }).select();
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true, data }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // === STANDARD ENDPOINTS: Auth-based access ===
     const auth = await validateAuth(req);
     if (!auth.authenticated) {
       return unauthorizedResponse(auth.error);
@@ -23,21 +92,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const url = new URL(req.url);
-    const endpoint = url.pathname.split('/').pop();
     const clientId = url.searchParams.get('client_id');
 
     console.log(`[Data API] Request: ${endpoint}, client_id: ${clientId}, user: ${auth.user.id}`);
 
-    // Verify user has access to requested client (if client_id provided)
     if (clientId) {
       const { data: hasAccess } = await supabase.rpc('has_client_access', {
         _client_id: clientId,
         _user_id: auth.user.id
       });
-
       if (!hasAccess) {
-        console.warn(`[Data API] Access denied for user: ${auth.user.id}, client: ${clientId}`);
         return new Response(
           JSON.stringify({ success: false, error: 'Access denied to this client' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -45,15 +109,12 @@ serve(async (req) => {
       }
     }
 
-    // For endpoints without client_id, verify user has at least team_member role
     if (!clientId && !['clients'].includes(endpoint || '')) {
       const { data: hasRole } = await supabase.rpc('has_role_level', {
         _user_id: auth.user.id,
         _min_role: 'team_member'
       });
-
       if (!hasRole) {
-        console.warn(`[Data API] Insufficient role for user: ${auth.user.id}, endpoint: ${endpoint}`);
         return new Response(
           JSON.stringify({ success: false, error: 'Insufficient permissions' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -65,21 +126,12 @@ serve(async (req) => {
 
     switch (endpoint) {
       case 'dashboard': {
-        // Get comprehensive dashboard data
-        const [campaigns, tasks, goals] = await Promise.all([
-          supabase.from('campaigns').select('*').eq(clientId ? 'client_id' : 'id', clientId || '').neq('id', ''),
-          supabase.from('tasks').select('*').eq(clientId ? 'client_id' : 'id', clientId || '').neq('id', ''),
-          supabase.from('goals').select('*').eq(clientId ? 'client_id' : 'id', clientId || '').neq('id', ''),
-        ]);
-
         const campaignsData = clientId 
           ? (await supabase.from('campaigns').select('*').eq('client_id', clientId)).data || []
           : (await supabase.from('campaigns').select('*')).data || [];
-        
         const tasksData = clientId 
           ? (await supabase.from('tasks').select('*').eq('client_id', clientId)).data || []
           : (await supabase.from('tasks').select('*')).data || [];
-
         const goalsData = clientId 
           ? (await supabase.from('goals').select('*').eq('client_id', clientId)).data || []
           : (await supabase.from('goals').select('*')).data || [];
@@ -106,9 +158,7 @@ serve(async (req) => {
 
       case 'clients': {
         const { data: clients, error } = await supabase
-          .from('clients')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .from('clients').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         data = clients;
         break;
@@ -134,22 +184,13 @@ serve(async (req) => {
 
       case 'team': {
         const { data: team, error } = await supabase
-          .from('team_members')
-          .select('*')
-          .eq('is_active', true)
-          .order('name');
+          .from('team_members').select('*').eq('is_active', true).order('name');
         if (error) throw error;
         data = team;
         break;
       }
 
       case 'analytics': {
-        // Aggregate analytics data
-        const { data: campaigns } = await supabase
-          .from('campaigns')
-          .select('platform, impressions, clicks, conversions, spent')
-          .eq(clientId ? 'client_id' : 'id', clientId || '').neq('id', '');
-
         const campaignsData = clientId 
           ? (await supabase.from('campaigns').select('*').eq('client_id', clientId)).data || []
           : (await supabase.from('campaigns').select('*')).data || [];
@@ -180,9 +221,7 @@ serve(async (req) => {
       }
 
       case 'export': {
-        // Full data export for client
         if (!clientId) throw new Error('client_id is required for export');
-        
         const [client, campaigns, tasks, goals, personas, competitors, brandMessages] = await Promise.all([
           supabase.from('clients').select('*').eq('id', clientId).single(),
           supabase.from('campaigns').select('*').eq('client_id', clientId),
@@ -192,16 +231,10 @@ serve(async (req) => {
           supabase.from('competitors').select('*').eq('client_id', clientId),
           supabase.from('brand_messages').select('*').eq('client_id', clientId),
         ]);
-
         data = {
-          client: client.data,
-          campaigns: campaigns.data,
-          tasks: tasks.data,
-          goals: goals.data,
-          personas: personas.data,
-          competitors: competitors.data,
-          brandMessages: brandMessages.data,
-          exportedAt: new Date().toISOString(),
+          client: client.data, campaigns: campaigns.data, tasks: tasks.data,
+          goals: goals.data, personas: personas.data, competitors: competitors.data,
+          brandMessages: brandMessages.data, exportedAt: new Date().toISOString(),
         };
         break;
       }
@@ -209,8 +242,6 @@ serve(async (req) => {
       default:
         throw new Error(`Unknown endpoint: ${endpoint}`);
     }
-
-    console.log(`API Response for ${endpoint}: ${JSON.stringify(data).substring(0, 200)}...`);
 
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -3,8 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Use data-api/bridge endpoint on the external project (which IS deployed)
-const API_URL = 'https://lakfzxdipczsjlkcadul.supabase.co/functions/v1/data-api';
+// The external project's data-bridge endpoint
+const API_URL = 'https://lakfzxdipczsjlkcadul.supabase.co/functions/v1/data-bridge';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === 'POST') {
       const body = await req.json();
       const dataType = body.type || type || 'clients';
-      const response = await fetch(`${API_URL}?bridge=true&type=${dataType}`, {
+      const response = await fetch(`${API_URL}?type=${dataType}`, {
         method: 'POST',
         headers: fetchHeaders,
         body: JSON.stringify({ data: body.data })
@@ -40,17 +40,18 @@ Deno.serve(async (req: Request) => {
     }
 
     if (type) {
-      const response = await fetch(`${API_URL}?bridge=true&type=${type}`, { headers: fetchHeaders });
+      const response = await fetch(`${API_URL}?type=${type}`, { headers: fetchHeaders });
       const result = await response.json();
       return new Response(JSON.stringify({ success: true, type, data: result.data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    // Fetch all
     const [clientsRes, leadsRes, tasksRes] = await Promise.all([
-      fetch(`${API_URL}?bridge=true&type=clients`, { headers: fetchHeaders }),
-      fetch(`${API_URL}?bridge=true&type=leads`, { headers: fetchHeaders }),
-      fetch(`${API_URL}?bridge=true&type=tasks`, { headers: fetchHeaders })
+      fetch(`${API_URL}?type=clients`, { headers: fetchHeaders }),
+      fetch(`${API_URL}?type=leads`, { headers: fetchHeaders }),
+      fetch(`${API_URL}?type=tasks`, { headers: fetchHeaders })
     ]);
     const [clients, leads, tasks] = await Promise.all([
       clientsRes.json(), leadsRes.json(), tasksRes.json()
