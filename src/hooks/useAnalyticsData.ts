@@ -278,47 +278,134 @@ function parseGAResponse(gaData: GAResponseData): AnalyticsData {
   };
 }
 
-// Generate mock data for ad platforms
-function generateMockPlatformData(platform: string, name: string, logo: string, color: string): PlatformData {
-  const dates = Array.from({ length: 30 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (29 - i));
-    return date.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
-  });
-
-  const impressions = Math.floor(Math.random() * 500000) + 100000;
-  const clicks = Math.floor(impressions * (Math.random() * 0.03 + 0.01));
-  const spend = Math.floor(Math.random() * 15000) + 5000;
-  const conversions = Math.floor(clicks * (Math.random() * 0.05 + 0.01));
-
-  return {
-    platform,
-    name,
-    color,
-    logo,
-    metrics: {
-      spend,
-      impressions,
-      clicks,
-      conversions,
-      ctr: (clicks / impressions) * 100,
-      cpc: spend / clicks,
-      costPerConversion: conversions > 0 ? spend / conversions : 0,
-    },
-    dailyData: dates.map((date) => ({
-      date,
-      impressions: Math.floor(Math.random() * 20000) + 5000,
-      clicks: Math.floor(Math.random() * 500) + 100,
-      spend: Math.floor(Math.random() * 500) + 100,
-      conversions: Math.floor(Math.random() * 20) + 1,
-    })),
-    campaigns: [
-      { name: "קמפיין חורף 2024", status: "active", spend: spend * 0.4, impressions: impressions * 0.4, clicks: clicks * 0.4, conversions: Math.floor(conversions * 0.4) },
-      { name: "קמפיין מכירות", status: "active", spend: spend * 0.35, impressions: impressions * 0.35, clicks: clicks * 0.35, conversions: Math.floor(conversions * 0.35) },
-      { name: "מודעות רימרקטינג", status: "active", spend: spend * 0.15, impressions: impressions * 0.15, clicks: clicks * 0.15, conversions: Math.floor(conversions * 0.15) },
-      { name: "קמפיין מותג", status: "paused", spend: spend * 0.1, impressions: impressions * 0.1, clicks: clicks * 0.1, conversions: Math.floor(conversions * 0.1) },
-    ],
+// Fetch real data from ad platform edge functions
+async function fetchPlatformData(
+  platform: string,
+  clientId: string,
+  startDate: string,
+  endDate: string
+): Promise<PlatformData | null> {
+  const platformConfigs: Record<string, { functionName: string; name: string; logo: string; color: string }> = {
+    google_ads: { functionName: "google-ads", name: "Google Ads", logo: "G", color: "bg-blue-500" },
+    facebook_ads: { functionName: "facebook-ads", name: "Facebook Ads", logo: "f", color: "bg-[#1877F2]" },
+    tiktok_ads: { functionName: "tiktok-ads", name: "TikTok Ads", logo: "♪", color: "bg-black" },
   };
+
+  const config = platformConfigs[platform];
+  if (!config) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke(config.functionName, {
+      body: { clientId, startDate, endDate },
+    });
+
+    if (error || data?.error) {
+      console.error(`[${config.name}] Error:`, error || data?.error);
+      return null;
+    }
+
+    // Normalize response from different platforms
+    if (platform === 'google_ads') {
+      const campaigns = data.campaigns || [];
+      const daily = data.daily || [];
+      const totalSpend = campaigns.reduce((s: number, c: any) => s + (c.cost || 0), 0);
+      const totalImpressions = campaigns.reduce((s: number, c: any) => s + (c.impressions || 0), 0);
+      const totalClicks = campaigns.reduce((s: number, c: any) => s + (c.clicks || 0), 0);
+      const totalConversions = campaigns.reduce((s: number, c: any) => s + (c.conversions || 0), 0);
+
+      return {
+        platform, name: config.name, color: config.color, logo: config.logo,
+        metrics: {
+          spend: totalSpend,
+          impressions: totalImpressions,
+          clicks: totalClicks,
+          conversions: totalConversions,
+          ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+          cpc: totalClicks > 0 ? totalSpend / totalClicks : 0,
+          costPerConversion: totalConversions > 0 ? totalSpend / totalConversions : 0,
+        },
+        dailyData: daily.map((d: any) => ({
+          date: d.date,
+          impressions: d.impressions || 0,
+          clicks: d.clicks || 0,
+          spend: d.cost || d.spend || 0,
+          conversions: d.conversions || 0,
+        })),
+        campaigns: campaigns.map((c: any) => ({
+          name: c.name, status: c.status?.toLowerCase() || 'unknown',
+          spend: c.cost || 0, impressions: c.impressions || 0,
+          clicks: c.clicks || 0, conversions: c.conversions || 0,
+        })),
+      };
+    }
+
+    if (platform === 'facebook_ads') {
+      const totals = data.totals || {};
+      const daily = data.daily || [];
+      const campaigns = data.campaigns || [];
+
+      return {
+        platform, name: config.name, color: config.color, logo: config.logo,
+        metrics: {
+          spend: totals.cost || totals.spend || 0,
+          impressions: totals.impressions || 0,
+          clicks: totals.clicks || 0,
+          conversions: totals.conversions || 0,
+          ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
+          cpc: totals.clicks > 0 ? (totals.cost || totals.spend || 0) / totals.clicks : 0,
+          costPerConversion: totals.conversions > 0 ? (totals.cost || totals.spend || 0) / totals.conversions : 0,
+        },
+        dailyData: daily.map((d: any) => ({
+          date: d.date,
+          impressions: d.impressions || 0,
+          clicks: d.clicks || 0,
+          spend: d.cost || d.spend || 0,
+          conversions: d.conversions || 0,
+        })),
+        campaigns: campaigns.map((c: any) => ({
+          name: c.name, status: c.status?.toLowerCase() || 'unknown',
+          spend: c.cost || c.spend || 0, impressions: c.impressions || 0,
+          clicks: c.clicks || 0, conversions: c.conversions || 0,
+        })),
+      };
+    }
+
+    if (platform === 'tiktok_ads') {
+      const totals = data.totals || {};
+      const daily = data.daily || [];
+      const campaigns = data.campaigns || [];
+
+      return {
+        platform, name: config.name, color: config.color, logo: config.logo,
+        metrics: {
+          spend: totals.spend || 0,
+          impressions: totals.impressions || 0,
+          clicks: totals.clicks || 0,
+          conversions: totals.conversions || 0,
+          ctr: totals.ctr || 0,
+          cpc: totals.cpc || 0,
+          costPerConversion: totals.conversions > 0 ? totals.spend / totals.conversions : 0,
+        },
+        dailyData: daily.map((d: any) => ({
+          date: d.date,
+          impressions: d.impressions || 0,
+          clicks: d.clicks || 0,
+          spend: d.spend || 0,
+          conversions: d.conversions || 0,
+        })),
+        campaigns: campaigns.map((c: any) => ({
+          name: c.name, status: c.status?.toLowerCase() || 'unknown',
+          spend: c.spend || 0, impressions: c.impressions || 0,
+          clicks: c.clicks || 0, conversions: c.conversions || 0,
+        })),
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error(`[${config.name}] Fetch error:`, err);
+    return null;
+  }
 }
 
 export function useAnalyticsData(clientId: string | undefined, dateRange: string = "30") {
@@ -393,31 +480,28 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
     gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours
   });
 
-  // Generate platform data based on connected integrations only
+  // Fetch real platform data from edge functions
+  const adPlatforms = ['google_ads', 'facebook_ads', 'tiktok_ads'];
+  const connectedAdPlatforms = integrations
+    .filter(i => adPlatforms.includes(i.platform) && i.is_connected)
+    .map(i => i.platform);
+
+  // Calculate date range for ad platforms
+  const daysAgo = parseInt(dateRange) || 30;
+  const adEndDate = new Date().toISOString().split('T')[0];
+  const adStartDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const { data: platformsData, isLoading: platformsLoading } = useQuery({
-    queryKey: ["platforms-data", clientId, integrations],
+    queryKey: ["platforms-data", clientId, connectedAdPlatforms, dateRange],
     queryFn: async () => {
-      const platforms: PlatformData[] = [];
-      
-      const platformConfigs: Record<string, { name: string; logo: string; color: string }> = {
-        google_ads: { name: "Google Ads", logo: "G", color: "bg-blue-500" },
-        facebook_ads: { name: "Facebook Ads", logo: "f", color: "bg-[#1877F2]" },
-        instagram: { name: "Instagram", logo: "📷", color: "bg-gradient-to-r from-purple-500 to-pink-500" },
-        tiktok: { name: "TikTok", logo: "♪", color: "bg-black" },
-        linkedin: { name: "LinkedIn", logo: "in", color: "bg-[#0A66C2]" },
-      };
-
-      // Only add platforms for connected integrations - no mock data
-      for (const integration of integrations) {
-        const config = platformConfigs[integration.platform];
-        if (config && integration.is_connected) {
-          platforms.push(generateMockPlatformData(integration.platform, config.name, config.logo, config.color));
-        }
-      }
-
-      return platforms;
+      const results = await Promise.all(
+        connectedAdPlatforms.map(platform =>
+          fetchPlatformData(platform, clientId!, adStartDate, adEndDate)
+        )
+      );
+      return results.filter((r): r is PlatformData => r !== null);
     },
-    enabled: !!clientId && !authLoading && !!session,
+    enabled: !!clientId && connectedAdPlatforms.length > 0 && !authLoading && !!session,
     staleTime: 8 * 60 * 60 * 1000, // 8 hours
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
   });
@@ -464,7 +548,7 @@ export function useAnalyticsData(clientId: string | undefined, dateRange: string
     hasSession: !!session,
     hasAnalytics: integrations.some((i) => i.platform === "google_analytics"),
     hasAds: integrations.some((i) => 
-      ["google_ads", "facebook_ads", "instagram", "tiktok", "linkedin"].includes(i.platform)
+      ["google_ads", "facebook_ads", "tiktok_ads", "instagram", "linkedin"].includes(i.platform)
     ),
     analyticsError,
     refetchAll: async () => {
