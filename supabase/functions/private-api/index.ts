@@ -6,19 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+console.log('[private-api] Function loaded');
+
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Validate API Key
     const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key');
     const expectedKey = Deno.env.get('PRIVATE_API_KEY');
     
     if (!expectedKey) {
-      console.error('PRIVATE_API_KEY not configured');
+      console.error('[private-api] PRIVATE_API_KEY not configured');
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -26,132 +26,84 @@ Deno.serve(async (req) => {
     }
     
     if (!apiKey || apiKey !== expectedKey) {
-      console.error('Invalid or missing API key');
+      console.error('[private-api] Invalid or missing API key');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Initialize Supabase client with service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration missing');
-    }
-    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const url = new URL(req.url);
     const type = url.searchParams.get('type');
 
-    // Validate type parameter
     const validTypes = ['clients', 'leads', 'tasks', 'contacts', 'team', 'projects'];
     if (!type || !validTypes.includes(type)) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid or missing type parameter',
-        validTypes 
-      }), {
+      return new Response(JSON.stringify({ error: 'Invalid type', validTypes }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Map type to table name and get query config
-    const getTableConfig = (t: string) => {
-      switch (t) {
-        case 'clients':
-          return { table: 'clients', orderBy: 'created_at', ascending: false };
-        case 'leads':
-          return { table: 'leads', orderBy: 'created_at', ascending: false };
-        case 'tasks':
-          return { table: 'tasks', orderBy: 'created_at', ascending: false };
-        case 'contacts':
-          return { table: 'client_contacts', orderBy: 'created_at', ascending: false };
-        case 'team':
-          return { table: 'team', orderBy: 'name', ascending: true };
-        case 'projects':
-          return { table: 'projects', orderBy: 'created_at', ascending: false };
-        default:
-          return { table: t, orderBy: 'created_at', ascending: false };
-      }
+    const tableMap: Record<string, { table: string; orderBy: string; ascending: boolean }> = {
+      clients: { table: 'clients', orderBy: 'created_at', ascending: false },
+      leads: { table: 'leads', orderBy: 'created_at', ascending: false },
+      tasks: { table: 'tasks', orderBy: 'created_at', ascending: false },
+      contacts: { table: 'client_contacts', orderBy: 'created_at', ascending: false },
+      team: { table: 'team', orderBy: 'name', ascending: true },
+      projects: { table: 'projects', orderBy: 'created_at', ascending: false },
     };
 
-    const tableConfig = getTableConfig(type);
+    const config = tableMap[type];
 
-    // GET - Read data from this project
     if (req.method === 'GET') {
-      console.log(`Fetching ${type} data from ${tableConfig.table}...`);
-      
+      console.log(`[private-api] Fetching ${type}...`);
       const { data, error } = await supabase
-        .from(tableConfig.table)
+        .from(config.table)
         .select('*')
-        .order(tableConfig.orderBy, { ascending: tableConfig.ascending });
+        .order(config.orderBy, { ascending: config.ascending });
       
-      if (error) {
-        console.error(`Error fetching ${type}:`, error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log(`Successfully fetched ${data?.length || 0} ${type} records`);
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        data,
-        count: data?.length || 0
-      }), {
+      console.log(`[private-api] Got ${data?.length || 0} ${type} records`);
+      return new Response(JSON.stringify({ success: true, data, count: data?.length || 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // POST - Write data to this project
     if (req.method === 'POST') {
       const body = await req.json();
-      
       if (!body.data) {
-        return new Response(JSON.stringify({ error: 'Missing data in request body' }), {
+        return new Response(JSON.stringify({ error: 'Missing data' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      console.log(`Upserting data to ${tableConfig.table}...`);
-      
       const { data: result, error } = await supabase
-        .from(tableConfig.table)
+        .from(config.table)
         .upsert(body.data, { onConflict: 'id' })
         .select();
       
-      if (error) {
-        console.error(`Error upserting ${type}:`, error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log(`Successfully upserted ${result?.length || 0} ${type} records`);
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        data: result,
-        count: result?.length || 0
-      }), {
+      return new Response(JSON.stringify({ success: true, data: result, count: result?.length || 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Unsupported method
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: unknown) {
-    console.error('Error in private-api:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: errorMessage 
-    }), {
+    console.error('[private-api] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ success: false, error: msg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

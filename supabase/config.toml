@@ -149,3 +149,9 @@ verify_jwt = false
 
 [functions.private-api]
 verify_jwt = false
+
+[functions.data-bridge]
+verify_jwt = false
+
+[functions.sync-external]
+verify_jwt = false
