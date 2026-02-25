@@ -20,6 +20,7 @@ const platforms: Platform[] = [
   { key: "facebook_ads", name: "Facebook Ads", path: "/analytics/facebook-ads", icon: <span className="text-xs font-bold">f</span>, bgColor: "bg-[#1877F2]" },
   { key: "meta", name: "Meta (סיכום)", path: "/analytics/meta", icon: <span className="text-[10px] font-bold">M</span>, bgColor: "bg-primary" },
   { key: "woocommerce", name: "WooCommerce", path: "/analytics/woocommerce", icon: <ShoppingCart className="w-4 h-4" />, bgColor: "bg-[#96588A]" },
+  { key: "tiktok_ads", name: "TikTok Ads", path: "/analytics/tiktok-ads", icon: <span className="text-xs font-bold">♪</span>, bgColor: "bg-[#000000]" },
 ];
 
 export function AnalyticsPlatformNav() {

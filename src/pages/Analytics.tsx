@@ -33,7 +33,7 @@ import {
   Eye,
   MousePointer,
   TrendingUp,
-  
+  Play,
   BarChart3,
   Users,
 } from "lucide-react";
@@ -96,6 +96,7 @@ export default function Analytics() {
   const hasFacebookAds = integrations.some(i => i.platform === 'facebook_ads' && i.is_connected);
   const hasWooCommerce = integrations.some(i => i.platform === 'woocommerce' && i.is_connected);
   const hasGoogleAnalytics = integrations.some(i => i.platform === 'google_analytics' && i.is_connected);
+  const hasTikTok = integrations.some(i => i.platform === 'tiktok_ads' && i.is_connected);
   const queryClient = useQueryClient();
 
 
@@ -149,6 +150,19 @@ export default function Analytics() {
       return data;
     },
     enabled: !!selectedClient?.id && hasGoogleAnalytics,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // TikTok Ads data
+  const { data: tiktokAdsData } = useQuery({
+    queryKey: ["tiktok-ads-kpi", selectedClient?.id, dateRange.startDate, dateRange.endDate],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke('tiktok-ads', {
+        body: { clientId: selectedClient?.id, startDate: dateRange.startDate, endDate: dateRange.endDate }
+      });
+      return data;
+    },
+    enabled: !!selectedClient?.id && hasTikTok,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -498,6 +512,41 @@ export default function Analytics() {
                       value: formatNumber(facebookAdsData?.totals?.conversions || 0),
                       icon: <TrendingUp className="w-4 h-4" />,
                       change: 11.4
+                    },
+                  ]}
+                />
+              )}
+
+              {/* TikTok Ads */}
+              {hasTikTok && (
+                <PlatformCompactCard
+                  platform="TikTok Ads"
+                  platformKey="tiktok_ads"
+                  icon={<span className="text-white text-lg font-bold">♪</span>}
+                  iconBgColor="bg-[#000000]"
+                  detailPath="/analytics/tiktok-ads"
+                  isLoading={!tiktokAdsData}
+                  isConnected={true}
+                  metrics={[
+                    { 
+                      label: "הוצאות", 
+                      value: formatCurrency(tiktokAdsData?.totals?.spend || 0),
+                      icon: <DollarSign className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "קליקים", 
+                      value: formatNumber(tiktokAdsData?.totals?.clicks || 0),
+                      icon: <MousePointer className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "צפיות", 
+                      value: formatNumber(tiktokAdsData?.totals?.videoViews || 0),
+                      icon: <Play className="w-4 h-4" />,
+                    },
+                    { 
+                      label: "המרות", 
+                      value: formatNumber(tiktokAdsData?.totals?.conversions || 0),
+                      icon: <TrendingUp className="w-4 h-4" />,
                     },
                   ]}
                 />

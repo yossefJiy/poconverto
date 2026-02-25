@@ -32,6 +32,7 @@ import MetaSummary from "./pages/analytics/MetaSummary";
 import WooCommerceDetail from "./pages/analytics/WooCommerceDetail";
 import GoogleAnalyticsDetail from "./pages/analytics/GoogleAnalyticsDetail";
 import CampaignDetail from "./pages/analytics/CampaignDetail";
+import TikTokAdsDetail from "./pages/analytics/TikTokAdsDetail";
 import Ecommerce from "./pages/Ecommerce";
 import SystemDiagram from "./pages/SystemDiagram";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -167,6 +168,13 @@ const App = () => (
                 <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
                     <WooCommerceDetail />
+                  </DomainErrorBoundary>
+                </SimulationProtectedRoute>
+              } />
+              <Route path="/analytics/tiktok-ads" element={
+                <SimulationProtectedRoute moduleKey="analytics">
+                  <DomainErrorBoundary domain="analytics">
+                    <TikTokAdsDetail />
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
