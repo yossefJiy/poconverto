@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.sync-external]
 verify_jwt = false
+
+[functions.api-bridge]
+verify_jwt = false
