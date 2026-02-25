@@ -3,24 +3,18 @@ import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useClient } from "@/hooks/useClient";
 import { useClientModules } from "@/hooks/useClientModules";
-import { useCodeHealth } from "@/hooks/useCodeHealth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Users, 
   Target, 
   TrendingUp, 
-  CheckSquare,
   Megaphone,
   DollarSign,
   Eye,
   MousePointer,
   Loader2,
-  Circle,
-  Calendar,
-  Clock,
   Building2,
-  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -32,15 +26,11 @@ import { ShareDashboardDialog } from "@/components/client/ShareDashboardDialog";
 import { ClientLinksCard } from "@/components/dashboard/ClientLinksCard";
 import { IntegrationsCard } from "@/components/dashboard/IntegrationsCard";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
-import { DraggableTimelineWidget } from "@/components/dashboard/DraggableTimelineWidget";
 import { JiyPremiumCard } from "@/components/dashboard/JiyPremiumCard";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const { selectedClient } = useClient();
   const { isModuleEnabled } = useClientModules();
-  const { stats: codeHealthStats } = useCodeHealth();
 
   // Get current user's team member name
   const { data: currentTeamMember } = useQuery({
@@ -58,7 +48,7 @@ export default function Dashboard() {
     },
   });
 
-  // Check if this is the master account (JIY) using is_master_account column
+  // Check if this is the master account (JIY)
   const { data: masterClient } = useQuery({
     queryKey: ["master-client"],
     queryFn: async () => {
@@ -74,19 +64,12 @@ export default function Dashboard() {
   const isMasterAccount = selectedClient?.id === masterClient?.id ||
                           selectedClient?.name?.toLowerCase().includes("jiy") || 
                           selectedClient?.name?.includes("סוכנות") ||
-                          !selectedClient; // No client selected = show all
+                          !selectedClient;
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", selectedClient?.id, isMasterAccount],
     queryFn: async () => {
-      // Get tasks - for master account, get ALL tasks
-      let tasksQuery = supabase.from("tasks").select("status, client_id");
-      if (selectedClient && !isMasterAccount) {
-        tasksQuery = tasksQuery.eq("client_id", selectedClient.id);
-      }
-      const { data: tasks } = await tasksQuery;
-
-      // Get campaigns - for master account, get ALL campaigns
+      // Get campaigns
       let campaignsQuery = supabase.from("campaigns").select("status, budget, spent, impressions, clicks, conversions, client_id");
       if (selectedClient && !isMasterAccount) {
         campaignsQuery = campaignsQuery.eq("client_id", selectedClient.id);
@@ -100,12 +83,8 @@ export default function Dashboard() {
       const totalClicks = campaigns?.reduce((sum, c) => sum + (c.clicks || 0), 0) || 0;
       const totalConversions = campaigns?.reduce((sum, c) => sum + (c.conversions || 0), 0) || 0;
 
-      const openTasks = tasks?.filter(t => t.status !== "completed").length || 0;
-      const completedTasks = tasks?.filter(t => t.status === "completed").length || 0;
-      
-      // Count unique clients for master account view
       const uniqueClients = isMasterAccount 
-        ? new Set([...tasks?.map(t => t.client_id), ...campaigns?.map(c => c.client_id)].filter(Boolean)).size
+        ? new Set(campaigns?.map(c => c.client_id).filter(Boolean)).size
         : 0;
 
       return {
@@ -115,8 +94,6 @@ export default function Dashboard() {
         totalImpressions,
         totalClicks,
         totalConversions,
-        openTasks,
-        completedTasks,
         uniqueClients,
         ctr: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0",
       };
@@ -149,56 +126,10 @@ export default function Dashboard() {
         .select("*")
         .eq("client_id", selectedClient.id);
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!selectedClient,
   });
-
-  // Fetch tasks with new fields for timeline (excluding completed)
-  const { data: recentTasks = [] } = useQuery({
-    queryKey: ["recent-tasks", selectedClient?.id, isMasterAccount],
-    queryFn: async () => {
-      let query = supabase
-        .from("tasks")
-        .select("*, clients:clients!tasks_client_id_fkey(name, is_master_account)")
-        .neq("status", "completed")
-        .order("due_date", { ascending: true })
-        .limit(50);
-      if (selectedClient && !isMasterAccount) {
-        query = query.eq("client_id", selectedClient.id);
-      }
-      const { data } = await query;
-      return data || [];
-    },
-  });
-
-  // Fetch completed tasks today for hours calculation
-  const { data: completedTodayTasks = [] } = useQuery({
-    queryKey: ["completed-today-dashboard", selectedClient?.id, isMasterAccount],
-    queryFn: async () => {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      
-      let query = supabase
-        .from("tasks")
-        .select("id, duration_minutes, client_id, updated_at")
-        .eq("status", "completed")
-        .gte("updated_at", todayStart.toISOString());
-      
-      if (selectedClient && !isMasterAccount) {
-        query = query.eq("client_id", selectedClient.id);
-      }
-      const { data } = await query;
-      return data || [];
-    },
-  });
-
-  // Calculate today's stats
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayTasksCount = recentTasks.filter((t: any) => t.due_date === todayStr).length;
-  const totalMinutesToday = completedTodayTasks.reduce((sum: number, t: any) => sum + (t.duration_minutes || 60), 0);
-  const hoursCompletedToday = (totalMinutesToday / 60).toFixed(1);
-  const clientsHandledToday = new Set(completedTodayTasks.map((t: any) => t.client_id).filter(Boolean)).size;
 
   const { data: recentCampaigns = [] } = useQuery({
     queryKey: ["recent-campaigns", selectedClient?.id, isMasterAccount],
@@ -217,11 +148,9 @@ export default function Dashboard() {
   });
 
   const statusConfig: Record<string, { color: string; label: string }> = {
-    pending: { color: "bg-warning", label: "ממתין" },
-    "in-progress": { color: "bg-info", label: "בתהליך" },
-    completed: { color: "bg-success", label: "הושלם" },
     active: { color: "bg-success", label: "פעיל" },
     paused: { color: "bg-warning", label: "מושהה" },
+    completed: { color: "bg-muted", label: "הושלם" },
   };
 
   return (
@@ -242,26 +171,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Critical Code Issues Alert */}
-            {codeHealthStats && codeHealthStats.criticalCount > 0 && (
-              <Alert variant="destructive" className="mb-6 animate-fade-in">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>בעיות קוד קריטיות</AlertTitle>
-                <AlertDescription className="flex items-center justify-between">
-                  <span>
-                    יש {codeHealthStats.criticalCount} בעיות קריטיות פתוחות שדורשות טיפול מיידי
-                  </span>
-                  <Link 
-                    to="/code-health" 
-                    className="text-destructive-foreground underline hover:no-underline font-medium"
-                  >
-                    צפה בבעיות
-                  </Link>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Greeting with elegant quote */}
+            {/* Greeting */}
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-2">
                 <h2 className="text-2xl font-bold text-foreground">
@@ -275,68 +185,32 @@ export default function Dashboard() {
               </blockquote>
             </div>
 
-            {/* Stats sections */}
-            {isModuleEnabled("tasks") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* All pending tasks + active clients */}
-                <div className="bg-card border border-border rounded-xl p-5 animate-fade-in hover:shadow-lg transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-4">סקירה כללית</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
-                        <Circle className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <span className="text-3xl font-bold text-foreground">{stats?.openTasks || 0}</span>
-                        <p className="text-sm text-muted-foreground">משימות פתוחות</p>
-                      </div>
+            {/* Overview stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-card border border-border rounded-xl p-5 animate-fade-in hover:shadow-lg transition-shadow duration-300">
+                <h3 className="text-sm font-medium text-muted-foreground mb-4">סקירה כללית</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Megaphone className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
-                        <Building2 className="w-5 h-5 text-accent-foreground" />
-                      </div>
-                      <div>
-                        <span className="text-3xl font-bold text-foreground">{stats?.uniqueClients || 0}</span>
-                        <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
-                      </div>
+                    <div>
+                      <span className="text-3xl font-bold text-foreground">{stats?.activeCampaigns || 0}</span>
+                      <p className="text-sm text-muted-foreground">קמפיינים פעילים</p>
                     </div>
                   </div>
-                </div>
-
-                {/* Today's stats */}
-                <div className="bg-card border border-border rounded-xl p-5 animate-fade-in hover:shadow-lg transition-shadow duration-300" style={{ animationDelay: '0.1s' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">היום</h3>
-                    <span className="text-xs text-muted-foreground/70 font-medium bg-muted/50 px-2 py-1 rounded-md">
-                      {new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center group">
-                      <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
-                        <Calendar className="w-4 h-4 text-warning" />
-                      </div>
-                      <span className="text-xl font-bold text-foreground block">{todayTasksCount}</span>
-                      <p className="text-xs text-muted-foreground">משימות</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-accent-foreground" />
                     </div>
-                    <div className="text-center group">
-                      <div className="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
-                        <Clock className="w-4 h-4 text-info" />
-                      </div>
-                      <span className="text-xl font-bold text-foreground block">{hoursCompletedToday}</span>
-                      <p className="text-xs text-muted-foreground">שעות</p>
-                    </div>
-                    <div className="text-center group">
-                      <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-2 transition-transform duration-300 group-hover:scale-110">
-                        <Users className="w-4 h-4 text-success" />
-                      </div>
-                      <span className="text-xl font-bold text-foreground block">{clientsHandledToday}</span>
-                      <p className="text-xs text-muted-foreground">לקוחות</p>
+                    <div>
+                      <span className="text-3xl font-bold text-foreground">{stats?.uniqueClients || 0}</span>
+                      <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -368,7 +242,7 @@ export default function Dashboard() {
 
             {/* Budget & Performance */}
             {isModuleEnabled("campaigns") && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.3s", animationFillMode: "forwards" }}>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -405,47 +279,14 @@ export default function Dashboard() {
                     <span className="text-muted-foreground"> CTR</span>
                   </p>
                 </div>
-
-                {isModuleEnabled("tasks") && (
-                  <div className="glass rounded-xl p-6 card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-                        <CheckSquare className="w-5 h-5 text-success" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">משימות הושלמו</p>
-                        <p className="text-2xl font-bold">{stats?.completedTasks || 0}</p>
-                      </div>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-success rounded-full transition-all"
-                        style={{ width: `${stats?.openTasks || stats?.completedTasks ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Recent Activity */}
+            {/* Recent Campaigns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Daily Timeline Widget */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Daily Timeline Widget */}
-                {isModuleEnabled("tasks") && (
-                  <div className="opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
-                    <DraggableTimelineWidget 
-                      tasks={recentTasks} 
-                      masterClientId={masterClient?.id}
-                    />
-                  </div>
-                )}
-
-
-                {/* Recent Campaigns */}
                 {isModuleEnabled("campaigns") && (
-                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.55s", animationFillMode: "forwards" }}>
+                  <div className="glass rounded-xl card-shadow opacity-0 animate-slide-up" style={{ animationDelay: "0.45s", animationFillMode: "forwards" }}>
                     <div className="p-4 border-b border-border">
                       <h3 className="font-bold">קמפיינים אחרונים</h3>
                     </div>
@@ -476,9 +317,9 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Right Column - Links, Integrations, Quick Actions or JIY Premium Card */}
+              {/* Right Column */}
               {selectedClient && (
-                <div className="space-y-4 opacity-0 animate-slide-up" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
+                <div className="space-y-4 opacity-0 animate-slide-up" style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}>
                   {isMasterAccount ? (
                     <JiyPremiumCard title="סוכנות הדיגיטל">
                       <div className="space-y-4">
@@ -488,8 +329,8 @@ export default function Dashboard() {
                             <p className="text-xs text-muted-foreground">לקוחות פעילים</p>
                           </div>
                           <div className="bg-muted/30 rounded-lg p-3 text-center">
-                            <p className="text-2xl font-bold text-[hsl(var(--jiy-gold))]">{stats?.openTasks || 0}</p>
-                            <p className="text-xs text-muted-foreground">משימות פתוחות</p>
+                            <p className="text-2xl font-bold text-[hsl(var(--jiy-gold))]">{stats?.activeCampaigns || 0}</p>
+                            <p className="text-xs text-muted-foreground">קמפיינים פעילים</p>
                           </div>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3">

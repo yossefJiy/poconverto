@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Target, 
   Megaphone, 
-  CheckSquare, 
   Users, 
   Settings,
   ChevronLeft,
@@ -19,19 +18,16 @@ import {
   Activity,
   Network,
   HeartPulse,
-  Bot,
   Puzzle,
   TrendingUp,
   FileText,
   Shield,
   Building2,
   Crosshair,
-  FolderKanban,
   LayoutGrid,
   UserSearch,
   Share2,
   Receipt,
-  ClipboardCheck,
   Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,7 +70,6 @@ interface MenuCategory {
 
 // Admin-only menu items - only for master account
 const agencyItem: MenuItem = { icon: LayoutGrid, label: "סוכנות", path: "/agency" };
-const planningItem: MenuItem = { icon: Bot, label: "אפיון מערכות", path: "/system-planning" };
 
 const menuCategories: MenuCategory[] = [
   {
@@ -83,8 +78,6 @@ const menuCategories: MenuCategory[] = [
     icon: LayoutDashboard,
     items: [
       { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
-      { icon: FolderKanban, label: "פרויקטים", path: "/projects", moduleKey: "projects" },
-      { icon: CheckSquare, label: "משימות", path: "/tasks", moduleKey: "tasks" },
       { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
     ],
   },
@@ -130,23 +123,12 @@ const menuCategories: MenuCategory[] = [
     ],
   },
   {
-    key: "ai",
-    label: "AI",
-    icon: Bot,
-    items: [
-      { icon: Bot, label: "AI Agents", path: "/ai-agents", moduleKey: "ai_agent" },
-      { icon: Bot, label: "AI Insights", path: "/ai-insights", moduleKey: "ai_insights" },
-      { icon: BarChart3, label: "אנליטיקס מודולים", path: "/module-analytics" },
-    ],
-  },
-  {
     key: "business",
     label: "עסקי",
     icon: Receipt,
     items: [
       { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
       { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
-      { icon: ClipboardCheck, label: "אישורים", path: "/approvals", moduleKey: "approvals" },
     ],
   },
 ];
@@ -269,52 +251,28 @@ export function Sidebar() {
       <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
         {/* Admin items - only for master account / admin */}
         {showAgencyItem && (
-          <>
-            <Link
-              to={agencyItem.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                "opacity-0 animate-slide-right",
-                location.pathname === agencyItem.path
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-              style={{ animationDelay: "0s", animationFillMode: "forwards" }}
-            >
-              <agencyItem.icon className={cn(
-                "w-5 h-5 transition-transform duration-200 shrink-0",
-                location.pathname === agencyItem.path && "scale-110"
-              )} />
-              {!isCollapsed && (
-                <span className="font-medium flex-1">{agencyItem.label}</span>
-              )}
-              {location.pathname === agencyItem.path && (
-                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
-              )}
-            </Link>
-            <Link
-              to={planningItem.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                "opacity-0 animate-slide-right",
-                location.pathname === planningItem.path
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-              style={{ animationDelay: "0.03s", animationFillMode: "forwards" }}
-            >
-              <planningItem.icon className={cn(
-                "w-5 h-5 transition-transform duration-200 shrink-0",
-                location.pathname === planningItem.path && "scale-110"
-              )} />
-              {!isCollapsed && (
-                <span className="font-medium flex-1">{planningItem.label}</span>
-              )}
-              {location.pathname === planningItem.path && (
-                <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
-              )}
-            </Link>
-          </>
+          <Link
+            to={agencyItem.path}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+              "opacity-0 animate-slide-right",
+              location.pathname === agencyItem.path
+                ? "bg-primary/10 text-primary" 
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            )}
+            style={{ animationDelay: "0s", animationFillMode: "forwards" }}
+          >
+            <agencyItem.icon className={cn(
+              "w-5 h-5 transition-transform duration-200 shrink-0",
+              location.pathname === agencyItem.path && "scale-110"
+            )} />
+            {!isCollapsed && (
+              <span className="font-medium flex-1">{agencyItem.label}</span>
+            )}
+            {location.pathname === agencyItem.path && (
+              <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
+            )}
+          </Link>
         )}
 
         {visibleMenuItems.map((item, index) => {
@@ -453,21 +411,13 @@ export function Sidebar() {
             <DropdownMenuContent forceMount align="end" side="top" className="w-56">
               <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
-                  <User className="w-4 h-4" />
-                  פרופיל
-                </Link>
-              </DropdownMenuItem>
               
-              {/* Role Simulator Menu */}
-              <RoleSimulatorMenu onOpenDialog={() => setRoleSimDialogOpen(true)} />
+              {/* Role Simulator - only for admins */}
+              {isAdmin && (
+                <RoleSimulatorMenu onOpenDialog={() => setRoleSimDialogOpen(true)} />
+              )}
               
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleSignOut}
-                className="text-destructive focus:text-destructive cursor-pointer"
-              >
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
                 <LogOut className="w-4 h-4 ml-2" />
                 התנתקות
               </DropdownMenuItem>
@@ -475,7 +425,12 @@ export function Sidebar() {
           </DropdownMenu>
         </div>
       </div>
-      <RoleSimulatorDialog open={roleSimDialogOpen} onOpenChange={setRoleSimDialogOpen} />
+
+      {/* Role Simulator Dialog */}
+      <RoleSimulatorDialog 
+        open={roleSimDialogOpen} 
+        onOpenChange={setRoleSimDialogOpen} 
+      />
     </aside>
   );
 }
