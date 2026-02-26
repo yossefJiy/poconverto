@@ -14,6 +14,7 @@ import {
   Shield,
   Building2,
   DollarSign,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +43,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "סקירה כללית", path: "/dashboard" },
   { icon: BarChart3, label: "קמפיינים", path: "/analytics/campaigns" },
+  { icon: ShoppingCart, label: "הכנסות מהאתר", path: "/analytics/store" },
   { icon: DollarSign, label: "הכנסות אופליין", path: "/analytics/offline-revenue" },
   { icon: Users, label: "הגדרות לקוח", path: "/clients" },
   { icon: Building2, label: "ניהול לקוחות", path: "/client-management" },

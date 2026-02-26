@@ -69,6 +69,7 @@ import {
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 // ClientModulesSettings removed
 import { ClientLogoUploader } from "@/components/client/ClientLogoUploader";
+import { ClientIntegrationsManager } from "@/components/client/ClientIntegrationsManager";
 import { Link } from "react-router-dom";
 
 // TikTok icon component
@@ -753,39 +754,8 @@ export default function ClientProfile() {
               </CardContent>
             </Card>
 
-            {/* Connected Integrations */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Link2 className="w-5 h-5 text-primary" />
-                    אינטגרציות מחוברות
-                  </span>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/analytics?integrations=open">נהל חיבורים</Link>
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {connectedIntegrations.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {connectedIntegrations.map(integration => (
-                      <div key={integration.id} className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
-                        <Check className="w-4 h-4 text-success" />
-                        <span className="font-medium capitalize text-sm">{integration.platform.replace(/_/g, " ")}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground mb-3">אין אינטגרציות מחוברות</p>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/analytics?integrations=open">חבר עכשיו</Link>
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Connected Integrations — Full Manager */}
+            <ClientIntegrationsManager />
           </TabsContent>
 
           {/* Finance Tab */}

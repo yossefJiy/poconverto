@@ -5,6 +5,7 @@ import { lazy } from 'react';
 const AnalyticsOverview = lazy(() => import('@/pages/AnalyticsOverview'));
 const CampaignPerformance = lazy(() => import('@/pages/CampaignPerformance'));
 const OfflineRevenue = lazy(() => import('@/pages/OfflineRevenue'));
+const StoreMetrics = lazy(() => import('@/pages/StoreMetrics'));
 const ClientProfile = lazy(() => import('@/pages/ClientProfile'));
 const ClientManagement = lazy(() => import('@/pages/ClientManagement'));
 const Settings = lazy(() => import('@/pages/Settings'));
@@ -21,6 +22,7 @@ export const routeConfig: RouteConfig[] = [
   { path: '/dashboard', element: AnalyticsOverview, domain: 'analytics', requiresAuth: true },
   { path: '/analytics', element: AnalyticsOverview, domain: 'analytics', requiresAuth: true },
   { path: '/analytics/campaigns', element: CampaignPerformance, domain: 'analytics', requiresAuth: true },
+  { path: '/analytics/store', element: StoreMetrics, domain: 'analytics', requiresAuth: true },
   { path: '/analytics/offline-revenue', element: OfflineRevenue, domain: 'analytics', requiresAuth: true },
   { path: '/clients', element: ClientProfile, domain: 'clients', requiresAuth: true },
   { path: '/client-management', element: ClientManagement, domain: 'clients', requiresAuth: true },
