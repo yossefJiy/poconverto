@@ -242,21 +242,7 @@ export default function ClientProfile() {
     enabled: !!selectedClient,
   });
 
-  // Fetch sync schedule
-  const { data: syncSchedule } = useQuery({
-    queryKey: ["sync-schedule", selectedClient?.id],
-    queryFn: async () => {
-      if (!selectedClient) return null;
-      const { data, error } = await supabase
-        .from("sync_schedules")
-        .select("sync_frequency")
-        .eq("client_id", selectedClient.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!selectedClient,
-  });
+  // Sync schedule removed (table dropped)
 
   // Update mutation
   const updateMutation = useMutation({

@@ -1,0 +1,124 @@
+
+-- =============================================
+-- DROP ALL NON-MVP TABLES + UNUSED FUNCTIONS
+-- Keep only: clients, integrations, daily_*, invoices, invoice_payments,
+--            sync_runs, profiles, user_roles, authorized_emails,
+--            client_contacts, client_users, security_audit_logs
+-- =============================================
+
+-- Drop unused functions first
+DROP FUNCTION IF EXISTS public.cleanup_expired_2fa_codes();
+DROP FUNCTION IF EXISTS public.cleanup_expired_trusted_devices();
+DROP FUNCTION IF EXISTS public.create_client_agent() CASCADE;
+DROP FUNCTION IF EXISTS public.create_client_defaults() CASCADE;
+DROP FUNCTION IF EXISTS public.calculate_kpi_status() CASCADE;
+DROP FUNCTION IF EXISTS public.log_kpi_history() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_module() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_module_update() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_module_delete() CASCADE;
+DROP FUNCTION IF EXISTS public.agent_has_capability(uuid, text, uuid, text);
+DROP FUNCTION IF EXISTS public.handle_message_analytics() CASCADE;
+DROP FUNCTION IF EXISTS public.sync_contact_portal_access() CASCADE;
+DROP FUNCTION IF EXISTS public.log_integration_access() CASCADE;
+
+-- Drop all non-MVP tables (CASCADE handles FK deps)
+DROP TABLE IF EXISTS public.ab_tests CASCADE;
+DROP TABLE IF EXISTS public.ad_placements CASCADE;
+DROP TABLE IF EXISTS public.agent_memory CASCADE;
+DROP TABLE IF EXISTS public.ai_agent_actions CASCADE;
+DROP TABLE IF EXISTS public.ai_agent_permissions CASCADE;
+DROP TABLE IF EXISTS public.ai_capability_usage CASCADE;
+DROP TABLE IF EXISTS public.ai_content_history CASCADE;
+DROP TABLE IF EXISTS public.ai_module_settings CASCADE;
+DROP TABLE IF EXISTS public.ai_query_history CASCADE;
+DROP TABLE IF EXISTS public.ai_team_permissions CASCADE;
+DROP TABLE IF EXISTS public.ai_usage_alerts CASCADE;
+DROP TABLE IF EXISTS public.ai_usage_limits CASCADE;
+DROP TABLE IF EXISTS public.client_agent_tokens CASCADE;
+DROP TABLE IF EXISTS public.ai_agents CASCADE;
+DROP TABLE IF EXISTS public.ai_capability_definitions CASCADE;
+DROP TABLE IF EXISTS public.agency_agents CASCADE;
+DROP TABLE IF EXISTS public.analytics_snapshots CASCADE;
+DROP TABLE IF EXISTS public.approval_comments CASCADE;
+DROP TABLE IF EXISTS public.approval_decisions CASCADE;
+DROP TABLE IF EXISTS public.approval_items CASCADE;
+DROP TABLE IF EXISTS public.approval_workflows CASCADE;
+DROP TABLE IF EXISTS public.brand_assets CASCADE;
+DROP TABLE IF EXISTS public.brand_health_scores CASCADE;
+DROP TABLE IF EXISTS public.brand_kpis CASCADE;
+DROP TABLE IF EXISTS public.kpi_history CASCADE;
+DROP TABLE IF EXISTS public.budget_rules CASCADE;
+DROP TABLE IF EXISTS public.campaigns CASCADE;
+DROP TABLE IF EXISTS public.chat_messages CASCADE;
+DROP TABLE IF EXISTS public.chat_conversations CASCADE;
+DROP TABLE IF EXISTS public.client_credit_packages CASCADE;
+DROP TABLE IF EXISTS public.client_credits CASCADE;
+DROP TABLE IF EXISTS public.credit_alerts CASCADE;
+DROP TABLE IF EXISTS public.credit_formulas CASCADE;
+DROP TABLE IF EXISTS public.credit_transactions CASCADE;
+DROP TABLE IF EXISTS public.client_insights CASCADE;
+DROP TABLE IF EXISTS public.client_limits CASCADE;
+DROP TABLE IF EXISTS public.client_performance_history CASCADE;
+DROP TABLE IF EXISTS public.client_services CASCADE;
+DROP TABLE IF EXISTS public.client_team CASCADE;
+DROP TABLE IF EXISTS public.client_templates CASCADE;
+DROP TABLE IF EXISTS public.client_user_access CASCADE;
+DROP TABLE IF EXISTS public.code_health_issues CASCADE;
+DROP TABLE IF EXISTS public.code_health_reports CASCADE;
+DROP TABLE IF EXISTS public.competitor_metrics CASCADE;
+DROP TABLE IF EXISTS public.competitor_tracking CASCADE;
+DROP TABLE IF EXISTS public.content_calendar CASCADE;
+DROP TABLE IF EXISTS public.content_drafts CASCADE;
+DROP TABLE IF EXISTS public.content_templates CASCADE;
+DROP TABLE IF EXISTS public.customer_segments CASCADE;
+DROP TABLE IF EXISTS public.module_usage_analytics CASCADE;
+DROP TABLE IF EXISTS public.dynamic_module_messages CASCADE;
+DROP TABLE IF EXISTS public.dynamic_module_sessions CASCADE;
+DROP TABLE IF EXISTS public.dynamic_module_templates CASCADE;
+DROP TABLE IF EXISTS public.dynamic_modules CASCADE;
+DROP TABLE IF EXISTS public.module_usage_limits CASCADE;
+DROP TABLE IF EXISTS public.global_module_settings CASCADE;
+DROP TABLE IF EXISTS public.sidebar_dynamic_items CASCADE;
+DROP TABLE IF EXISTS public.feature_requests CASCADE;
+DROP TABLE IF EXISTS public.hashtag_groups CASCADE;
+DROP TABLE IF EXISTS public.industry_benchmarks CASCADE;
+DROP TABLE IF EXISTS public.invoice_items CASCADE;
+DROP TABLE IF EXISTS public.lead_activities CASCADE;
+DROP TABLE IF EXISTS public.lead_conversations CASCADE;
+DROP TABLE IF EXISTS public.lead_messages CASCADE;
+DROP TABLE IF EXISTS public.leads CASCADE;
+DROP TABLE IF EXISTS public.marketing_data CASCADE;
+DROP TABLE IF EXISTS public.media_library CASCADE;
+DROP TABLE IF EXISTS public.monitoring_preferences CASCADE;
+DROP TABLE IF EXISTS public.notification_history CASCADE;
+DROP TABLE IF EXISTS public.planning_dialogue_parts CASCADE;
+DROP TABLE IF EXISTS public.planning_exports CASCADE;
+DROP TABLE IF EXISTS public.planning_sessions CASCADE;
+DROP TABLE IF EXISTS public.planning_templates CASCADE;
+DROP TABLE IF EXISTS public.price_tracking CASCADE;
+DROP TABLE IF EXISTS public.priority_allocation CASCADE;
+DROP TABLE IF EXISTS public.product_feeds CASCADE;
+DROP TABLE IF EXISTS public.projects CASCADE;
+DROP TABLE IF EXISTS public.quote_items CASCADE;
+DROP TABLE IF EXISTS public.quotes CASCADE;
+DROP TABLE IF EXISTS public.report_history CASCADE;
+DROP TABLE IF EXISTS public.report_templates CASCADE;
+DROP TABLE IF EXISTS public.scheduled_reports CASCADE;
+DROP TABLE IF EXISTS public.role_simulation_log CASCADE;
+DROP TABLE IF EXISTS public.service_health_history CASCADE;
+DROP TABLE IF EXISTS public.social_posts CASCADE;
+DROP TABLE IF EXISTS public.social_accounts CASCADE;
+DROP TABLE IF EXISTS public.sync_schedules CASCADE;
+DROP TABLE IF EXISTS public.task_attachments CASCADE;
+DROP TABLE IF EXISTS public.task_comments CASCADE;
+DROP TABLE IF EXISTS public.task_requests CASCADE;
+DROP TABLE IF EXISTS public.task_shares CASCADE;
+DROP TABLE IF EXISTS public.task_subtasks CASCADE;
+DROP TABLE IF EXISTS public.task_type_definitions CASCADE;
+DROP TABLE IF EXISTS public.tasks CASCADE;
+DROP TABLE IF EXISTS public.team CASCADE;
+DROP TABLE IF EXISTS public.trusted_devices CASCADE;
+DROP TABLE IF EXISTS public.two_factor_codes CASCADE;
+DROP TABLE IF EXISTS public.user_impersonation_log CASCADE;
+DROP TABLE IF EXISTS public.widget_configurations CASCADE;
+DROP TABLE IF EXISTS public.widget_conversations CASCADE;
