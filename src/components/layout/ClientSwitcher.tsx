@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
-import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown, Search, Eye, Star } from "lucide-react";
+import { Building2, ChevronDown, Check, X, Plus, Loader2, Crown, Search, Star } from "lucide-react";
 import { useClient } from "@/hooks/useClient";
-import { useRoleSimulation } from "@/hooks/useRoleSimulation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -17,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
 import logoIcon from "@/assets/logo-icon.svg";
-import logoText from "@/assets/logo-text.svg";
 import { toast } from "sonner";
 
 interface ClientSwitcherProps {
@@ -26,7 +24,6 @@ interface ClientSwitcherProps {
 
 export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
   const { selectedClient, setSelectedClient, clients, isLoading } = useClient();
-  const { isSimulating, simulatedClientName, simulatedContactName } = useRoleSimulation();
   const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
 
@@ -158,34 +155,6 @@ export function ClientSwitcher({ collapsed = false }: ClientSwitcherProps) {
     </DropdownMenuItem>
   );
 
-  // When simulating, show locked simulation display
-  if (isSimulating && simulatedClientName) {
-    return (
-      <div className={cn(
-        "w-full h-auto px-3 py-2.5 bg-blue-500/10 border border-blue-500/30 rounded-md flex items-center gap-3",
-        collapsed && "px-2 justify-center"
-      )}>
-        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-          <Eye className="w-4 h-4 text-blue-500" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground truncate">{simulatedClientName}</span>
-            </div>
-            {simulatedContactName && (
-              <span className="text-xs text-blue-500 truncate">
-                👤 {simulatedContactName}
-              </span>
-            )}
-            <span className="text-[10px] text-blue-500/70 font-medium">
-              מצב סימולציה
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
