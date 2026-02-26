@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useClient } from "@/hooks/useClient";
-import { DefaultModulesSelector, DefaultModules, defaultModulesConfig } from "./DefaultModulesSelector";
+// DefaultModulesSelector removed
 
 interface CreateClientDialogProps {
   trigger?: React.ReactNode;
@@ -49,7 +49,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
     is_agency_brand: false,
   });
   
-  const [modules, setModules] = useState<DefaultModules>(defaultModulesConfig);
+  
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -61,7 +61,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
         logo_url: form.logo_url || null,
         account_type: form.account_type,
         is_agency_brand: form.is_agency_brand,
-        modules_enabled: JSON.parse(JSON.stringify(modules)),
+        
       }]).select().single();
       if (error) throw error;
       return data;
@@ -73,7 +73,7 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
       toast.success("הלקוח נוצר בהצלחה");
       setOpen(false);
       setForm({ name: "", industry: "", website: "", description: "", logo_url: "", account_type: "basic_client", is_agency_brand: false });
-      setModules(defaultModulesConfig);
+      
       setSelectedClient(data);
     },
     onError: () => toast.error("שגיאה ביצירת לקוח"),
@@ -189,10 +189,6 @@ export const CreateClientDialog = forwardRef<HTMLButtonElement, CreateClientDial
             />
           </div>
           
-          <div>
-            <label className="text-sm font-medium mb-2 block">מודולים פעילים</label>
-            <DefaultModulesSelector modules={modules} onChange={setModules} />
-          </div>
           
           <Button 
             className="w-full"

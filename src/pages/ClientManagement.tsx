@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { ClientOnboardingWizard } from "@/components/client/ClientOnboardingWizard";
+// ClientOnboardingWizard removed
 import { toast } from "sonner";
 import { 
   Search, Plus, Building2, Users, BarChart3, Trash2, 
@@ -484,8 +484,7 @@ export default function ClientManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* Onboarding Wizard */}
-      <ClientOnboardingWizard open={showWizard} onOpenChange={setShowWizard} />
+      {/* Onboarding wizard removed */}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>

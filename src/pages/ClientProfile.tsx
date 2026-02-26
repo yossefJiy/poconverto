@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClient } from "@/hooks/useClient";
-import { useClientModules, ClientModules } from "@/hooks/useClientModules";
 import { useAuth } from "@/hooks/useAuth";
+
 import { 
   Building2, 
   Plus, 
@@ -67,7 +67,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { CreateClientDialog } from "@/components/client/CreateClientDialog";
-import { ClientModulesSettings } from "@/components/client/ClientModulesSettings";
+// ClientModulesSettings removed
 import { ClientLogoUploader } from "@/components/client/ClientLogoUploader";
 import { Link } from "react-router-dom";
 
@@ -142,8 +142,8 @@ function EditableField({
 export default function ClientProfile() {
   const queryClient = useQueryClient();
   const { selectedClient, setSelectedClient, clients, isLoading: clientsLoading } = useClient();
-  const { modules, isAdmin } = useClientModules();
   const { role } = useAuth();
+  const isAdmin = role === 'super_admin' || role === 'admin';
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [form, setForm] = useState<ClientFormData>({
@@ -880,14 +880,7 @@ export default function ClientProfile() {
 
           {/* Advanced Tab */}
           <TabsContent value="advanced" className="space-y-6">
-            {/* Modules Settings - Admin only */}
-            {isAdmin && (
-              <ClientModulesSettings
-                clientId={selectedClient.id}
-                modules={modules}
-                syncFrequency={syncSchedule?.sync_frequency || "daily"}
-              />
-            )}
+            {/* Placeholder for future module settings */}
 
             {/* Quick Actions */}
             <Card>
