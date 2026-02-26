@@ -1,7 +1,5 @@
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
-import { useSessionTimeout } from "@/hooks/useSessionTimeout";
-import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +8,6 @@ interface MainLayoutProps {
 }
 
 function MainLayoutContent({ children }: MainLayoutProps) {
-  const { showWarning, remainingTime, extendSession } = useSessionTimeout();
   const { isCollapsed } = useSidebar();
 
   return (
@@ -22,11 +19,6 @@ function MainLayoutContent({ children }: MainLayoutProps) {
       )}>
         {children}
       </main>
-      <SessionTimeoutDialog 
-        open={showWarning} 
-        remainingTime={remainingTime} 
-        onExtendSession={extendSession} 
-      />
     </div>
   );
 }

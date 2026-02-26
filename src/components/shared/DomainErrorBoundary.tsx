@@ -4,8 +4,6 @@ import React, { Component, ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { logger } from '@/lib/logger';
-import { monitoring } from '@/lib/monitoring';
 
 interface Props {
   domain: string;
@@ -29,15 +27,7 @@ export class DomainErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error(error, {
-      domain: this.props.domain,
-      componentStack: errorInfo.componentStack,
-    });
-    
-    monitoring.trackError(error, {
-      domain: this.props.domain,
-      componentStack: errorInfo.componentStack,
-    });
+    console.error(`[${this.props.domain}] Error:`, error, errorInfo);
   }
 
   handleRetry = () => {
@@ -46,9 +36,7 @@ export class DomainErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
+      if (this.props.fallback) return this.props.fallback;
 
       return (
         <div className="flex items-center justify-center min-h-[400px] p-4">
@@ -60,9 +48,7 @@ export class DomainErrorBoundary extends Component<Props, State> {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                משהו השתבש בטעינת המודול. אנא נסה שוב או פנה לתמיכה.
-              </p>
+              <p className="text-muted-foreground">משהו השתבש. אנא נסה שוב.</p>
               {import.meta.env.DEV && this.state.error && (
                 <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
                   {this.state.error.message}
@@ -73,10 +59,7 @@ export class DomainErrorBoundary extends Component<Props, State> {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   נסה שוב
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => window.location.href = '/dashboard'}
-                >
+                <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
                   חזור לדאשבורד
                 </Button>
               </div>
