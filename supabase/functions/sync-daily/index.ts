@@ -210,7 +210,7 @@ async function syncMetaAds(
       const url = `https://graph.facebook.com/v18.0/${accountId}/insights`;
       const params = new URLSearchParams({
         access_token: creds.access_token,
-        fields: 'campaign_name,campaign_id,impressions,clicks,spend,actions,action_values,publisher_platform',
+        fields: 'campaign_name,campaign_id,impressions,clicks,spend,actions,action_values',
         time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
         time_increment: '1',
         level: 'campaign',
@@ -694,7 +694,7 @@ Deno.serve(async (req) => {
     syncRunId = syncRun?.id || null;
 
     // Get clients
-    let clientsQuery = supabase.from('clients').select('id, currency, timezone').eq('status', 'active');
+    let clientsQuery = supabase.from('clients').select('id, currency, timezone').eq('is_active', true);
     if (client_id && client_id !== 'all') {
       clientsQuery = clientsQuery.eq('id', client_id);
     }
