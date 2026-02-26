@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
+import StoreMetrics from "./pages/StoreMetrics";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
@@ -60,6 +61,13 @@ const App = () => (
                 <ProtectedRoute>
                   <DomainErrorBoundary domain="analytics">
                     <OfflineRevenue />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/store" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <StoreMetrics />
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
