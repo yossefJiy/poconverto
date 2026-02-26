@@ -5,8 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
-import { RoleSimulationProvider } from "@/hooks/useRoleSimulation";
-import SimulationProtectedRoute from "@/components/SimulationProtectedRoute";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -27,86 +26,84 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <ClientProvider>
-        <RoleSimulationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/auth" element={<Auth />} />
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/auth" element={<Auth />} />
 
-                {/* Analytics — MVP screens */}
-                <Route path="/dashboard" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="analytics">
-                      <AnalyticsOverview />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
-                <Route path="/analytics" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="analytics">
-                      <AnalyticsOverview />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
-                <Route path="/analytics/campaigns" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="analytics">
-                      <CampaignPerformance />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
-                <Route path="/analytics/offline-revenue" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="analytics">
-                      <OfflineRevenue />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
+              {/* Analytics — MVP screens */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <AnalyticsOverview />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <AnalyticsOverview />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/campaigns" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <CampaignPerformance />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics/offline-revenue" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <OfflineRevenue />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
 
-                {/* Client Management */}
-                <Route path="/clients" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="clients">
-                      <ClientProfile />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
-                <Route path="/client-management" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="clients">
-                      <ClientManagement />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
+              {/* Client Management */}
+              <Route path="/clients" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="clients">
+                    <ClientProfile />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/client-management" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="clients">
+                    <ClientManagement />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
 
-                {/* Settings & Admin */}
-                <Route path="/settings" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="settings">
-                      <Settings />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
-                <Route path="/permissions" element={
-                  <SimulationProtectedRoute>
-                    <DomainErrorBoundary domain="admin">
-                      <Permissions />
-                    </DomainErrorBoundary>
-                  </SimulationProtectedRoute>
-                } />
+              {/* Settings & Admin */}
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="settings">
+                    <Settings />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
+              <Route path="/permissions" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="admin">
+                    <Permissions />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
 
-                {/* Legal */}
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-of-service" element={<TermsOfService />} />
+              {/* Legal */}
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </RoleSimulationProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
       </ClientProvider>
     </AuthProvider>
   </QueryClientProvider>

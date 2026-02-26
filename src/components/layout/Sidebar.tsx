@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -14,11 +13,10 @@ import {
   BarChart3,
   Shield,
   Building2,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useClientModules } from "@/hooks/useClientModules";
-import { useRoleSimulation } from "@/hooks/useRoleSimulation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +29,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientSwitcher } from "./ClientSwitcher";
-import { RoleSimulatorMenu } from "@/components/admin/RoleSimulatorMenu";
-import { RoleSimulatorDialog } from "@/components/admin/RoleSimulatorDialog";
 import logoIcon from "@/assets/logo-icon.svg";
 import logoText from "@/assets/logo-text.svg";
 import byJiyLogo from "@/assets/by-jiy-logo.svg";
@@ -43,19 +39,14 @@ interface MenuItem {
   path: string;
 }
 
-// MVP menu: Only Dashboard, Analytics, Clients
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "סקירה כללית", path: "/dashboard" },
   { icon: BarChart3, label: "קמפיינים", path: "/analytics/campaigns" },
-];
-
-const settingsItems = [
-  { icon: User, label: "פרופיל", path: "/settings", adminOnly: false },
-  { icon: Bell, label: "התראות", path: "/settings", adminOnly: false },
-  { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
-  { icon: Palette, label: "מראה", path: "/settings", adminOnly: false },
-  { icon: Shield, label: "הרשאות", path: "/permissions", adminOnly: true },
-  { icon: Building2, label: "ניהול לקוחות", path: "/client-management", adminOnly: true },
+  { icon: DollarSign, label: "הכנסות אופליין", path: "/analytics/offline-revenue" },
+  { icon: Users, label: "הגדרות לקוח", path: "/clients" },
+  { icon: Building2, label: "ניהול לקוחות", path: "/client-management" },
+  { icon: Shield, label: "הרשאות", path: "/permissions" },
+  { icon: Settings, label: "הגדרות", path: "/settings" },
 ];
 
 export function Sidebar() {
@@ -63,9 +54,6 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
-  const { selectedClient, isAdmin } = useClientModules();
-  const { isSimulating, effectiveRole } = useRoleSimulation();
-  const [roleSimDialogOpen, setRoleSimDialogOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -75,7 +63,7 @@ export function Sidebar() {
   const userEmail = user?.email || "";
   const userInitials = userEmail ? userEmail.substring(0, 2).toUpperCase() : "U";
 
-  const getRoleLabel = (role: string | null) => {
+  const getRoleLabel = (r: string | null) => {
     const labels: Record<string, string> = {
       super_admin: "סופר אדמין",
       admin: "אדמין",
@@ -86,10 +74,8 @@ export function Sidebar() {
       basic_client: "לקוח בסיס",
       demo: "משתמש דמו",
     };
-    return role ? labels[role] || role : "משתמש";
+    return r ? labels[r] || r : "משתמש";
   };
-
-  const displayRole = isSimulating ? effectiveRole : role;
 
   return (
     <aside 
@@ -164,122 +150,46 @@ export function Sidebar() {
             </Link>
           );
         })}
-
-        {/* Client Settings - Only for admins when client is selected */}
-        {selectedClient && isAdmin && !isSimulating && (
-          <Link
-            to="/clients"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-              location.pathname === "/clients"
-                ? "bg-primary/10 text-primary" 
-                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            )}
-          >
-            <Settings className="w-5 h-5 shrink-0" />
-            {!isCollapsed && (
-              <span className="font-medium text-sm">הגדרות לקוח</span>
-            )}
-          </Link>
-        )}
       </nav>
 
-      {/* Bottom Section */}
-      <div className="border-t border-sidebar-border shrink-0">
-        {/* Settings Dropdown */}
-        {!isSimulating && (
-          <div className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-3 h-10",
-                    isCollapsed && "justify-center px-2",
-                    location.pathname === "/settings"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  )}
-                >
-                  <Settings className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span className="font-medium">הגדרות</span>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="w-56">
-                <DropdownMenuLabel>הגדרות</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {settingsItems
-                  .filter(item => !item.adminOnly || isAdmin)
-                  .map((item) => (
-                  <DropdownMenuItem key={item.label} asChild>
-                    <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
-                      <item.icon className="w-4 h-4" />
-                      <span className="flex-1">{item.label}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-
-        {/* User Menu */}
-        <div className="p-3 pt-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3 h-auto py-2",
-                  isCollapsed && "justify-center px-2",
-                  isSimulating && "ring-2 ring-blue-500 ring-offset-2 ring-offset-sidebar"
-                )}
-              >
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className={cn(
-                    "text-sm",
-                    isSimulating ? "bg-blue-500/20 text-blue-500" : "bg-primary/20 text-primary"
-                  )}>
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                {!isCollapsed && (
-                  <div className="flex flex-col items-start text-right overflow-hidden">
-                    <span className="text-sm font-medium truncate max-w-[140px]">
-                      {userEmail}
-                    </span>
-                    <span className={cn(
-                      "text-xs",
-                      isSimulating ? "text-blue-500" : "text-muted-foreground"
-                    )}>
-                      {getRoleLabel(displayRole)}
-                      {isSimulating && " (סימולציה)"}
-                    </span>
-                  </div>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent forceMount align="end" side="top" className="w-56">
-              <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              
-              {isAdmin && (
-                <RoleSimulatorMenu onOpenDialog={() => setRoleSimDialogOpen(true)} />
+      {/* User Menu */}
+      <div className="border-t border-sidebar-border shrink-0 p-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3 h-auto py-2",
+                isCollapsed && "justify-center px-2"
               )}
-              
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
-                <LogOut className="w-4 h-4 ml-2" />
-                התנתקות
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            >
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              {!isCollapsed && (
+                <div className="flex flex-col items-start text-right overflow-hidden">
+                  <span className="text-sm font-medium truncate max-w-[140px]">
+                    {userEmail}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {getRoleLabel(role)}
+                  </span>
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent forceMount align="end" side="top" className="w-56">
+            <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
+              <LogOut className="w-4 h-4 ml-2" />
+              התנתקות
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      <RoleSimulatorDialog 
-        open={roleSimDialogOpen} 
-        onOpenChange={setRoleSimDialogOpen} 
-      />
     </aside>
   );
 }
