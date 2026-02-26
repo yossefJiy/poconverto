@@ -49,10 +49,8 @@ interface Client {
 
 interface ClientStats {
   client_id: string;
-  tasks_count: number;
-  campaigns_count: number;
   integrations_count: number;
-  team_members_count: number;
+  contacts_count: number;
 }
 
 export default function ClientManagement() {
@@ -98,47 +96,26 @@ export default function ClientManagement() {
     queryFn: async () => {
       const stats: Record<string, ClientStats> = {};
       
-      // Get tasks count per client
-      const { data: taskCounts } = await supabase
-        .from("tasks")
-        .select("client_id")
-        .not("client_id", "is", null);
-      
-      // Get campaigns count per client
-      const { data: campaignCounts } = await supabase
-        .from("campaigns")
-        .select("client_id");
-      
-      // Get integrations count per client
-      const { data: integrationCounts } = await supabase
-        .from("integrations")
-        .select("client_id");
-      
-      // Get team members count per client
-      const { data: teamCounts } = await supabase
-        .from("client_team")
-        .select("client_id");
+      const [integrationCounts, contactCounts] = await Promise.all([
+        supabase.from("integrations").select("client_id").eq("is_connected", true),
+        supabase.from("client_contacts").select("client_id"),
+      ]);
 
-      // Aggregate counts
-      const countByClient = (data: { client_id: string }[] | null, field: keyof ClientStats) => {
+      const countByClient = (data: { client_id: string }[] | null, field: keyof Omit<ClientStats, 'client_id'>) => {
         data?.forEach((item) => {
           if (!stats[item.client_id]) {
             stats[item.client_id] = {
               client_id: item.client_id,
-              tasks_count: 0,
-              campaigns_count: 0,
               integrations_count: 0,
-              team_members_count: 0,
+              contacts_count: 0,
             };
           }
           (stats[item.client_id][field] as number)++;
         });
       };
 
-      countByClient(taskCounts, "tasks_count");
-      countByClient(campaignCounts, "campaigns_count");
-      countByClient(integrationCounts, "integrations_count");
-      countByClient(teamCounts, "team_members_count");
+      countByClient(integrationCounts.data, "integrations_count");
+      countByClient(contactCounts.data, "contacts_count");
 
       return stats;
     },
@@ -188,7 +165,7 @@ export default function ClientManagement() {
 
   const handleViewClient = (client: Client) => {
     setSelectedClient(client);
-    navigate("/client-profile");
+    navigate("/clients");
   };
 
   const filteredActiveClients = activeClients?.filter((c) =>
@@ -202,9 +179,8 @@ export default function ClientManagement() {
 
   const totalStats = {
     totalClients: activeClients?.length || 0,
-    totalTasks: Object.values(clientStats || {}).reduce((sum, s) => sum + s.tasks_count, 0),
-    totalCampaigns: Object.values(clientStats || {}).reduce((sum, s) => sum + s.campaigns_count, 0),
     totalIntegrations: Object.values(clientStats || {}).reduce((sum, s) => sum + s.integrations_count, 0),
+    totalContacts: Object.values(clientStats || {}).reduce((sum, s) => sum + s.contacts_count, 0),
   };
 
   return (
@@ -215,8 +191,7 @@ export default function ClientManagement() {
         description="נהל את כל הלקוחות במערכת, צפה בנתונים ושחזר לקוחות מחוקים"
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>לקוחות פעילים</CardDescription>
@@ -232,39 +207,26 @@ export default function ClientManagement() {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>סה״כ משימות</CardDescription>
-            <CardTitle className="text-3xl">{totalStats.totalTasks}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Activity className="h-3 w-3" />
-              בכל הלקוחות
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>קמפיינים</CardDescription>
-            <CardTitle className="text-3xl">{totalStats.totalCampaigns}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <BarChart3 className="h-3 w-3" />
-              פעילים
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
             <CardDescription>אינטגרציות</CardDescription>
             <CardTitle className="text-3xl">{totalStats.totalIntegrations}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="h-3 w-3" />
+              <Activity className="h-3 w-3" />
               מחוברות
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>אנשי קשר</CardDescription>
+            <CardTitle className="text-3xl">{totalStats.totalContacts}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              בכל הלקוחות
             </div>
           </CardContent>
         </Card>
@@ -329,9 +291,8 @@ export default function ClientManagement() {
                     <TableRow>
                       <TableHead>שם</TableHead>
                       <TableHead>תעשייה</TableHead>
-                      <TableHead>משימות</TableHead>
-                      <TableHead>קמפיינים</TableHead>
                       <TableHead>אינטגרציות</TableHead>
+                      <TableHead>אנשי קשר</TableHead>
                       <TableHead>נוצר</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -371,9 +332,8 @@ export default function ClientManagement() {
                               <Badge variant="secondary">{client.industry}</Badge>
                             )}
                           </TableCell>
-                          <TableCell>{stats?.tasks_count || 0}</TableCell>
-                          <TableCell>{stats?.campaigns_count || 0}</TableCell>
                           <TableCell>{stats?.integrations_count || 0}</TableCell>
+                          <TableCell>{stats?.contacts_count || 0}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 text-muted-foreground text-sm">
                               <Calendar className="h-3 w-3" />

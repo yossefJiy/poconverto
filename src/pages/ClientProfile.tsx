@@ -209,29 +209,18 @@ export default function ClientProfile() {
   }, [clientData]);
 
   // Fetch client stats
-  const { data: stats = { campaigns: 0, tasks: 0, activeCampaigns: 0, marketingData: 0, teamMembers: 0, contacts: 0 } } = useQuery({
+  const { data: stats = { integrations: 0, contacts: 0 } } = useQuery({
     queryKey: ["client-profile-stats", selectedClient?.id],
     queryFn: async () => {
-      if (!selectedClient) return { campaigns: 0, tasks: 0, activeCampaigns: 0, marketingData: 0, teamMembers: 0, contacts: 0 };
+      if (!selectedClient) return { integrations: 0, contacts: 0 };
       
-      const [campaignsRes, tasksRes, marketingRes, teamRes, contactsRes] = await Promise.all([
-        supabase.from("campaigns").select("status").eq("client_id", selectedClient.id),
-        supabase.from("tasks").select("status").eq("client_id", selectedClient.id),
-        supabase.from("marketing_data").select("id").eq("client_id", selectedClient.id),
-        supabase.from("client_team").select("id").eq("client_id", selectedClient.id),
+      const [integrationsRes, contactsRes] = await Promise.all([
+        supabase.from("integrations").select("id").eq("client_id", selectedClient.id).eq("is_connected", true),
         supabase.from("client_contacts").select("id").eq("client_id", selectedClient.id),
       ]);
 
-      const campaigns = campaignsRes.data || [];
-      const tasks = tasksRes.data || [];
-
       return {
-        campaigns: campaigns.length,
-        activeCampaigns: campaigns.filter(c => c.status === "active").length,
-        tasks: tasks.length,
-        pendingTasks: tasks.filter(t => t.status === "pending").length,
-        marketingData: marketingRes.data?.length || 0,
-        teamMembers: teamRes.data?.length || 0,
+        integrations: integrationsRes.data?.length || 0,
         contacts: contactsRes.data?.length || 0,
       };
     },
@@ -469,27 +458,15 @@ export default function ClientProfile() {
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Card className="glass border-0">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">קמפיינים</p>
-                  <p className="text-2xl font-bold">{stats.activeCampaigns}/{stats.campaigns}</p>
+                  <p className="text-xs text-muted-foreground">אינטגרציות מחוברות</p>
+                  <p className="text-2xl font-bold">{connectedIntegrations.length}</p>
                 </div>
-                <Megaphone className="w-5 h-5 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass border-0">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">משימות</p>
-                  <p className="text-2xl font-bold">{stats.tasks}</p>
-                </div>
-                <Target className="w-5 h-5 text-accent" />
+                <Link2 className="w-5 h-5 text-blue-500" />
               </div>
             </CardContent>
           </Card>
@@ -505,27 +482,17 @@ export default function ClientProfile() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="glass border-0">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">צוות</p>
-                  <p className="text-2xl font-bold">{stats.teamMembers}</p>
+                  <p className="text-xs text-muted-foreground">סנכרון אחרון</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {connectedIntegrations.length > 0 ? "פעיל" : "—"}
+                  </p>
                 </div>
-                <Users className="w-5 h-5 text-success" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass border-0">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">אינטגרציות</p>
-                  <p className="text-2xl font-bold">{connectedIntegrations.length}</p>
-                </div>
-                <Link2 className="w-5 h-5 text-blue-500" />
+                <Target className="w-5 h-5 text-accent" />
               </div>
             </CardContent>
           </Card>
@@ -891,29 +858,23 @@ export default function ClientProfile() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <Button variant="outline" className="justify-start" asChild>
-                    <Link to="/analytics">
+                    <Link to="/dashboard">
                       <TrendingUp className="w-4 h-4 ml-2" />
-                      אנליטיקס
+                      סקירה כללית
                     </Link>
                   </Button>
                   <Button variant="outline" className="justify-start" asChild>
-                    <Link to="/campaigns">
+                    <Link to="/analytics/campaigns">
                       <Megaphone className="w-4 h-4 ml-2" />
-                      קמפיינים
+                      ביצועי קמפיינים
                     </Link>
                   </Button>
                   <Button variant="outline" className="justify-start" asChild>
-                    <Link to="/tasks">
-                      <Target className="w-4 h-4 ml-2" />
-                      משימות
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="justify-start" asChild>
-                    <Link to="/marketing">
-                      <Users className="w-4 h-4 ml-2" />
-                      שיווק
+                    <Link to="/analytics/offline-revenue">
+                      <DollarSign className="w-4 h-4 ml-2" />
+                      הכנסות אופליין
                     </Link>
                   </Button>
                 </div>
