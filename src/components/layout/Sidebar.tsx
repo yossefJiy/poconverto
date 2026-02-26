@@ -45,8 +45,8 @@ interface MenuItem {
 
 // MVP menu: Only Dashboard, Analytics, Clients
 const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard" },
-  { icon: BarChart3, label: "אנליטיקס", path: "/analytics" },
+  { icon: LayoutDashboard, label: "סקירה כללית", path: "/dashboard" },
+  { icon: BarChart3, label: "קמפיינים", path: "/analytics/campaigns" },
 ];
 
 const settingsItems = [

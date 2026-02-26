@@ -2262,6 +2262,7 @@ export type Database = {
           account_type: string | null
           avg_profit_margin: number | null
           created_at: string
+          currency: string
           deleted_at: string | null
           description: string | null
           facebook_ads_manager_url: string | null
@@ -2280,8 +2281,10 @@ export type Database = {
           modules_enabled: Json | null
           modules_order: Json | null
           name: string
+          revenue_model: string
           shopify_email: string | null
           tiktok_url: string | null
+          timezone: string
           twitter_url: string | null
           updated_at: string
           website: string | null
@@ -2290,6 +2293,7 @@ export type Database = {
           account_type?: string | null
           avg_profit_margin?: number | null
           created_at?: string
+          currency?: string
           deleted_at?: string | null
           description?: string | null
           facebook_ads_manager_url?: string | null
@@ -2308,8 +2312,10 @@ export type Database = {
           modules_enabled?: Json | null
           modules_order?: Json | null
           name: string
+          revenue_model?: string
           shopify_email?: string | null
           tiktok_url?: string | null
+          timezone?: string
           twitter_url?: string | null
           updated_at?: string
           website?: string | null
@@ -2318,6 +2324,7 @@ export type Database = {
           account_type?: string | null
           avg_profit_margin?: number | null
           created_at?: string
+          currency?: string
           deleted_at?: string | null
           description?: string | null
           facebook_ads_manager_url?: string | null
@@ -2336,8 +2343,10 @@ export type Database = {
           modules_enabled?: Json | null
           modules_order?: Json | null
           name?: string
+          revenue_model?: string
           shopify_email?: string | null
           tiktok_url?: string | null
+          timezone?: string
           twitter_url?: string | null
           updated_at?: string
           website?: string | null
@@ -3795,6 +3804,7 @@ export type Database = {
           encrypted_credentials: string | null
           external_account_id: string | null
           id: string
+          is_active: boolean
           is_connected: boolean
           last_sync_at: string | null
           platform: string
@@ -3807,6 +3817,7 @@ export type Database = {
           encrypted_credentials?: string | null
           external_account_id?: string | null
           id?: string
+          is_active?: boolean
           is_connected?: boolean
           last_sync_at?: string | null
           platform: string
@@ -3819,6 +3830,7 @@ export type Database = {
           encrypted_credentials?: string | null
           external_account_id?: string | null
           id?: string
+          is_active?: boolean
           is_connected?: boolean
           last_sync_at?: string | null
           platform?: string
