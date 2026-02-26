@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
-  Target, 
-  Megaphone, 
   Users, 
   Settings,
   ChevronLeft,
@@ -14,26 +12,12 @@ import {
   Bell,
   Palette,
   BarChart3,
-  ShoppingBag,
-  Activity,
-  Network,
-  HeartPulse,
-  Puzzle,
-  TrendingUp,
-  FileText,
   Shield,
   Building2,
-  Crosshair,
-  LayoutGrid,
-  UserSearch,
-  Share2,
-  Receipt,
-  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useClientModules, ClientModules } from "@/hooks/useClientModules";
-import { useCodeHealth } from "@/hooks/useCodeHealth";
+import { useClientModules } from "@/hooks/useClientModules";
 import { useRoleSimulation } from "@/hooks/useRoleSimulation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -46,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { ClientSwitcher } from "./ClientSwitcher";
 import { RoleSimulatorMenu } from "@/components/admin/RoleSimulatorMenu";
 import { RoleSimulatorDialog } from "@/components/admin/RoleSimulatorDialog";
@@ -58,109 +41,32 @@ interface MenuItem {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   path: string;
-  moduleKey?: keyof ClientModules;
 }
 
-interface MenuCategory {
-  key: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: MenuItem[];
-}
-
-// Admin-only menu items - only for master account
-const agencyItem: MenuItem = { icon: LayoutGrid, label: "סוכנות", path: "/agency" };
-
-const menuCategories: MenuCategory[] = [
-  {
-    key: "core",
-    label: "ליבה",
-    icon: LayoutDashboard,
-    items: [
-      { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard", moduleKey: "dashboard" },
-      { icon: Users, label: "צוות", path: "/team", moduleKey: "team" },
-    ],
-  },
-  {
-    key: "marketing",
-    label: "שיווק",
-    icon: Target,
-    items: [
-      { icon: Target, label: "שיווק", path: "/marketing", moduleKey: "marketing" },
-      { icon: Crosshair, label: "יעדים", path: "/kpis", moduleKey: "kpis" },
-      { icon: UserSearch, label: "מתחרים", path: "/competitors", moduleKey: "competitors" },
-      { icon: Share2, label: "סושיאל", path: "/social", moduleKey: "social" },
-      { icon: Palette, label: "סטודיו", path: "/content-studio", moduleKey: "content_studio" },
-    ],
-  },
-  {
-    key: "campaigns",
-    label: "קמפיינים",
-    icon: Megaphone,
-    items: [
-      { icon: Megaphone, label: "קמפיינים", path: "/campaigns", moduleKey: "campaigns" },
-      { icon: Network, label: "פרוגרמטי", path: "/programmatic", moduleKey: "programmatic" },
-      { icon: Target, label: "A/B Tests", path: "/ab-tests", moduleKey: "ab_tests" },
-    ],
-  },
-  {
-    key: "ecommerce",
-    label: "איקומרס",
-    icon: ShoppingBag,
-    items: [
-      { icon: ShoppingBag, label: "איקומרס", path: "/ecommerce", moduleKey: "ecommerce" },
-      { icon: ShoppingBag, label: "Google Shopping", path: "/google-shopping", moduleKey: "google_shopping" },
-    ],
-  },
-  {
-    key: "data",
-    label: "נתונים",
-    icon: BarChart3,
-    items: [
-      { icon: BarChart3, label: "אנליטיקס", path: "/analytics", moduleKey: "analytics" },
-      { icon: TrendingUp, label: "תובנות", path: "/insights", moduleKey: "insights" },
-      { icon: FileText, label: "דוחות", path: "/reports", moduleKey: "reports" },
-    ],
-  },
-  {
-    key: "business",
-    label: "עסקי",
-    icon: Receipt,
-    items: [
-      { icon: Contact, label: "לידים", path: "/leads", moduleKey: "leads" },
-      { icon: Receipt, label: "חיובים", path: "/billing", moduleKey: "billing" },
-    ],
-  },
+// MVP menu: Only Dashboard, Analytics, Clients
+const menuItems: MenuItem[] = [
+  { icon: LayoutDashboard, label: "דשבורד", path: "/dashboard" },
+  { icon: BarChart3, label: "אנליטיקס", path: "/analytics" },
 ];
 
 const settingsItems = [
-  { icon: User, label: "פרופיל", path: "/settings", section: "profile", adminOnly: false },
-  { icon: Bell, label: "התראות", path: "/settings", section: "notifications", adminOnly: false },
+  { icon: User, label: "פרופיל", path: "/settings", adminOnly: false },
+  { icon: Bell, label: "התראות", path: "/settings", adminOnly: false },
   { icon: Plug, label: "חיבורים", path: "/analytics?integrations=open", adminOnly: false },
-  { icon: Palette, label: "מראה", path: "/settings", section: "appearance", adminOnly: false },
-  { icon: Puzzle, label: "ניהול מודולים", path: "/module-management", adminOnly: true },
+  { icon: Palette, label: "מראה", path: "/settings", adminOnly: false },
   { icon: Shield, label: "הרשאות", path: "/permissions", adminOnly: true },
   { icon: Building2, label: "ניהול לקוחות", path: "/client-management", adminOnly: true },
-  { icon: Activity, label: "סטטוס מערכת", path: "/status", adminOnly: true },
-  { icon: HeartPulse, label: "בריאות קוד", path: "/code-health", adminOnly: true },
-  { icon: Network, label: "ארכיטקטורה", path: "/system-diagram", adminOnly: true },
-  { icon: BarChart3, label: "קרדיטים", path: "/credits", adminOnly: true },
 ];
-
-
 
 export function Sidebar() {
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, role } = useAuth();
-  const { isModuleEnabled, selectedClient, isAdmin, modulesOrder } = useClientModules();
-  const { stats: codeHealthStats } = useCodeHealth();
+  const { selectedClient, isAdmin } = useClientModules();
   const { isSimulating, effectiveRole } = useRoleSimulation();
   const [roleSimDialogOpen, setRoleSimDialogOpen] = useState(false);
 
-  // Check if selected client is master account
-  const isMasterAccount = (selectedClient as any)?.is_master_account === true;
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth", { replace: true });
@@ -183,26 +89,7 @@ export function Sidebar() {
     return role ? labels[role] || role : "משתמש";
   };
 
-  // Get all visible menu items and sort by order
-  const allMenuItems = menuCategories.flatMap(cat => cat.items);
-  const visibleMenuItems = allMenuItems
-    .filter(item => {
-      if (!item.moduleKey) return true;
-      return isModuleEnabled(item.moduleKey);
-    })
-    .sort((a, b) => {
-      const orderA = a.moduleKey ? (modulesOrder[a.moduleKey] ?? 999) : 999;
-      const orderB = b.moduleKey ? (modulesOrder[b.moduleKey] ?? 999) : 999;
-      return orderA - orderB;
-    });
-
-  // Show agency only if admin + not simulating + (no client selected OR master account)
-  const showAgencyItem = isAdmin && !isSimulating && (!selectedClient || isMasterAccount);
-
-  // Display role - show effective role if simulating
   const displayRole = isSimulating ? effectiveRole : role;
-
-  
 
   return (
     <aside 
@@ -248,59 +135,28 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
-        {/* Admin items - only for master account / admin */}
-        {showAgencyItem && (
-          <Link
-            to={agencyItem.path}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-              "opacity-0 animate-slide-right",
-              location.pathname === agencyItem.path
-                ? "bg-primary/10 text-primary" 
-                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-            )}
-            style={{ animationDelay: "0s", animationFillMode: "forwards" }}
-          >
-            <agencyItem.icon className={cn(
-              "w-5 h-5 transition-transform duration-200 shrink-0",
-              location.pathname === agencyItem.path && "scale-110"
-            )} />
-            {!isCollapsed && (
-              <span className="font-medium flex-1">{agencyItem.label}</span>
-            )}
-            {location.pathname === agencyItem.path && (
-              <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
-            )}
-          </Link>
-        )}
-
-        {visibleMenuItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
+      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        {menuItems.map((item, index) => {
+          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
                 "opacity-0 animate-slide-right",
                 isActive 
                   ? "bg-primary/10 text-primary" 
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
-              style={{ 
-                animationDelay: `${(showAgencyItem ? index + 1 : index) * 0.03}s`, 
-                animationFillMode: "forwards" 
-              }}
+              style={{ animationDelay: `${index * 0.03}s`, animationFillMode: "forwards" }}
             >
-              <div className="relative">
-                <item.icon className={cn(
-                  "w-5 h-5 transition-transform duration-200 shrink-0",
-                  isActive && "scale-110"
-                )} />
-              </div>
+              <item.icon className={cn(
+                "w-5 h-5 transition-transform duration-200 shrink-0",
+                isActive && "scale-110"
+              )} />
               {!isCollapsed && (
-                <span className="font-medium flex-1 text-sm">{item.label}</span>
+                <span className="font-medium text-sm">{item.label}</span>
               )}
               {isActive && (
                 <div className="absolute right-0 w-1 h-5 bg-primary rounded-l-full" />
@@ -309,7 +165,7 @@ export function Sidebar() {
           );
         })}
 
-        {/* Client Settings - Only for admins when client is selected and NOT simulating */}
+        {/* Client Settings - Only for admins when client is selected */}
         {selectedClient && isAdmin && !isSimulating && (
           <Link
             to="/clients"
@@ -322,7 +178,7 @@ export function Sidebar() {
           >
             <Settings className="w-5 h-5 shrink-0" />
             {!isCollapsed && (
-              <span className="font-medium">הגדרות לקוח</span>
+              <span className="font-medium text-sm">הגדרות לקוח</span>
             )}
           </Link>
         )}
@@ -330,7 +186,7 @@ export function Sidebar() {
 
       {/* Bottom Section */}
       <div className="border-t border-sidebar-border shrink-0">
-        {/* Settings Dropdown - Hide when simulating */}
+        {/* Settings Dropdown */}
         {!isSimulating && (
           <div className="p-3">
             <DropdownMenu>
@@ -359,11 +215,6 @@ export function Sidebar() {
                     <Link to={item.path} className="flex items-center gap-2 cursor-pointer">
                       <item.icon className="w-4 h-4" />
                       <span className="flex-1">{item.label}</span>
-                      {item.path === "/code-health" && codeHealthStats && codeHealthStats.criticalCount > 0 && (
-                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                          {codeHealthStats.criticalCount}
-                        </Badge>
-                      )}
                     </Link>
                   </DropdownMenuItem>
                 ))}
@@ -412,7 +263,6 @@ export function Sidebar() {
               <DropdownMenuLabel>החשבון שלי</DropdownMenuLabel>
               <DropdownMenuSeparator />
               
-              {/* Role Simulator - only for admins */}
               {isAdmin && (
                 <RoleSimulatorMenu onOpenDialog={() => setRoleSimDialogOpen(true)} />
               )}
@@ -426,7 +276,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Role Simulator Dialog */}
       <RoleSimulatorDialog 
         open={roleSimDialogOpen} 
         onOpenChange={setRoleSimDialogOpen} 

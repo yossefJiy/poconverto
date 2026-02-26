@@ -2911,6 +2911,434 @@ export type Database = {
           },
         ]
       }
+      daily_cash_received: {
+        Row: {
+          amount_reporting: number
+          client_id: string
+          date: string
+          id: string
+          integration_id: string
+          source: string
+          synced_at: string
+        }
+        Insert: {
+          amount_reporting?: number
+          client_id: string
+          date: string
+          id?: string
+          integration_id: string
+          source?: string
+          synced_at?: string
+        }
+        Update: {
+          amount_reporting?: number
+          client_id?: string
+          date?: string
+          id?: string
+          integration_id?: string
+          source?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_cash_received_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_cash_received_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_cash_received_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_google_shopping_metrics: {
+        Row: {
+          clicks: number | null
+          client_id: string
+          conversion_value_reporting: number | null
+          conversions: number | null
+          cost_reporting: number | null
+          date: string
+          fetched_at: string
+          id: string
+          impressions: number | null
+          integration_id: string
+        }
+        Insert: {
+          clicks?: number | null
+          client_id: string
+          conversion_value_reporting?: number | null
+          conversions?: number | null
+          cost_reporting?: number | null
+          date: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id: string
+        }
+        Update: {
+          clicks?: number | null
+          client_id?: string
+          conversion_value_reporting?: number | null
+          conversions?: number | null
+          cost_reporting?: number | null
+          date?: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_google_shopping_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_google_shopping_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_google_shopping_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_marketing_metrics: {
+        Row: {
+          account_id: string | null
+          breakdown_key: string | null
+          campaign_id: string
+          campaign_name: string
+          clicks: number | null
+          client_id: string
+          conversion_value_original: number | null
+          conversion_value_reporting: number | null
+          conversions: number | null
+          currency_original: string
+          date: string
+          fetched_at: string
+          id: string
+          impressions: number | null
+          integration_id: string
+          platform: string
+          spend_original: number
+          spend_reporting: number
+        }
+        Insert: {
+          account_id?: string | null
+          breakdown_key?: string | null
+          campaign_id: string
+          campaign_name: string
+          clicks?: number | null
+          client_id: string
+          conversion_value_original?: number | null
+          conversion_value_reporting?: number | null
+          conversions?: number | null
+          currency_original?: string
+          date: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id: string
+          platform: string
+          spend_original?: number
+          spend_reporting?: number
+        }
+        Update: {
+          account_id?: string | null
+          breakdown_key?: string | null
+          campaign_id?: string
+          campaign_name?: string
+          clicks?: number | null
+          client_id?: string
+          conversion_value_original?: number | null
+          conversion_value_reporting?: number | null
+          conversions?: number | null
+          currency_original?: string
+          date?: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id?: string
+          platform?: string
+          spend_original?: number
+          spend_reporting?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_marketing_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_marketing_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_marketing_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_offline_revenue: {
+        Row: {
+          amount_original: number
+          amount_reporting: number
+          client_id: string
+          created_at: string
+          currency_original: string | null
+          date: string
+          id: string
+          notes: string | null
+          source: string
+        }
+        Insert: {
+          amount_original?: number
+          amount_reporting?: number
+          client_id: string
+          created_at?: string
+          currency_original?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          source: string
+        }
+        Update: {
+          amount_original?: number
+          amount_reporting?: number
+          client_id?: string
+          created_at?: string
+          currency_original?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_offline_revenue_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_search_console_metrics: {
+        Row: {
+          clicks: number | null
+          client_id: string
+          ctr: number | null
+          date: string
+          fetched_at: string
+          id: string
+          impressions: number | null
+          integration_id: string
+          position: number | null
+        }
+        Insert: {
+          clicks?: number | null
+          client_id: string
+          ctr?: number | null
+          date: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id: string
+          position?: number | null
+        }
+        Update: {
+          clicks?: number | null
+          client_id?: string
+          ctr?: number | null
+          date?: string
+          fetched_at?: string
+          id?: string
+          impressions?: number | null
+          integration_id?: string
+          position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_search_console_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_search_console_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_search_console_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_site_metrics: {
+        Row: {
+          client_id: string
+          currency_original: string | null
+          date: string
+          discounts: number | null
+          fetched_at: string
+          gross_sales: number | null
+          id: string
+          integration_id: string
+          net_sales: number | null
+          net_sales_reporting: number | null
+          orders: number | null
+          refunds: number | null
+          store_platform: string
+        }
+        Insert: {
+          client_id: string
+          currency_original?: string | null
+          date: string
+          discounts?: number | null
+          fetched_at?: string
+          gross_sales?: number | null
+          id?: string
+          integration_id: string
+          net_sales?: number | null
+          net_sales_reporting?: number | null
+          orders?: number | null
+          refunds?: number | null
+          store_platform: string
+        }
+        Update: {
+          client_id?: string
+          currency_original?: string | null
+          date?: string
+          discounts?: number | null
+          fetched_at?: string
+          gross_sales?: number | null
+          id?: string
+          integration_id?: string
+          net_sales?: number | null
+          net_sales_reporting?: number | null
+          orders?: number | null
+          refunds?: number | null
+          store_platform?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_site_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_site_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_site_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_web_analytics_metrics: {
+        Row: {
+          client_id: string
+          date: string
+          ecommerce_events: number | null
+          engaged_sessions: number | null
+          fetched_at: string
+          id: string
+          integration_id: string
+          sessions: number | null
+          users: number | null
+        }
+        Insert: {
+          client_id: string
+          date: string
+          ecommerce_events?: number | null
+          engaged_sessions?: number | null
+          fetched_at?: string
+          id?: string
+          integration_id: string
+          sessions?: number | null
+          users?: number | null
+        }
+        Update: {
+          client_id?: string
+          date?: string
+          ecommerce_events?: number | null
+          engaged_sessions?: number | null
+          fetched_at?: string
+          id?: string
+          integration_id?: string
+          sessions?: number | null
+          users?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_web_analytics_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_web_analytics_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_web_analytics_metrics_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dynamic_module_messages: {
         Row: {
           ai_classified_type: string | null
@@ -3468,72 +3896,167 @@ export type Database = {
           },
         ]
       }
+      invoice_payments: {
+        Row: {
+          amount_original: number
+          amount_reporting: number
+          client_id: string
+          currency_original: string
+          id: string
+          integration_id: string
+          invoice_id: string
+          method: string | null
+          payment_date: string
+          reference: string | null
+          synced_at: string
+        }
+        Insert: {
+          amount_original?: number
+          amount_reporting?: number
+          client_id: string
+          currency_original?: string
+          id?: string
+          integration_id: string
+          invoice_id: string
+          method?: string | null
+          payment_date: string
+          reference?: string | null
+          synced_at?: string
+        }
+        Update: {
+          amount_original?: number
+          amount_reporting?: number
+          client_id?: string
+          currency_original?: string
+          id?: string
+          integration_id?: string
+          invoice_id?: string
+          method?: string | null
+          payment_date?: string
+          reference?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           client_id: string
           created_at: string
           created_by: string | null
+          currency_original: string
+          customer_name: string | null
           due_date: string | null
           id: string
+          integration_id: string | null
+          invoice_date: string | null
           invoice_number: string
           issue_date: string
           metadata: Json | null
           notes: string | null
           paid_amount: number | null
           paid_at: string | null
+          paid_date: string | null
           payment_method: string | null
           status: string
           subtotal: number
+          synced_at: string | null
           tax_amount: number | null
           tax_rate: number | null
           terms: string | null
           total_amount: number
+          total_reporting: number | null
           type: string
           updated_at: string
+          vat_amount: number | null
         }
         Insert: {
           client_id: string
           created_at?: string
           created_by?: string | null
+          currency_original?: string
+          customer_name?: string | null
           due_date?: string | null
           id?: string
+          integration_id?: string | null
+          invoice_date?: string | null
           invoice_number: string
           issue_date?: string
           metadata?: Json | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          paid_date?: string | null
           payment_method?: string | null
           status?: string
           subtotal?: number
+          synced_at?: string | null
           tax_amount?: number | null
           tax_rate?: number | null
           terms?: string | null
           total_amount?: number
+          total_reporting?: number | null
           type?: string
           updated_at?: string
+          vat_amount?: number | null
         }
         Update: {
           client_id?: string
           created_at?: string
           created_by?: string | null
+          currency_original?: string
+          customer_name?: string | null
           due_date?: string | null
           id?: string
+          integration_id?: string | null
+          invoice_date?: string | null
           invoice_number?: string
           issue_date?: string
           metadata?: Json | null
           notes?: string | null
           paid_amount?: number | null
           paid_at?: string | null
+          paid_date?: string | null
           payment_method?: string | null
           status?: string
           subtotal?: number
+          synced_at?: string | null
           tax_amount?: number | null
           tax_rate?: number | null
           terms?: string | null
           total_amount?: number
+          total_reporting?: number | null
           type?: string
           updated_at?: string
+          vat_amount?: number | null
         }
         Relationships: [
           {
@@ -3541,6 +4064,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -5256,6 +5793,53 @@ export type Database = {
           },
           {
             foreignKeyName: "social_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_runs: {
+        Row: {
+          client_id: string | null
+          date_from: string | null
+          date_to: string | null
+          error_summary: string | null
+          finished_at: string | null
+          id: string
+          platforms: Json | null
+          rows_upserted: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          client_id?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          platforms?: Json | null
+          rows_upserted?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          client_id?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          platforms?: Json | null
+          rows_upserted?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_runs_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

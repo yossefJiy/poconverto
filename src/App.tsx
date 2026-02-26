@@ -10,20 +10,11 @@ import SimulationProtectedRoute from "@/components/SimulationProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Marketing from "./pages/Marketing";
-import Campaigns from "./pages/Campaigns";
-import Team from "./pages/Team";
 import Settings from "./pages/Settings";
-import ProductLandingPages from "./pages/ProductLandingPages";
-import ProductEcommerce from "./pages/ProductEcommerce";
-import ProductDashboard from "./pages/ProductDashboard";
-import CreditManagement from "./pages/CreditManagement";
-
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import ClientDashboard from "./pages/ClientDashboard";
 import ClientProfile from "./pages/ClientProfile";
-import ApiDocs from "./pages/ApiDocs";
+import ClientManagement from "./pages/ClientManagement";
 import Analytics from "./pages/Analytics";
 import GoogleAdsDetail from "./pages/analytics/GoogleAdsDetail";
 import ShopifyDetail from "./pages/analytics/ShopifyDetail";
@@ -33,31 +24,9 @@ import WooCommerceDetail from "./pages/analytics/WooCommerceDetail";
 import GoogleAnalyticsDetail from "./pages/analytics/GoogleAnalyticsDetail";
 import CampaignDetail from "./pages/analytics/CampaignDetail";
 import TikTokAdsDetail from "./pages/analytics/TikTokAdsDetail";
-import Ecommerce from "./pages/Ecommerce";
-import SystemDiagram from "./pages/SystemDiagram";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
-import StatusPage from "./pages/StatusPage";
-import CodeHealth from "./pages/CodeHealth";
-import ClientInsights from "./pages/ClientInsights";
-import Reports from "./pages/Reports";
 import Permissions from "./pages/Permissions";
-import ClientManagement from "./pages/ClientManagement";
-import KPIDashboard from "./pages/KPIDashboard";
-import Competitors from "./pages/Competitors";
-import SocialMedia from "./pages/SocialMedia";
-import ContentStudio from "./pages/ContentStudio";
-import AgencyDashboard from "./pages/AgencyDashboard";
-import LeadManagement from "./pages/LeadManagement";
-import BillingManagement from "./pages/BillingManagement";
-import Programmatic from "./pages/Programmatic";
-import ABTests from "./pages/ABTests";
-import GoogleShopping from "./pages/GoogleShopping";
-import AIInsights from "./pages/AIInsights";
-import SystemPlanning from "./pages/SystemPlanning";
-import ModuleManagement from "./pages/ModuleManagement";
-import ModuleAnalytics from "./pages/ModuleAnalytics";
-import { DynamicModulePage } from "./components/dynamic-modules/DynamicModulePage";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -74,10 +43,6 @@ const App = () => (
               <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/products/landing-pages" element={<ProductLandingPages />} />
-              <Route path="/products/ecommerce" element={<ProductEcommerce />} />
-              <Route path="/products/dashboard" element={<ProductDashboard />} />
-              <Route path="/client/:clientId" element={<ClientDashboard />} />
               <Route path="/dashboard" element={<SimulationProtectedRoute><Dashboard /></SimulationProtectedRoute>} />
               <Route path="/clients" element={
                 <SimulationProtectedRoute>
@@ -93,27 +58,6 @@ const App = () => (
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
-              <Route path="/marketing" element={
-                <SimulationProtectedRoute moduleKey="marketing">
-                  <DomainErrorBoundary domain="marketing">
-                    <Marketing />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/campaigns" element={
-                <SimulationProtectedRoute moduleKey="campaigns">
-                  <DomainErrorBoundary domain="campaigns">
-                    <Campaigns />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/team" element={
-                <SimulationProtectedRoute moduleKey="team">
-                  <DomainErrorBoundary domain="team">
-                    <Team />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
               <Route path="/settings" element={
                 <SimulationProtectedRoute>
                   <DomainErrorBoundary domain="settings">
@@ -121,14 +65,6 @@ const App = () => (
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
-              <Route path="/credits" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="admin">
-                    <CreditManagement />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
               <Route path="/analytics" element={
                 <SimulationProtectedRoute moduleKey="analytics">
                   <DomainErrorBoundary domain="analytics">
@@ -186,47 +122,9 @@ const App = () => (
                 </SimulationProtectedRoute>
               } />
               <Route path="/campaigns/:campaignId" element={
-                <SimulationProtectedRoute moduleKey="campaigns">
-                  <DomainErrorBoundary domain="campaigns">
+                <SimulationProtectedRoute moduleKey="analytics">
+                  <DomainErrorBoundary domain="analytics">
                     <CampaignDetail />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/ecommerce" element={
-                <SimulationProtectedRoute moduleKey="ecommerce">
-                  <DomainErrorBoundary domain="ecommerce">
-                    <Ecommerce />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/insights" element={
-                <SimulationProtectedRoute moduleKey="insights">
-                  <DomainErrorBoundary domain="ai">
-                    <ClientInsights />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/system-diagram" element={<SimulationProtectedRoute><SystemDiagram /></SimulationProtectedRoute>} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/status" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="admin">
-                    <StatusPage />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/code-health" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="admin">
-                    <CodeHealth />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/reports" element={
-                <SimulationProtectedRoute moduleKey="reports">
-                  <DomainErrorBoundary domain="reports">
-                    <Reports />
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
@@ -237,105 +135,8 @@ const App = () => (
                   </DomainErrorBoundary>
                 </SimulationProtectedRoute>
               } />
-              <Route path="/kpis" element={
-                <SimulationProtectedRoute moduleKey="marketing">
-                  <DomainErrorBoundary domain="marketing">
-                    <KPIDashboard />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/competitors" element={
-                <SimulationProtectedRoute moduleKey="marketing">
-                  <DomainErrorBoundary domain="marketing">
-                    <Competitors />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/social" element={
-                <SimulationProtectedRoute moduleKey="marketing">
-                  <DomainErrorBoundary domain="social">
-                    <SocialMedia />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/agency" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="agency">
-                    <AgencyDashboard />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/content-studio" element={
-                <SimulationProtectedRoute moduleKey="marketing">
-                  <DomainErrorBoundary domain="content">
-                    <ContentStudio />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/leads" element={
-                <SimulationProtectedRoute moduleKey="leads">
-                  <DomainErrorBoundary domain="leads">
-                    <LeadManagement />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/billing" element={
-                <SimulationProtectedRoute moduleKey="billing">
-                  <DomainErrorBoundary domain="billing">
-                    <BillingManagement />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/programmatic" element={
-                <SimulationProtectedRoute moduleKey="campaigns">
-                  <DomainErrorBoundary domain="campaigns">
-                    <Programmatic />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/ab-tests" element={
-                <SimulationProtectedRoute moduleKey="campaigns">
-                  <DomainErrorBoundary domain="campaigns">
-                    <ABTests />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/google-shopping" element={
-                <SimulationProtectedRoute moduleKey="ecommerce">
-                  <DomainErrorBoundary domain="ecommerce">
-                    <GoogleShopping />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/ai-insights" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="ai">
-                    <AIInsights />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/system-planning" element={
-                <SimulationProtectedRoute>
-                  <DomainErrorBoundary domain="planning">
-                    <SystemPlanning />
-                  </DomainErrorBoundary>
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/module-management" element={
-                <SimulationProtectedRoute>
-                  <ModuleManagement />
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/module-analytics" element={
-                <SimulationProtectedRoute>
-                  <ModuleAnalytics />
-                </SimulationProtectedRoute>
-              } />
-              <Route path="/modules/:slug" element={
-                <SimulationProtectedRoute>
-                  <DynamicModulePage />
-                </SimulationProtectedRoute>
-              } />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               
               <Route path="*" element={<NotFound />} />
               </Routes>
