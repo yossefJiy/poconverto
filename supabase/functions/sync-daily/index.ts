@@ -411,7 +411,10 @@ async function syncShopify(
       accessToken = creds.access_token;
       storeDomain = creds.store_domain || integration.external_account_id;
     } else {
-      throw new Error('No credentials configured for this Shopify integration');
+      // Fallback to environment secrets
+      accessToken = Deno.env.get('SHOPIFY_ACCESS_TOKEN') || '';
+      storeDomain = Deno.env.get('SHOPIFY_STORE_DOMAIN') || integration.external_account_id || '';
+      console.log(`[sync-daily] Using env secrets for Shopify (client=${clientId})`);
     }
 
     if (!accessToken || !storeDomain) throw new Error('Missing Shopify credentials');
@@ -459,8 +462,12 @@ async function syncShopify(
       body: JSON.stringify({ query: graphqlQuery }),
     });
 
-    if (!gqlRes.ok) throw new Error(`Shopify GraphQL ${gqlRes.status}`);
+    if (!gqlRes.ok) {
+      const errBody = await gqlRes.text();
+      throw new Error(`Shopify GraphQL ${gqlRes.status}: ${errBody.substring(0, 500)}`);
+    }
     const gqlData = await gqlRes.json();
+    console.log(`[sync-daily] Shopify response:`, JSON.stringify(gqlData).substring(0, 1000));
 
     const tableData = gqlData?.data?.shopifyqlQuery?.tableData;
     const rows: any[] = [];
@@ -729,7 +736,8 @@ Deno.serve(async (req) => {
 
         const requestPlatform = requestPlatformMap[platformKey] || platformKey;
         if (!platforms.includes(requestPlatform)) continue;
-        if (!integration.encrypted_credentials) continue;
+        // Allow shopify to fallback to env secrets
+        if (!integration.encrypted_credentials && platformKey !== 'shopify') continue;
 
         let syncResult: SyncRunResult;
 
