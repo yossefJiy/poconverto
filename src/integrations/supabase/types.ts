@@ -952,6 +952,80 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_keywords: {
+        Row: {
+          avg_monthly_searches: number | null
+          category_type: string
+          category_value: string | null
+          client_id: string
+          competition: string | null
+          competition_index: number | null
+          created_at: string
+          created_by: string | null
+          high_bid: number | null
+          id: string
+          keyword: string
+          language_id: string | null
+          last_refreshed_at: string | null
+          location_id: string | null
+          low_bid: number | null
+          notes: string | null
+          source_query: string | null
+          tags: Json | null
+          updated_at: string
+        }
+        Insert: {
+          avg_monthly_searches?: number | null
+          category_type?: string
+          category_value?: string | null
+          client_id: string
+          competition?: string | null
+          competition_index?: number | null
+          created_at?: string
+          created_by?: string | null
+          high_bid?: number | null
+          id?: string
+          keyword: string
+          language_id?: string | null
+          last_refreshed_at?: string | null
+          location_id?: string | null
+          low_bid?: number | null
+          notes?: string | null
+          source_query?: string | null
+          tags?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          avg_monthly_searches?: number | null
+          category_type?: string
+          category_value?: string | null
+          client_id?: string
+          competition?: string | null
+          competition_index?: number | null
+          created_at?: string
+          created_by?: string | null
+          high_bid?: number | null
+          id?: string
+          keyword?: string
+          language_id?: string | null
+          last_refreshed_at?: string | null
+          location_id?: string | null
+          low_bid?: number | null
+          notes?: string | null
+          source_query?: string | null
+          tags?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_keywords_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_audit_logs: {
         Row: {
           action: string | null
