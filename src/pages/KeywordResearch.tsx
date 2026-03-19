@@ -47,9 +47,17 @@ const competitionColors: Record<string, string> = {
   UNSPECIFIED: "bg-muted text-muted-foreground",
 };
 
-const monthNames: Record<number, string> = {
-  1: "ינו", 2: "פבר", 3: "מרץ", 4: "אפר", 5: "מאי", 6: "יוני",
-  7: "יולי", 8: "אוג", 9: "ספט", 10: "אוק", 11: "נוב", 12: "דצמ",
+const monthNameMap: Record<string, string> = {
+  JANUARY: "ינו", FEBRUARY: "פבר", MARCH: "מרץ", APRIL: "אפר",
+  MAY: "מאי", JUNE: "יוני", JULY: "יולי", AUGUST: "אוג",
+  SEPTEMBER: "ספט", OCTOBER: "אוק", NOVEMBER: "נוב", DECEMBER: "דצמ",
+  "1": "ינו", "2": "פבר", "3": "מרץ", "4": "אפר", "5": "מאי", "6": "יוני",
+  "7": "יולי", "8": "אוג", "9": "ספט", "10": "אוק", "11": "נוב", "12": "דצמ",
+};
+
+const monthOrder: Record<string, number> = {
+  JANUARY: 1, FEBRUARY: 2, MARCH: 3, APRIL: 4, MAY: 5, JUNE: 6,
+  JULY: 7, AUGUST: 8, SEPTEMBER: 9, OCTOBER: 10, NOVEMBER: 11, DECEMBER: 12,
 };
 
 const languageOptions = [
