@@ -47,6 +47,7 @@ const menuItems: MenuItem[] = [
   { icon: ShoppingCart, label: "הכנסות מהאתר", path: "/analytics/store" },
   { icon: DollarSign, label: "הכנסות אופליין", path: "/analytics/offline-revenue" },
   { icon: KeyRound, label: "מחקר מילות מפתח", path: "/analytics/keyword-research" },
+  { icon: Users, label: "הגדרות לקוח", path: "/clients" },
   { icon: Building2, label: "ניהול לקוחות", path: "/client-management" },
   { icon: Shield, label: "הרשאות", path: "/permissions" },
   { icon: Settings, label: "הגדרות", path: "/settings" },
