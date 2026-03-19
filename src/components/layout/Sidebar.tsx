@@ -15,6 +15,7 @@ import {
   Building2,
   DollarSign,
   ShoppingCart,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ const menuItems: MenuItem[] = [
   { icon: BarChart3, label: "קמפיינים", path: "/analytics/campaigns" },
   { icon: ShoppingCart, label: "הכנסות מהאתר", path: "/analytics/store" },
   { icon: DollarSign, label: "הכנסות אופליין", path: "/analytics/offline-revenue" },
+  { icon: KeyRound, label: "מחקר מילות מפתח", path: "/analytics/keyword-research" },
   { icon: Users, label: "הגדרות לקוח", path: "/clients" },
   { icon: Building2, label: "ניהול לקוחות", path: "/client-management" },
   { icon: Shield, label: "הרשאות", path: "/permissions" },
