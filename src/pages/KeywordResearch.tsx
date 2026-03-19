@@ -15,6 +15,12 @@ import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 
+interface MonthlyVolume {
+  year: string | number;
+  month: string | number;
+  volume: number;
+}
+
 interface KeywordResult {
   keyword: string;
   avgMonthlySearches: number;
@@ -22,7 +28,7 @@ interface KeywordResult {
   competitionIndex: number;
   lowTopOfPageBidMicros: number;
   highTopOfPageBidMicros: number;
-  monthlyVolumes: { year: number; month: number; volume: number }[];
+  monthlyVolumes: MonthlyVolume[];
 }
 
 type SortKey = "avgMonthlySearches" | "competitionIndex" | "lowTopOfPageBidMicros" | "highTopOfPageBidMicros";
