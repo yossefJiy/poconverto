@@ -380,6 +380,10 @@ export default function KeywordResearch() {
                           שמור נבחרות ({selectedRows.size})
                         </Button>
                       )}
+                      <Button variant="outline" size="sm" onClick={exportResultsCsv} className="gap-2">
+                        <Download className="w-4 h-4" />
+                        CSV
+                      </Button>
                       <Input
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
