@@ -15,6 +15,7 @@ import {
   Building2,
   DollarSign,
   ShoppingCart,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
