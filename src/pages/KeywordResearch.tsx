@@ -145,10 +145,16 @@ export default function KeywordResearch() {
 
   const trendData = useMemo(() => {
     if (!selectedKeyword?.monthlyVolumes?.length) return [];
-    return selectedKeyword.monthlyVolumes
-      .sort((a, b) => a.year - b.year || a.month - b.month)
+    return [...selectedKeyword.monthlyVolumes]
+      .sort((a, b) => {
+        const yearA = typeof a.year === 'string' ? parseInt(a.year) : a.year;
+        const yearB = typeof b.year === 'string' ? parseInt(b.year) : b.year;
+        const monthA = typeof a.month === 'string' ? (monthOrder[a.month] || 0) : a.month;
+        const monthB = typeof b.month === 'string' ? (monthOrder[b.month] || 0) : b.month;
+        return yearA - yearB || monthA - monthB;
+      })
       .map(m => ({
-        label: `${monthNames[m.month]} ${m.year}`,
+        label: `${monthNameMap[String(m.month)] || m.month} ${m.year}`,
         volume: m.volume,
       }));
   }, [selectedKeyword]);
