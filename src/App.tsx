@@ -72,6 +72,13 @@ const App = () => (
                   </DomainErrorBoundary>
                 </ProtectedRoute>
               } />
+              <Route path="/analytics/keyword-research" element={
+                <ProtectedRoute>
+                  <DomainErrorBoundary domain="analytics">
+                    <KeywordResearch />
+                  </DomainErrorBoundary>
+                </ProtectedRoute>
+              } />
 
               {/* Client Management */}
               <Route path="/clients" element={
