@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
+import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3, Save, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useToast } from "@/hooks/use-toast";
+import { SaveKeywordsDialog } from "@/components/keywords/SaveKeywordsDialog";
+import { SavedKeywordsTab } from "@/components/keywords/SavedKeywordsTab";
 
 interface MonthlyVolume {
   year: string | number;
@@ -34,10 +36,7 @@ interface KeywordResult {
 type SortKey = "avgMonthlySearches" | "competitionIndex" | "lowTopOfPageBidMicros" | "highTopOfPageBidMicros";
 
 const competitionLabels: Record<string, string> = {
-  LOW: "נמוכה",
-  MEDIUM: "בינונית",
-  HIGH: "גבוהה",
-  UNSPECIFIED: "לא ידוע",
+  LOW: "נמוכה", MEDIUM: "בינונית", HIGH: "גבוהה", UNSPECIFIED: "לא ידוע",
 };
 
 const competitionColors: Record<string, string> = {
@@ -75,6 +74,7 @@ const locationOptions = [
 export default function KeywordResearch() {
   const { selectedClient } = useClient();
   const { toast } = useToast();
+  const [mainTab, setMainTab] = useState("search");
   const [inputMode, setInputMode] = useState<"keywords" | "url">("keywords");
   const [keywordsInput, setKeywordsInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
@@ -86,6 +86,9 @@ export default function KeywordResearch() {
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedKeyword, setSelectedKeyword] = useState<KeywordResult | null>(null);
   const [filter, setFilter] = useState("");
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [savedRefresh, setSavedRefresh] = useState(0);
 
   const handleSearch = async () => {
     const keywords = inputMode === "keywords"
@@ -101,10 +104,12 @@ export default function KeywordResearch() {
     setIsLoading(true);
     setResults([]);
     setSelectedKeyword(null);
+    setSelectedRows(new Set());
 
     try {
       const { data, error } = await supabase.functions.invoke('keyword-research', {
         body: {
+          action: 'generate_ideas',
           keywords: keywords.length ? keywords : undefined,
           url,
           client_id: selectedClient?.id,
@@ -117,9 +122,7 @@ export default function KeywordResearch() {
       if (data?.error) throw new Error(data.error);
 
       setResults(data.results || []);
-      if (data.results?.length) {
-        setSelectedKeyword(data.results[0]);
-      }
+      if (data.results?.length) setSelectedKeyword(data.results[0]);
       toast({ title: "הושלם", description: `נמצאו ${data.results?.length || 0} רעיונות למילות מפתח` });
     } catch (err: any) {
       console.error('Keyword research error:', err);
@@ -159,7 +162,6 @@ export default function KeywordResearch() {
       }));
   }, [selectedKeyword]);
 
-  // Summary stats
   const stats = useMemo(() => {
     if (!results.length) return null;
     const avgVolume = Math.round(results.reduce((s, r) => s + r.avgMonthlySearches, 0) / results.length);
@@ -170,266 +172,352 @@ export default function KeywordResearch() {
 
   const formatNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
 
+  const toggleRow = (idx: number) => {
+    const next = new Set(selectedRows);
+    if (next.has(idx)) next.delete(idx); else next.add(idx);
+    setSelectedRows(next);
+  };
+
+  const toggleAllRows = () => {
+    if (selectedRows.size === filtered.length) setSelectedRows(new Set());
+    else setSelectedRows(new Set(filtered.map((_, i) => i)));
+  };
+
+  const selectedKeywords = useMemo(() =>
+    filtered.filter((_, i) => selectedRows.has(i)),
+  [filtered, selectedRows]);
+
+  const sourceQuery = inputMode === "keywords" ? keywordsInput : urlInput;
+
   return (
     <MainLayout>
       <PageHeader title="מחקר מילות מפתח" description="גלה מילות מפתח חדשות עם נתוני נפח חיפוש, תחרות ו-CPC מ-Google Ads" />
 
       <div className="p-6 space-y-6" dir="rtl">
-        {/* Search Controls */}
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "keywords" | "url")}>
-                <TabsList>
-                  <TabsTrigger value="keywords" className="gap-2">
-                    <Search className="w-4 h-4" />
-                    מילות מפתח
-                  </TabsTrigger>
-                  <TabsTrigger value="url" className="gap-2">
-                    <Globe className="w-4 h-4" />
-                    סריקת אתר
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+        {/* Main Tabs */}
+        <Tabs value={mainTab} onValueChange={setMainTab}>
+          <TabsList>
+            <TabsTrigger value="search" className="gap-2">
+              <Search className="w-4 h-4" />
+              חיפוש
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="gap-2">
+              <Bookmark className="w-4 h-4" />
+              שמורות
+            </TabsTrigger>
+          </TabsList>
 
-              <div className="flex gap-3 items-end flex-wrap">
-                {inputMode === "keywords" ? (
-                  <div className="flex-1 min-w-[300px]">
-                    <label className="text-sm text-muted-foreground mb-1.5 block">מילות מפתח (מופרדות בפסיק)</label>
-                    <Input
-                      value={keywordsInput}
-                      onChange={e => setKeywordsInput(e.target.value)}
-                      placeholder="נעלי ריצה, נעלי ספורט, נעלי אימון"
-                      onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    />
+          <TabsContent value="search" className="space-y-6 mt-4">
+            {/* Search Controls */}
+            <Card className="border-border/50">
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "keywords" | "url")}>
+                    <TabsList>
+                      <TabsTrigger value="keywords" className="gap-2">
+                        <Search className="w-4 h-4" />
+                        מילות מפתח
+                      </TabsTrigger>
+                      <TabsTrigger value="url" className="gap-2">
+                        <Globe className="w-4 h-4" />
+                        סריקת אתר
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  <div className="flex gap-3 items-end flex-wrap">
+                    {inputMode === "keywords" ? (
+                      <div className="flex-1 min-w-[300px]">
+                        <label className="text-sm text-muted-foreground mb-1.5 block">מילות מפתח (מופרדות בפסיק)</label>
+                        <Input
+                          value={keywordsInput}
+                          onChange={e => setKeywordsInput(e.target.value)}
+                          placeholder="נעלי ריצה, נעלי ספורט, נעלי אימון"
+                          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-w-[300px]">
+                        <label className="text-sm text-muted-foreground mb-1.5 block">כתובת אתר לסריקה</label>
+                        <Input
+                          value={urlInput}
+                          onChange={e => setUrlInput(e.target.value)}
+                          placeholder="https://example.com"
+                          dir="ltr"
+                          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                        />
+                      </div>
+                    )}
+
+                    <div className="w-32">
+                      <label className="text-sm text-muted-foreground mb-1.5 block">שפה</label>
+                      <Select value={language} onValueChange={setLanguage}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {languageOptions.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="w-32">
+                      <label className="text-sm text-muted-foreground mb-1.5 block">מיקום</label>
+                      <Select value={location} onValueChange={setLocation}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {locationOptions.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button onClick={handleSearch} disabled={isLoading} className="gap-2">
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      חפש
+                    </Button>
                   </div>
-                ) : (
-                  <div className="flex-1 min-w-[300px]">
-                    <label className="text-sm text-muted-foreground mb-1.5 block">כתובת אתר לסריקה</label>
-                    <Input
-                      value={urlInput}
-                      onChange={e => setUrlInput(e.target.value)}
-                      placeholder="https://example.com"
-                      dir="ltr"
-                      onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Summary Cards */}
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="border-border/50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <BarChart3 className="w-4 h-4" />
+                      סה״כ מילות מפתח
+                    </div>
+                    <div className="text-2xl font-bold">{stats.total}</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <TrendingUp className="w-4 h-4" />
+                      נפח חיפוש ממוצע
+                    </div>
+                    <div className="text-2xl font-bold">{formatNum(stats.avgVolume)}</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <DollarSign className="w-4 h-4" />
+                      CPC ממוצע
+                    </div>
+                    <div className="text-2xl font-bold">₪{stats.avgCpc.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      תחרות גבוהה
+                    </div>
+                    <div className="text-2xl font-bold">{stats.highComp}</div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Trend Chart */}
+            {selectedKeyword && trendData.length > 0 && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    מגמת חיפושים: <span className="text-primary">{selectedKeyword.keyword}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData}>
+                        <defs>
+                          <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "13px",
+                          }}
+                          formatter={(value: number) => [formatNum(value), "נפח חיפוש"]}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="volume"
+                          stroke="hsl(var(--primary))"
+                          fill="url(#volumeGradient)"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            )}
 
-                <div className="w-32">
-                  <label className="text-sm text-muted-foreground mb-1.5 block">שפה</label>
-                  <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {languageOptions.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-32">
-                  <label className="text-sm text-muted-foreground mb-1.5 block">מיקום</label>
-                  <Select value={location} onValueChange={setLocation}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {locationOptions.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={handleSearch} disabled={isLoading} className="gap-2">
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  חפש
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Summary Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                  <BarChart3 className="w-4 h-4" />
-                  סה״כ מילות מפתח
-                </div>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                  <TrendingUp className="w-4 h-4" />
-                  נפח חיפוש ממוצע
-                </div>
-                <div className="text-2xl font-bold">{formatNum(stats.avgVolume)}</div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                  <DollarSign className="w-4 h-4" />
-                  CPC ממוצע
-                </div>
-                <div className="text-2xl font-bold">₪{stats.avgCpc.toFixed(2)}</div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                  תחרות גבוהה
-                </div>
-                <div className="text-2xl font-bold">{stats.highComp}</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Trend Chart */}
-        {selectedKeyword && trendData.length > 0 && (
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">
-                מגמת חיפושים: <span className="text-primary">{selectedKeyword.keyword}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        fontSize: "13px",
-                      }}
-                      formatter={(value: number) => [formatNum(value), "נפח חיפוש"]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="volume"
-                      stroke="hsl(var(--primary))"
-                      fill="url(#volumeGradient)"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Results Table */}
-        {results.length > 0 && (
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">תוצאות ({filtered.length})</CardTitle>
-                <Input
-                  value={filter}
-                  onChange={e => setFilter(e.target.value)}
-                  placeholder="סנן מילות מפתח..."
-                  className="w-64"
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">מילת מפתח</TableHead>
-                      <TableHead className="text-right">
-                        <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("avgMonthlySearches")}>
-                          נפח חיפוש
-                          <ArrowUpDown className="w-3 h-3" />
+            {/* Results Table */}
+            {results.length > 0 && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <CardTitle className="text-base">תוצאות ({filtered.length})</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {selectedRows.size > 0 && selectedClient && (
+                        <Button size="sm" onClick={() => setShowSaveDialog(true)} className="gap-2">
+                          <Save className="w-4 h-4" />
+                          שמור נבחרות ({selectedRows.size})
                         </Button>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("competitionIndex")}>
-                          תחרות
-                          <ArrowUpDown className="w-3 h-3" />
-                        </Button>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("lowTopOfPageBidMicros")}>
-                          CPC נמוך
-                          <ArrowUpDown className="w-3 h-3" />
-                        </Button>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("highTopOfPageBidMicros")}>
-                          CPC גבוה
-                          <ArrowUpDown className="w-3 h-3" />
-                        </Button>
-                      </TableHead>
-                      <TableHead className="text-right">מגמה</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((row, i) => (
-                      <TableRow
-                        key={i}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          selectedKeyword?.keyword === row.keyword && "bg-primary/5"
-                        )}
-                        onClick={() => setSelectedKeyword(row)}
-                      >
-                        <TableCell className="font-medium">{row.keyword}</TableCell>
-                        <TableCell>{formatNum(row.avgMonthlySearches)}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={cn("text-xs", competitionColors[row.competition])}>
-                            {competitionLabels[row.competition] || row.competition}
-                          </Badge>
-                        </TableCell>
-                        <TableCell dir="ltr" className="text-right">₪{row.lowTopOfPageBidMicros.toFixed(2)}</TableCell>
-                        <TableCell dir="ltr" className="text-right">₪{row.highTopOfPageBidMicros.toFixed(2)}</TableCell>
-                        <TableCell className="w-24">
-                          {row.monthlyVolumes?.length > 0 && (
-                            <MiniSparkline data={row.monthlyVolumes.map(m => m.volume)} />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                      )}
+                      <Input
+                        value={filter}
+                        onChange={e => setFilter(e.target.value)}
+                        placeholder="סנן מילות מפתח..."
+                        className="w-64"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.size === filtered.length && filtered.length > 0}
+                              onChange={toggleAllRows}
+                              className="rounded"
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">מילת מפתח</TableHead>
+                          <TableHead className="text-right">
+                            <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("avgMonthlySearches")}>
+                              נפח חיפוש
+                              <ArrowUpDown className="w-3 h-3" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("competitionIndex")}>
+                              תחרות
+                              <ArrowUpDown className="w-3 h-3" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("lowTopOfPageBidMicros")}>
+                              CPC נמוך
+                              <ArrowUpDown className="w-3 h-3" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <Button variant="ghost" size="sm" className="gap-1 -mr-2" onClick={() => toggleSort("highTopOfPageBidMicros")}>
+                              CPC גבוה
+                              <ArrowUpDown className="w-3 h-3" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="text-right">מגמה</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map((row, i) => (
+                          <TableRow
+                            key={i}
+                            className={cn(
+                              "cursor-pointer transition-colors",
+                              selectedKeyword?.keyword === row.keyword && "bg-primary/5",
+                              selectedRows.has(i) && "bg-primary/10"
+                            )}
+                            onClick={() => setSelectedKeyword(row)}
+                          >
+                            <TableCell onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.has(i)}
+                                onChange={() => toggleRow(i)}
+                                className="rounded"
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{row.keyword}</TableCell>
+                            <TableCell>{formatNum(row.avgMonthlySearches)}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={cn("text-xs", competitionColors[row.competition])}>
+                                {competitionLabels[row.competition] || row.competition}
+                              </Badge>
+                            </TableCell>
+                            <TableCell dir="ltr" className="text-right">₪{row.lowTopOfPageBidMicros.toFixed(2)}</TableCell>
+                            <TableCell dir="ltr" className="text-right">₪{row.highTopOfPageBidMicros.toFixed(2)}</TableCell>
+                            <TableCell className="w-24">
+                              {row.monthlyVolumes?.length > 0 && (
+                                <MiniSparkline data={row.monthlyVolumes.map(m => m.volume)} />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty / Loading states */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="mr-3 text-muted-foreground">מחפש מילות מפתח...</span>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
 
-        {/* Empty / Loading states */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="mr-3 text-muted-foreground">מחפש מילות מפתח...</span>
-          </div>
-        )}
+            {!isLoading && results.length === 0 && (
+              <div className="text-center py-20 text-muted-foreground">
+                <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p className="text-lg">הזן מילות מפתח או כתובת אתר כדי להתחיל</p>
+                <p className="text-sm mt-1">קבל נתוני נפח חיפוש, תחרות ו-CPC ישירות מ-Google Ads</p>
+              </div>
+            )}
+          </TabsContent>
 
-        {!isLoading && results.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
-            <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg">הזן מילות מפתח או כתובת אתר כדי להתחיל</p>
-            <p className="text-sm mt-1">קבל נתוני נפח חיפוש, תחרות ו-CPC ישירות מ-Google Ads</p>
-          </div>
-        )}
+          <TabsContent value="saved" className="mt-4">
+            {selectedClient ? (
+              <SavedKeywordsTab clientId={selectedClient.id} refreshTrigger={savedRefresh} />
+            ) : (
+              <div className="text-center py-20 text-muted-foreground">
+                <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p className="text-lg">בחר לקוח כדי לראות מילות מפתח שמורות</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Save Dialog */}
+      {selectedClient && (
+        <SaveKeywordsDialog
+          open={showSaveDialog}
+          onOpenChange={setShowSaveDialog}
+          keywords={selectedKeywords}
+          clientId={selectedClient.id}
+          sourceQuery={sourceQuery}
+          languageId={language}
+          locationId={location}
+          onSaved={() => {
+            setSelectedRows(new Set());
+            setSavedRefresh(p => p + 1);
+          }}
+        />
+      )}
     </MainLayout>
   );
 }
