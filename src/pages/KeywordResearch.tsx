@@ -189,6 +189,27 @@ export default function KeywordResearch() {
 
   const sourceQuery = inputMode === "keywords" ? keywordsInput : urlInput;
 
+  const exportResultsCsv = () => {
+    if (!filtered.length) return;
+    const rows = filtered.map(r => ({
+      'מילת מפתח': r.keyword,
+      'נפח חיפוש חודשי': r.avgMonthlySearches,
+      'תחרות': competitionLabels[r.competition] || r.competition,
+      'אינדקס תחרות': r.competitionIndex,
+      'CPC נמוך': r.lowTopOfPageBidMicros.toFixed(2),
+      'CPC גבוה': r.highTopOfPageBidMicros.toFixed(2),
+    }));
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${(r as any)[h]}"`).join(','))].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `keyword-research-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <MainLayout>
       <PageHeader title="מחקר מילות מפתח" description="גלה מילות מפתח חדשות עם נתוני נפח חיפוש, תחרות ו-CPC מ-Google Ads" />
