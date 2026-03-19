@@ -152,7 +152,7 @@ export default function KeywordResearch() {
 
   return (
     <MainLayout>
-      <PageHeader title="מחקר מילות מפתח" subtitle="גלה מילות מפתח חדשות עם נתוני נפח חיפוש, תחרות ו-CPC מ-Google Ads" />
+      <PageHeader title="מחקר מילות מפתח" description="גלה מילות מפתח חדשות עם נתוני נפח חיפוש, תחרות ו-CPC מ-Google Ads" />
 
       <div className="p-6 space-y-6" dir="rtl">
         {/* Search Controls */}
