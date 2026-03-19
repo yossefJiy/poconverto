@@ -15,6 +15,12 @@ import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 
+interface MonthlyVolume {
+  year: string | number;
+  month: string | number;
+  volume: number;
+}
+
 interface KeywordResult {
   keyword: string;
   avgMonthlySearches: number;
@@ -22,7 +28,7 @@ interface KeywordResult {
   competitionIndex: number;
   lowTopOfPageBidMicros: number;
   highTopOfPageBidMicros: number;
-  monthlyVolumes: { year: number; month: number; volume: number }[];
+  monthlyVolumes: MonthlyVolume[];
 }
 
 type SortKey = "avgMonthlySearches" | "competitionIndex" | "lowTopOfPageBidMicros" | "highTopOfPageBidMicros";
@@ -41,9 +47,17 @@ const competitionColors: Record<string, string> = {
   UNSPECIFIED: "bg-muted text-muted-foreground",
 };
 
-const monthNames: Record<number, string> = {
-  1: "ינו", 2: "פבר", 3: "מרץ", 4: "אפר", 5: "מאי", 6: "יוני",
-  7: "יולי", 8: "אוג", 9: "ספט", 10: "אוק", 11: "נוב", 12: "דצמ",
+const monthNameMap: Record<string, string> = {
+  JANUARY: "ינו", FEBRUARY: "פבר", MARCH: "מרץ", APRIL: "אפר",
+  MAY: "מאי", JUNE: "יוני", JULY: "יולי", AUGUST: "אוג",
+  SEPTEMBER: "ספט", OCTOBER: "אוק", NOVEMBER: "נוב", DECEMBER: "דצמ",
+  "1": "ינו", "2": "פבר", "3": "מרץ", "4": "אפר", "5": "מאי", "6": "יוני",
+  "7": "יולי", "8": "אוג", "9": "ספט", "10": "אוק", "11": "נוב", "12": "דצמ",
+};
+
+const monthOrder: Record<string, number> = {
+  JANUARY: 1, FEBRUARY: 2, MARCH: 3, APRIL: 4, MAY: 5, JUNE: 6,
+  JULY: 7, AUGUST: 8, SEPTEMBER: 9, OCTOBER: 10, NOVEMBER: 11, DECEMBER: 12,
 };
 
 const languageOptions = [
@@ -131,10 +145,16 @@ export default function KeywordResearch() {
 
   const trendData = useMemo(() => {
     if (!selectedKeyword?.monthlyVolumes?.length) return [];
-    return selectedKeyword.monthlyVolumes
-      .sort((a, b) => a.year - b.year || a.month - b.month)
+    return [...selectedKeyword.monthlyVolumes]
+      .sort((a, b) => {
+        const yearA = typeof a.year === 'string' ? parseInt(a.year) : a.year;
+        const yearB = typeof b.year === 'string' ? parseInt(b.year) : b.year;
+        const monthA = typeof a.month === 'string' ? (monthOrder[a.month] || 0) : a.month;
+        const monthB = typeof b.month === 'string' ? (monthOrder[b.month] || 0) : b.month;
+        return yearA - yearB || monthA - monthB;
+      })
       .map(m => ({
-        label: `${monthNames[m.month]} ${m.year}`,
+        label: `${monthNameMap[String(m.month)] || m.month} ${m.year}`,
         volume: m.volume,
       }));
   }, [selectedKeyword]);
