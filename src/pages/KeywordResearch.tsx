@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3, Save, Bookmark } from "lucide-react";
+import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3, Save, Bookmark, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useToast } from "@/hooks/use-toast";
