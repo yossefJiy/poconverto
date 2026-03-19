@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ClientProvider } from "@/hooks/useClient";
 import StoreMetrics from "./pages/StoreMetrics";
+import KeywordResearch from "./pages/KeywordResearch";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { DomainErrorBoundary } from "@/components/shared/DomainErrorBoundary";
 import Home from "./pages/Home";
