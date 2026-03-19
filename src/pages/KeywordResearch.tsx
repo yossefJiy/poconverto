@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3, Save, Bookmark } from "lucide-react";
+import { Loader2, Search, Globe, ArrowUpDown, TrendingUp, DollarSign, BarChart3, Save, Bookmark, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useToast } from "@/hooks/use-toast";
@@ -188,6 +188,27 @@ export default function KeywordResearch() {
   [filtered, selectedRows]);
 
   const sourceQuery = inputMode === "keywords" ? keywordsInput : urlInput;
+
+  const exportResultsCsv = () => {
+    if (!filtered.length) return;
+    const rows = filtered.map(r => ({
+      'מילת מפתח': r.keyword,
+      'נפח חיפוש חודשי': r.avgMonthlySearches,
+      'תחרות': competitionLabels[r.competition] || r.competition,
+      'אינדקס תחרות': r.competitionIndex,
+      'CPC נמוך': r.lowTopOfPageBidMicros.toFixed(2),
+      'CPC גבוה': r.highTopOfPageBidMicros.toFixed(2),
+    }));
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${(r as any)[h]}"`).join(','))].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `keyword-research-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <MainLayout>
@@ -380,6 +401,10 @@ export default function KeywordResearch() {
                           שמור נבחרות ({selectedRows.size})
                         </Button>
                       )}
+                      <Button variant="outline" size="sm" onClick={exportResultsCsv} className="gap-2">
+                        <Download className="w-4 h-4" />
+                        CSV
+                      </Button>
                       <Input
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
